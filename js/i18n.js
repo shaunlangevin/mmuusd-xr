@@ -1,0 +1,74 @@
+// Interface words in each language. Exhibit content lives in exhibits/<id>/exhibit.json.
+export const UI = {
+  en: {
+    enterAR: 'Put it in this room',
+    enterVR: 'Visit the VR gallery',
+    enterQL: 'See it in your room',
+    ipad: 'Tap the numbered dots here to learn about it. Then tap “See it in your room,” point at the floor, and walk around it.',
+    back: '‹ Back', next: 'Next ›', close: 'Close', listen: 'Listen', stop: 'Stop',
+    more: 'Tell me more', less: 'Show less',
+    plain: 'IN PLAIN WORDS', original: 'THE ORIGINAL WORDS', think: 'THINK ABOUT IT',
+    turnL: 'Turn ‹', turnR: 'Turn ›', move: 'Move', options: 'Options', exit: 'Exit', done: 'Done',
+    found: (n, t) => `Explored: ${n} of ${t}`,
+    clueOf: (n, t) => `CLUE ${n} OF ${t}`, hint: 'Hint', clueHelp: 'Point at the stone where you think the clue is. A dot will appear.',
+    placeWalk: 'Point at the floor, then pull the trigger (or pinch) to set it down.',
+    placeTable: 'Point at a table or the floor, then pull the trigger (or pinch) to set it down.',
+    optLang: 'Language', optHunt: 'Track my progress', optClues: 'Detective mode', optMode: 'How are you using it?', optSize: 'Size',
+    on: 'On', off: 'Off', walk: 'Walking around', seated: 'Sitting down', life: 'Life size', table: 'Table size',
+    loading: 'Loading the stone…',
+    ready: 'Ready. Passthrough puts it in your real room.',
+    noAR: 'Passthrough isn’t available in this browser, but the VR gallery is.',
+    desktop: 'Explore it here: drag to look around and click the numbered dots.',
+    needHttps: 'This page needs to be opened over https:// to use a headset.',
+    help: 'Drag to look around · scroll to zoom · click a numbered dot',
+    helpTouch: 'Drag to look around · pinch to zoom · tap a numbered dot',
+    you: '5th grader ≈ 1.4 m', stoneH: 'Stone ≈ 2.25 m',
+    signsTitle: 'Three real cuneiform signs',
+    signs: [['king', 'LUGAL'], ['god, sky', 'AN / DINGIR'], ['house', 'É']],
+    mapNote: 'Simplified map',
+    map: { iraq: 'IRAQ (today)', iran: 'IRAN (today)', gulf: 'Persian Gulf', tigris: 'Tigris', euphrates: 'Euphrates',
+      babylon: 'Babylon', baghdad: 'Baghdad (today)', susa: 'Susa' },
+    lawCreditPrefix: '—',
+    credits: 'Credits',
+  },
+  es: {
+    enterAR: 'Ponerla en este salón',
+    enterVR: 'Visitar la galería virtual',
+    enterQL: 'Verla en tu salón',
+    ipad: 'Toca los puntos con números para aprender. Luego toca “Verla en tu salón”, apunta al piso y camina alrededor de ella.',
+    back: '‹ Atrás', next: 'Sigue ›', close: 'Cerrar', listen: 'Escuchar', stop: 'Parar',
+    more: 'Quiero saber más', less: 'Mostrar menos',
+    plain: 'EN PALABRAS SENCILLAS', original: 'LAS PALABRAS ORIGINALES', think: 'PIENSA',
+    turnL: 'Girar ‹', turnR: 'Girar ›', move: 'Mover', options: 'Opciones', exit: 'Salir', done: 'Listo',
+    found: (n, t) => `Explorados: ${n} de ${t}`,
+    clueOf: (n, t) => `PISTA ${n} DE ${t}`, hint: 'Ayuda', clueHelp: 'Apunta a la piedra donde crees que está la pista. Aparecerá un punto.',
+    placeWalk: 'Apunta al piso y aprieta el gatillo (o junta los dedos) para colocarla.',
+    placeTable: 'Apunta a una mesa o al piso y aprieta el gatillo (o junta los dedos) para colocarla.',
+    optLang: 'Idioma', optHunt: 'Seguir mi progreso', optClues: 'Modo detective', optMode: '¿Cómo la usas?', optSize: 'Tamaño',
+    on: 'Sí', off: 'No', walk: 'Caminando', seated: 'Sentado', life: 'Tamaño real', table: 'Tamaño de mesa',
+    loading: 'Cargando la piedra…',
+    ready: 'Lista. La vista real la pone en tu salón.',
+    noAR: 'Este navegador no puede mostrar tu salón, pero sí la galería virtual.',
+    desktop: 'Explórala aquí: arrastra para mirar y haz clic en los puntos con números.',
+    needHttps: 'Esta página debe abrirse con https:// para usar un visor.',
+    help: 'Arrastra para mirar · usa la rueda para acercar · haz clic en un punto',
+    helpTouch: 'Arrastra para mirar · junta los dedos para acercar · toca un punto',
+    you: 'Estudiante de 5.º ≈ 1.4 m', stoneH: 'Piedra ≈ 2.25 m',
+    signsTitle: 'Tres signos cuneiformes reales',
+    signs: [['rey', 'LUGAL'], ['dios, cielo', 'AN / DINGIR'], ['casa', 'É']],
+    mapNote: 'Mapa simplificado',
+    map: { iraq: 'IRAK (hoy)', iran: 'IRÁN (hoy)', gulf: 'Golfo Pérsico', tigris: 'Tigris', euphrates: 'Éufrates',
+      babylon: 'Babilonia', baghdad: 'Bagdad (hoy)', susa: 'Susa' },
+    lawCreditPrefix: '—',
+    credits: 'Créditos',
+  },
+};
+
+export const SIGN_CHARS = ['\u{12217}', '\u{1202D}', '\u{1208D}'];
+
+// pick a language string from {en, es} objects (falls back to English)
+export function L(obj, lang) {
+  if (obj == null) return '';
+  if (typeof obj === 'string') return obj;
+  return obj[lang] ?? obj.en ?? '';
+}
