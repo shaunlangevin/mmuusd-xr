@@ -30,6 +30,10 @@ export const UI = {
       babylon: 'Babylon', baghdad: 'Baghdad (today)', susa: 'Susa' },
     lawCreditPrefix: '—',
     credits: 'Credits',
+    freezeFrom: 'Message from your teacher',
+    freeze: { eyes: 'Eyes up! Please look at your teacher.', wait: 'Pause. Please wait for instructions.',
+      remove: 'Please carefully take off your headset.', done: 'Great job! Time to finish up.' },
+    classroom: (room, st) => `Classroom “${room}”: ${st === 'connected' ? 'connected' : st === 'error' ? 'could not connect' : st === 'off' ? 'teacher console not set up' : 'connecting…'}`,
   },
   es: {
     enterAR: 'Ponerla en este salón',
@@ -61,6 +65,10 @@ export const UI = {
       babylon: 'Babilonia', baghdad: 'Bagdad (hoy)', susa: 'Susa' },
     lawCreditPrefix: '—',
     credits: 'Créditos',
+    freezeFrom: 'Mensaje de tu maestro o maestra',
+    freeze: { eyes: '¡Atención! Por favor, mira a tu maestro o maestra.', wait: 'Pausa. Por favor, espera instrucciones.',
+      remove: 'Por favor, quítate el visor con cuidado.', done: '¡Buen trabajo! Es hora de terminar.' },
+    classroom: (room, st) => `Salón “${room}”: ${st === 'connected' ? 'conectado' : st === 'error' ? 'no se pudo conectar' : st === 'off' ? 'consola del maestro sin configurar' : 'conectando…'}`,
   },
 };
 

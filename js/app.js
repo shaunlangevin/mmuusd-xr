@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { UI, L } from './i18n.js';
 import { drawMap, drawSigns, loadCuneiformFont } from './extras.js';
-import { InfoPanel, ExtraPanel, Toolbar, Tracker, ClueCard, OptionsPanel, HintPanel, markerTexture, labelPlane } from './ui3d.js';
+import { InfoPanel, ExtraPanel, Toolbar, Tracker, ClueCard, OptionsPanel, HintPanel, FreezePanel, markerTexture, labelPlane } from './ui3d.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -76,13 +76,19 @@ scene.add(root);
 function syncPool() { pool.position.set(root.position.x, 0.003, root.position.z); }
 
 // ═════════════ 3D UI ════════════════════════════════════════════
-const panel = new InfoPanel(); scene.add(panel.mesh);
-const extra = new ExtraPanel(); scene.add(extra.mesh);
+// The reading panel and its picture travel together on one "rig" placed in front of the student
+const rig = new THREE.Group(); scene.add(rig);
+const panel = new InfoPanel(); rig.add(panel.mesh); panel.mesh.renderOrder = 32;
+const extra = new ExtraPanel(); rig.add(extra.mesh); extra.mesh.renderOrder = 32;
 const toolbar = new Toolbar(); toolbar.mesh.visible = false; scene.add(toolbar.mesh);
 const tracker = new Tracker(); toolbar.mesh.add(tracker.mesh); tracker.mesh.position.set(0, 0.115, 0);
 const clueCard = new ClueCard(); toolbar.mesh.add(clueCard.mesh); clueCard.mesh.position.set(0, 0.232, 0);
-const options = new OptionsPanel(); scene.add(options.mesh);
+const options = new OptionsPanel(); scene.add(options.mesh); options.mesh.renderOrder = 33;
 const hint = new HintPanel(); scene.add(hint.mesh);
+// teacher freeze: a separate scene with only the message, so passthrough/the room is clear
+const freezeScene = new THREE.Scene();
+const freezePanel = new FreezePanel(); freezeScene.add(freezePanel.mesh);
+let frozen = null;
 const reticle = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.15, 48).rotateX(-Math.PI / 2),
   new THREE.MeshBasicMaterial({ color: 0xd4af6a, transparent: true, opacity: 0.9, depthTest: false }));
 reticle.renderOrder = 20; reticle.visible = false; scene.add(reticle);
@@ -202,27 +208,27 @@ function refreshMarkerLooks() {
 function buildRuler() {
   ruler = new THREE.Group(); ruler.visible = false; root.add(ruler);
   const box = model.userData.box;
-  const x = box.min.x - 0.35;
+  const x = box.min.x - 0.07, z0 = box.max.z * 0.6;   // right against the stone's front-left edge
   const pole = (h, color, dx) => {
-    const g = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, 0.06), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }));
-    g.position.set(x + dx, h / 2, 0); ruler.add(g);
+    const g = new THREE.Mesh(new THREE.BoxGeometry(0.04, h, 0.04), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.75 }));
+    g.position.set(x + dx, h / 2, z0 - dx); ruler.add(g);
     for (let k = 0.5; k < h; k += 0.5) {
       const tick = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.012, 0.012), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-      tick.position.set(x + dx, k, 0); ruler.add(tick);
+      tick.position.set(x + dx, k, z0 - dx); ruler.add(tick);
     }
   };
   pole(model.userData.height, 0xd4af6a, 0);
-  pole(1.4, 0x5fa8d8, -0.22);
+  pole(1.4, 0x5fa8d8, -0.12);
   ruler.userData.labels = [];
-  ruler.userData.x = x;
+  ruler.userData.x = x; ruler.userData.z = z0;
   setRulerLabels();
 }
 function setRulerLabels() {
   if (!ruler) return;
   ruler.userData.labels.forEach((l) => ruler.remove(l));
   const a = labelPlane(t().stoneH, 0.42), b = labelPlane(t().you, 0.42);
-  a.position.set(ruler.userData.x, model.userData.height + 0.08, 0);
-  b.position.set(ruler.userData.x - 0.22, 1.4 + 0.08, 0.02);
+  a.position.set(ruler.userData.x, model.userData.height + 0.08, ruler.userData.z);
+  b.position.set(ruler.userData.x - 0.12, 1.4 + 0.08, ruler.userData.z + 0.12);
   ruler.add(a, b); ruler.userData.labels = [a, b];
 }
 
@@ -293,8 +299,9 @@ function rayNearClue(ray) {
 function refreshClue() {
   const i = currentClue(), tt = t();
   const show = S.clues && i >= 0 && root.visible;
+  const tuck = show && openIndex !== -1 && mode !== 'desktop';   // hide the clue while a panel is being read
   if (show) clueCard.set({ label: tt.clueOf(i + 1, DOTS.length), text: L(DOTS[i].clue, S.lang), hint: tt.hint });
-  clueCard.mesh.visible = show;
+  clueCard.mesh.visible = show && !tuck;
   const el = $('clue');
   el.hidden = !show || mode !== 'desktop';
   if (show) { $('clue-label').textContent = tt.clueOf(i + 1, DOTS.length); $('clue-text').textContent = L(DOTS[i].clue, S.lang);
@@ -338,10 +345,12 @@ function refreshInfo(reposition = false) {
   if (mode === 'desktop') return showCard();
   panel.show(infoState());
   const d = openIndex === 'finish' ? null : DOTS[openIndex];
-  if (reposition) placeInfoPanels();
-  if (d && (d.extra === 'map' || d.extra === 'signs')) {
-    extra.showCanvas(extraCanvas(d.extra));
-  } else extra.mesh.visible = false;
+  if (d && (d.extra === 'map' || d.extra === 'signs')) extra.showCanvas(extraCanvas(d.extra));
+  else extra.mesh.visible = false;
+  layoutRigChildren();
+  if (reposition) placeRig(d && markers[openIndex] ? markers[openIndex].position : null, true);
+  else tuckToolbar(false);
+  refreshClue();
 }
 
 const extraCache = {};
@@ -355,30 +364,104 @@ function extraCanvas(kind) {
   return extraCache[key];
 }
 
-// put the reading panel at ~1 m from the student, beside the dot
-function placeInfoPanels() {
+// ── panel layout ─────────────────────────────────────────────
+// Panels go to a "reading spot" about 0.85 m in front of the student (never measured from the stone),
+// pushed sideways if that spot would be inside the stone. The picture sits beside the reading panel,
+// and the toolbar tucks underneath, so nothing overlaps.
+const sizeOf = (p) => ({ w: p.mW, h: p.mW * p.usedH / p.canvas.width });
+function layoutRigChildren() {
+  const ps = sizeOf(panel);
+  if (extra.mesh.visible) {
+    const es = sizeOf(extra), gap = 0.03, T = es.w + ps.w + gap;
+    panel.mesh.position.set(T / 2 - ps.w / 2, 0, 0);
+    extra.mesh.position.set(-T / 2 + es.w / 2, (ps.h - es.h) / 2, 0.05);
+    extra.mesh.rotation.set(0, 0.22, 0);
+  } else panel.mesh.position.set(0, 0, 0);
+  panel.mesh.rotation.set(0, 0, 0);
+}
+// how far a point is outside the stone (negative = inside it)
+function stoneClearance(pt) {
+  if (!model) return 1;
+  const b = model.userData.box, k = root.scale.x;
+  const r = (Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2) * k + 0.05;
+  if (pt.y > root.position.y + model.userData.height * k + 0.1) return 1;
+  return Math.hypot(pt.x - root.position.x, pt.z - root.position.z) - r;
+}
+function readingSpot(aimAt, halfW) {
   const C = camera.position.clone();
-  const P = openIndex === 'finish' || !markers[openIndex]
-    ? C.clone().add(new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).setY(0).normalize().multiplyScalar(1.2))
-    : markers[openIndex].position.clone();
-  const toUser = C.clone().sub(P).setY(0); if (toUser.lengthSq() < 1e-4) toUser.set(0, 0, 1); toUser.normalize();
-  const right = new THREE.Vector3().crossVectors(toUser.clone().negate(), UP).normalize();
-  const dist = C.clone().sub(P).setY(0).length();
-  const along = THREE.MathUtils.clamp(dist - 1.0, 0.1, Math.max(0.1, dist - 0.5));
-  const pos = P.clone().addScaledVector(toUser, along).addScaledVector(right, openIndex === 'finish' ? 0 : 0.3);
-  pos.y = THREE.MathUtils.clamp(P.y, C.y - 0.45, C.y - 0.1);
-  panel.mesh.position.copy(pos); panel.mesh.lookAt(C);
-  // extra picture to the left of the reading panel
-  // picture goes to the left of the reading panel, a little closer to the student
-  extra.mesh.position.copy(pos).addScaledVector(right, -0.64).addScaledVector(toUser, 0.22);
-  extra.mesh.position.y = pos.y + 0.05;
-  extra.mesh.lookAt(C);
+  // mostly where the student is looking, partly toward the dot they opened
+  let dir = headForward();
+  if (aimAt) { const td = aimAt.clone().sub(C).setY(0); if (td.lengthSq() > 1e-4) dir.multiplyScalar(0.6).addScaledVector(td.normalize(), 0.4); }
+  dir.normalize();
+  if (aimAt && halfW < 0.5) dir.applyAxisAngle(UP, -0.12);   // nudge right so the dot itself stays in view
+  const pref = halfW > 0.5 ? 0.95 : 0.85;
+  // Stay in view (at most ~17° off to either side). Use the direction that lets the panel sit
+  // furthest out while still in front of the stone; if the student is hugging the stone,
+  // keep it close (0.45 m) anyway — panels draw on top, so they stay readable.
+  let best = null;
+  for (const ang of [0, -0.3, 0.3]) {
+    const v = dir.clone().applyAxisAngle(UP, ang);
+    const right = new THREE.Vector3().crossVectors(v, UP).normalize();
+    for (let d = pref; d >= 0.449; d -= 0.05) {
+      const p = C.clone().addScaledVector(v, d);
+      if ([-1, -0.5, 0, 0.5, 1].every((t) => stoneClearance(p.clone().addScaledVector(right, t * halfW)) > 0)) {
+        if (!best || d > best.d + 0.12) best = { p, d, pref };   // only turn sideways if it helps a lot
+        break;
+      }
+    }
+  }
+  return best || { p: C.clone().addScaledVector(dir, 0.45), d: 0.45, pref };
+}
+let rigGoal = null, rigAway = 0;
+function placeRig(aimAt, instant) {
+  const ps = sizeOf(panel);
+  const halfW = extra.mesh.visible ? (ps.w + sizeOf(extra).w + 0.03) / 2 : ps.w / 2;
+  const spot = readingSpot(aimAt, halfW);
+  const k = spot.d / spot.pref;               // closer panels shrink, so they look the same size
+  rig.scale.setScalar(k);
+  const goal = spot.p;
+  goal.y = Math.max(camera.position.y - 0.15 * k, (ps.h * k) / 2 + 0.12);
+  rigAway = 0;
+  if (instant) { rigGoal = null; rig.position.copy(goal); rig.lookAt(camera.position.x, goal.y, camera.position.z); }
+  else rigGoal = goal;
+  tuckToolbar(instant);
+}
+// toolbar (with its tracker) sits just below the open panel
+function tuckGoal() {
+  const ps = sizeOf(panel);
+  const C = camera.position;
+  const toUser = C.clone().sub(rig.position).setY(0).normalize();
+  const k = rig.scale.x;
+  return rig.position.clone().addScaledVector(toUser, 0.06 * k).setY(rig.position.y - (ps.h / 2 + 0.19) * k);
+}
+function tuckToolbar(instant) {
+  if (!panel.mesh.visible || !toolbar.mesh.visible) return;
+  toolbar.mesh.scale.setScalar(rig.scale.x);
+  toolbarGoal = tuckGoal();
+  if (instant) { toolbar.mesh.position.copy(toolbarGoal); toolbar.mesh.lookAt(camera.position); toolbarGoal = null; }
+}
+// if the student walks away or turns around, the open panel glides back in front of them
+function followRig(dt) {
+  if (!panel.mesh.visible) { rigGoal = null; rigAway = 0; return; }
+  const C = camera.position, fwd = headForward();
+  const to = rig.position.clone().sub(C).setY(0);
+  const dist = to.length();
+  const off = dist > 0.01 && fwd.dot(to.normalize()) < Math.cos(THREE.MathUtils.degToRad(60));
+  rigAway = (dist > 1.6 || off) && !rigGoal ? rigAway + dt : 0;
+  if (rigAway > 1.2) placeRig(null, false);
+  if (rigGoal) {
+    rig.position.lerp(rigGoal, 1 - Math.exp(-dt * 5));
+    rig.lookAt(C.x, rig.position.y, C.z);
+    toolbarGoal = tuckGoal();
+    if (rig.position.distanceTo(rigGoal) < 0.01) rigGoal = null;
+  }
 }
 
 function closeInfo() {
   stopAudio();
   openIndex = -1; expanded = false;
-  panel.hide(); extra.mesh.visible = false; $('card').hidden = true;
+  panel.hide(); extra.mesh.visible = false; $('card').hidden = true; rigGoal = null;
+  if (DOTS.length) refreshClue();
   if (ruler) ruler.visible = false;
   if (pendingFinish) { pendingFinish = false; showFinish(); }
 }
@@ -458,9 +541,12 @@ function onToolbar(id) {
 function openOptions() {
   closeInfo();
   options.show(S);
-  const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).setY(0).normalize();
-  options.mesh.position.copy(camera.position).addScaledVector(fwd, 0.85).setY(camera.position.y - 0.12);
-  options.mesh.lookAt(camera.position);
+  const os = sizeOf(options);
+  const spot = readingSpot(null, os.w / 2), k = spot.d / spot.pref, p = spot.p;
+  options.mesh.scale.setScalar(k);
+  p.y = Math.max(camera.position.y - 0.12 * k, (os.h * k) / 2 + 0.12);
+  options.mesh.position.copy(p);
+  options.mesh.lookAt(camera.position.x, p.y, camera.position.z);
 }
 function onOptions(id) {
   if (!id) return;
@@ -501,7 +587,7 @@ function placeSeated() {
   placing = false; reticle.visible = false; hint.mesh.visible = false;
   const d = S.size === 'table' ? 0.8 : 1.6;
   root.position.copy(camera.position).setY(S.size === 'table' ? Math.max(0, camera.position.y - 0.75) : 0).addScaledVector(headForward(), d);
-  faceUser(); root.visible = true; syncPool(); layoutToolbar(); refreshClue();
+  faceUser(); root.visible = true; syncPool(); layoutToolbar(); refreshClue(); runPendingDot();
 }
 function startPlacing(textOnly = false) {
   if (!textOnly) { placing = true; closeInfo(); options.mesh.visible = false; }
@@ -510,10 +596,11 @@ function startPlacing(textOnly = false) {
 }
 function finishPlacing(target) {
   placing = false; reticle.visible = false; hint.mesh.visible = false;
-  root.position.copy(target); faceUser(); root.visible = true; syncPool(); layoutToolbar(); refreshClue();
+  root.position.copy(target); faceUser(); root.visible = true; syncPool(); layoutToolbar(); refreshClue(); runPendingDot();
 }
 
 function layoutToolbar() {
+  toolbar.mesh.scale.setScalar(1);
   toolbarGoal = null; awayTime = 0;
   const C = camera.position.clone(), fwd = headForward();
   const left = new THREE.Vector3().crossVectors(UP, fwd).normalize();
@@ -535,6 +622,12 @@ function layoutToolbar() {
 let awayTime = 0, toolbarGoal = null;
 function followToolbar(dt) {
   if (!toolbar.mesh.visible || placing) { awayTime = 0; toolbarGoal = null; return; }
+  if (panel.mesh.visible) {   // tucked under the open panel
+    awayTime = 0;
+    if (toolbarGoal) { toolbar.mesh.position.lerp(toolbarGoal, 1 - Math.exp(-dt * 6)); toolbar.mesh.lookAt(camera.position);
+      if (toolbar.mesh.position.distanceTo(toolbarGoal) < 0.01) toolbarGoal = null; }
+    return;
+  }
   const C = camera.position, fwd = headForward();
   const toBar = toolbar.mesh.position.clone().sub(C).setY(0);
   const dist = toBar.length();
@@ -544,6 +637,7 @@ function followToolbar(dt) {
     awayTime = 0;
     const left = new THREE.Vector3().crossVectors(UP, fwd).normalize();
     toolbarGoal = C.clone().addScaledVector(fwd, 0.75).addScaledVector(left, 0.2).setY(C.y - 0.5);
+    toolbar.mesh.scale.setScalar(1);
   }
   if (toolbarGoal) {
     toolbar.mesh.position.lerp(toolbarGoal, 1 - Math.exp(-dt * 5));
@@ -596,7 +690,7 @@ function uiTargets() {
 function uiHit(c) { setRayFrom(c); return raycaster.intersectObjects(uiTargets(), false)[0] || null; }
 
 function onSelect(c) {
-  if (!renderer.xr.isPresenting) return;
+  if (!renderer.xr.isPresenting || frozen) return;
   const hit = uiHit(c);
   if (hit) {
     const o = hit.object;
@@ -673,7 +767,13 @@ function xrUpdate(frame, dt) {
       if (Math.abs(x) > 0.25) root.rotation.y -= x * dt * 1.4;
     }
   }
+  followRig(dt);
   followToolbar(dt);
+  if (frozen) {   // keep the teacher's message in front of the student
+    const goal = camera.position.clone().addScaledVector(headForward(), 1.2).setY(camera.position.y - 0.05);
+    freezePanel.mesh.position.lerp(goal, xrFrames < 5 ? 1 : 1 - Math.exp(-dt * 4));
+    freezePanel.mesh.lookAt(camera.position);
+  }
 }
 
 // ═════════════ desktop mouse ════════════════════════════════════
@@ -720,7 +820,7 @@ async function enterXR(type) {
   }
 }
 function onSessionStart() {
-  $('overlay').hidden = true; $('card').hidden = true; $('help').hidden = true; $('tracker').hidden = true; $('clue').hidden = true;
+  $('overlay').hidden = true; $('card').hidden = true; $('help').hidden = true; $('tracker').hidden = true; $('clue').hidden = true; $('freeze').hidden = true;
   controls.enabled = false;
   closeInfo(); options.mesh.visible = false;
   root.scale.setScalar(sizeScale());
@@ -746,7 +846,48 @@ function onSessionEnd() {
   controls.target.set(0, 1.15, 0); controls.update();
   onResize();
   $('overlay').hidden = false; $('help').hidden = false;
-  refreshTracker(); refreshClue();
+  refreshTracker(); refreshClue(); $('freeze').hidden = !frozen;
+}
+
+// ═════════════ teacher console (optional, read-only) ═════════════
+// Settings sent from the teacher's Chromebook. Only *changes* are applied, so a student's own
+// Options choice stays until the teacher changes that same setting.
+const ROOM = (params.get('room') || '').toLowerCase();
+let roomStatus = null, lastRemote = {}, lastDotAt = 0, pendingDot = -1;
+function applyRemote(r) {
+  const changed = (k) => r[k] !== undefined && r[k] !== lastRemote[k];
+  if (changed('exhibit') && r.exhibit !== EX.id && (EX.index.exhibits || []).some((e) => e.id === r.exhibit)) {
+    const p = new URLSearchParams(location.search); p.set('exhibit', r.exhibit); location.search = p.toString(); return;
+  }
+  if (changed('lang')) setSetting('lang', r.lang);
+  if (changed('progress')) setSetting('hunt', r.progress);
+  if (changed('detective')) setSetting('clues', r.detective);
+  if (changed('mode')) setSetting('mode', r.mode);
+  if (changed('size')) setSetting('size', r.size);
+  if (changed('lock')) { setSetting('lock', r.lock); if (r.lock) options.mesh.visible = false; }
+  lastRemote = { ...r };
+  if (r.dot && r.dotAt > lastDotAt) { lastDotAt = r.dotAt; pendingDot = r.dot - 1; runPendingDot(); }
+  setFrozen(r.freeze || null);
+}
+function runPendingDot() {
+  const i = pendingDot;
+  if (i < 0 || i >= DOTS.length || frozen) return;
+  if (renderer.xr.isPresenting && (placing || !root.visible)) return;   // try again once the stone is placed
+  pendingDot = -1;
+  if (S.clues) reveal(i);
+  openInfo(i);
+}
+function setFrozen(kind) {
+  if (kind === frozen) return;
+  frozen = kind;
+  if (kind) {
+    stopAudio();
+    const tt = t();
+    freezePanel.set(tt.freezeFrom, tt.freeze[kind]);
+    $('freeze-from').textContent = tt.freezeFrom; $('freeze-text').textContent = tt.freeze[kind];
+  }
+  $('freeze').hidden = !kind || renderer.xr.isPresenting;
+  if (!kind) runPendingDot();
 }
 
 // ═════════════ start screen ═════════════════════════════════════
@@ -785,6 +926,9 @@ function refreshStartScreen() {
     else if (xrSupport.vr) setStatus(tt.noAR);
     else setStatus(tt.desktop);
   }
+  $('room-status').hidden = !ROOM;
+  if (ROOM) $('room-status').textContent = tt.classroom(ROOM, roomStatus || 'connecting');
+  if (frozen) { freezePanel.set(tt.freezeFrom, tt.freeze[frozen]); $('freeze-from').textContent = tt.freezeFrom; $('freeze-text').textContent = tt.freeze[frozen]; }
   if (openIndex !== -1 && mode === 'desktop') showCard();
   if (DOTS.length) refreshTracker();
 }
@@ -805,7 +949,8 @@ renderer.setAnimationLoop((time, frame) => {
   const dt = Math.min(0.1, (time - lastT) / 1000 || 0); lastT = time;
   if (renderer.xr.isPresenting) xrUpdate(frame, dt); else controls.update();
   updateMarkers(time);
-  renderer.render(scene, camera);
+  if (frozen) freezeScene.background = mode === 'ar' ? null : BG;
+  renderer.render(frozen ? freezeScene : scene, camera);
 });
 
 (async function boot() {
@@ -834,10 +979,15 @@ renderer.setAnimationLoop((time, frame) => {
     document.querySelector('[data-set="mode:walk"]').closest('.row').hidden = true;   // not used on iPad
   }
   refreshStartScreen();
+  if (ROOM) {
+    import('./classroom.js')
+      .then((m) => m.listen(ROOM, applyRemote, (st) => { roomStatus = st; refreshStartScreen(); }))
+      .catch((e) => { console.warn('classroom', e); roomStatus = 'error'; refreshStartScreen(); });
+  }
   window.__steleReady = true;
   // hooks for automated testing (harmless in normal use)
   window.__dbg = {
-    THREE, camera, controls, root, markers, clueCard, currentClue, useHint, revealed, toolbar, panel, options, extra, tracker, S, setSetting, openInfo, closeInfo,
+    THREE, camera, controls, root, markers, clueCard, applyRemote, freezePanel, isFrozen: () => frozen, rigState: () => ({ rigGoal: rigGoal && rigGoal.toArray(), rigAway, xrFrames }), currentClue, useHint, revealed, toolbar, panel, options, extra, tracker, S, setSetting, openInfo, closeInfo,
     state: () => ({ mode, placing, S: { ...S }, openIndex, expanded, found: [...found], finishShown, clue: currentClue(), revealed: [...revealed],
       panel: panel.mesh.visible, extra: extra.mesh.visible, options: options.mesh.visible, toolbarItems: toolbar.items,
       ruler: !!ruler?.visible, root: root.position.toArray().map((v) => +v.toFixed(2)), scale: +root.scale.x.toFixed(2),

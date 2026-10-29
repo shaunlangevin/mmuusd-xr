@@ -33,8 +33,8 @@ class CanvasPanel {
     this.tex.anisotropy = 4;
     this.mW = mW;
     this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(mW, mW * pxH / pxW),
-      new THREE.MeshBasicMaterial({ map: this.tex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
-    this.mesh.renderOrder = 10;
+      new THREE.MeshBasicMaterial({ map: this.tex, transparent: true, side: THREE.DoubleSide, depthWrite: false, depthTest: false }));
+    this.mesh.renderOrder = 30;   // UI always draws on top of the stone, so text is never hidden inside it
     this.mesh.userData.panel = this;
     this.buttons = [];
     this.hover = null;
@@ -165,7 +165,7 @@ export class InfoPanel extends CanvasPanel {
 
 // ── picture panel (map / signs) shown next to the reading panel ─────────
 export class ExtraPanel extends CanvasPanel {
-  constructor() { super(1000, 760, 0.6); this.mesh.visible = false; }
+  constructor() { super(1000, 760, 0.5); this.mesh.visible = false; }
   showCanvas(src) {
     const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
     this.frame(30);
@@ -265,6 +265,25 @@ export class OptionsPanel extends CanvasPanel {
     this.buttons.push(done); this.drawButton(done, t.done, { primary: true });
     this.tex.needsUpdate = true;
   }
+}
+
+// ── teacher freeze message (shown alone, in front of the student) ──
+export class FreezePanel extends CanvasPanel {
+  constructor() { super(1024, 420, 0.8); this.key = ''; }
+  set(from, text) {
+    const key = from + text; if (key === this.key) return; this.key = key;
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    this.frame(44);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = GOLD; ctx.font = `800 36px ${FONT}`; ctx.fillText(from.toUpperCase(), W / 2, 70);
+    let fs = 66; ctx.font = `800 ${fs}px ${FONT}`;
+    let lines = wrap(ctx, text, W - 100);
+    while (lines.length > 3 && fs > 40) { fs -= 4; ctx.font = `800 ${fs}px ${FONT}`; lines = wrap(ctx, text, W - 100); }
+    ctx.fillStyle = INK;
+    lines.forEach((l, i) => ctx.fillText(l, W / 2, H / 2 + 30 + (i - (lines.length - 1) / 2) * fs * 1.2));
+    this.tex.needsUpdate = true;
+  }
+  draw() {}
 }
 
 // ── floating instruction ────────────────────────────────────────

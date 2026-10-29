@@ -44,6 +44,11 @@
     display: flex; gap: 14px; align-items: center; padding: 12px 16px; }
   #clue > div { flex: 1; } #clue-text { font-weight: 700; font-size: 18px; } #clue-help { font-size: 13px; color: var(--dim); margin-top: 2px; }
   #clue .label { margin: 0 0 2px; }
+  #room-status { margin-top: 6px; font-size: 13px; color: var(--green); }
+  #freeze { position: fixed; inset: 0; z-index: 50; background: rgba(10,9,8,0.92); display: grid; place-items: center; padding: 16px; }
+  #freeze .box { padding: 32px 36px; max-width: 640px; text-align: center; }
+  #freeze-text { font-size: 34px; font-weight: 800; line-height: 1.25; }
+  #freeze .label { font-size: 15px; margin-bottom: 10px; }
   #card { position: fixed; right: 16px; top: 16px; width: min(460px, calc(100% - 32px));
     max-height: calc(100% - 32px); overflow: auto; padding: 22px 24px; }
   #card header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
@@ -93,6 +98,7 @@
       <div class="row"><span id="lbl-mode"></span><div class="seg"><button data-set="mode:walk"></button><button data-set="mode:seated"></button></div></div>
     </div>
     <div id="status"></div>
+    <div id="room-status" hidden></div>
   </section>
 
   <div id="help"></div>
@@ -101,6 +107,8 @@
     <div><div class="label" id="clue-label"></div><div id="clue-text"></div><div id="clue-help"></div></div>
     <button id="clue-hint" class="primary"></button>
   </div>
+
+  <div id="freeze" hidden><div class="box"><div id="freeze-from" class="label"></div><div id="freeze-text"></div></div></div>
 
   <aside id="card" class="box" hidden>
     <header><div id="card-num">1</div><h2 id="card-title"></h2></header>

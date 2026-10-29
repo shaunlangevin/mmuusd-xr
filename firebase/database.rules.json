@@ -1,0 +1,26 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$room": {
+        ".read": "$room.matches(/^[a-z0-9-]{1,24}$/)",
+        ".write": "auth != null && auth.token.email_verified == true && (auth.token.email == 'shaun.langevin@mmuusd.org' || auth.token.email == 'mike.weber@mmuusd.org') && $room.matches(/^[a-z0-9-]{1,24}$/)",
+        ".validate": "newData.hasChildren(['updatedAt'])",
+        "exhibit":   { ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9-]{1,32}$/)" },
+        "lang":      { ".validate": "newData.isString() && newData.val().matches(/^(en|es)$/)" },
+        "progress":  { ".validate": "newData.isBoolean()" },
+        "detective": { ".validate": "newData.isBoolean()" },
+        "lock":      { ".validate": "newData.isBoolean()" },
+        "mode":      { ".validate": "newData.isString() && newData.val().matches(/^(walk|seated)$/)" },
+        "size":      { ".validate": "newData.isString() && newData.val().matches(/^(life|table)$/)" },
+        "dot":       { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
+        "dotAt":     { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "freeze":    { ".validate": "newData.isString() && newData.val().matches(/^(none|eyes|wait|remove|done)$/)" },
+        "freezeAt":  { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "updatedAt": { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "$other":    { ".validate": false }
+      }
+    }
+  }
+}

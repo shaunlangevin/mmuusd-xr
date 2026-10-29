@@ -64,6 +64,21 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
 - **Toolbar:** Turn ‹ / Turn ›, Move, Options, Exit. The right thumbstick also turns the stone, and the toolbar follows the student if they walk away.
 - **Options in the headset:** language, track my progress, Detective mode, walking or sitting, life size or table size.
 
+## Teacher console (optional)
+
+`teacher.html` lets approved staff (Shaun and Mike) control every headset in a room from a Chromebook:
+
+- freeze screens with preset messages
+- send everyone to a dot
+- switch language, Detective mode, progress, seated/walking, size and the classroom lock
+
+Headsets join by opening a link that ends in `?room=<code>`, for example `?room=5a`. They only **read** settings and never send anything back.
+
+- Setup: `firebase/SETUP.md`
+- Privacy and safety summary (for administrators or the SDPC file): `firebase/PRIVACY.md`
+
+Until `js/firebase-config.js` is filled in, the console is simply off and everything else works as before.
+
 ## Adding the audio
 
 Record from **RECORDING-SCRIPT.md** and name the files exactly as listed. Put them in:
