@@ -155,7 +155,7 @@ export class InfoPanel extends CanvasPanel {
     if (!st.single) items.push({ id: 'prev', label: t.back, w: 1 });
     if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : t.listen, w: 1.1 });
     if (st.hasMore) items.push({ id: 'more', label: st.expanded ? t.less : t.more, w: 1.5 });
-    items.push({ id: 'close', label: t.close, w: 1 });
+    if (!st.noClose) items.push({ id: 'close', label: t.close, w: 1 });
     if (!st.single) items.push({ id: 'next', label: t.next, w: 1 });
     this.buttons = this.layoutRow(items, used - footer + 22, 88, 14, 40);
     this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' }));
@@ -165,7 +165,7 @@ export class InfoPanel extends CanvasPanel {
 
 // ── picture panel (map / signs) shown next to the reading panel ─────────
 export class ExtraPanel extends CanvasPanel {
-  constructor() { super(1000, 760, 0.5); this.mesh.visible = false; }
+  constructor() { super(1000, 760, 0.44); this.mesh.visible = false; }
   showCanvas(src) {
     const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
     this.frame(30);
@@ -181,14 +181,80 @@ export class ExtraPanel extends CanvasPanel {
 
 // ── toolbar ─────────────────────────────────────────────────────
 export class Toolbar extends CanvasPanel {
-  constructor() { super(1400, 150, 0.84); this.items = []; this.lang = 'en'; }
-  set(items, lang) { this.items = items; this.lang = lang; this.draw(); }
+  constructor() { super(1400, 150, 0.84); this.items = []; this.lang = 'en'; this.badge = ''; }
+  set(items, lang, badge = '') { this.items = items; this.lang = lang; this.badge = badge; this.draw(); }
   draw() {
-    const t = UI[this.lang];
+    const t = UI[this.lang], ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
     this.frame(44);
     const labels = { left: t.turnL, right: t.turnR, move: t.move, options: t.options, exit: t.exit };
-    this.buttons = this.layoutRow(this.items.map((id) => ({ id, w: 1 })), 29, 92, 20, 34);
+    // headset number (classroom use), so the teacher can spot a mix-up at a glance
+    let left = 34;
+    if (this.badge) {
+      ctx.beginPath(); ctx.arc(34 + 46, H / 2, 46, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = GOLD; ctx.stroke();
+      ctx.fillStyle = GOLD; ctx.font = `800 52px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(this.badge, 34 + 46, H / 2 + 2);
+      left = 34 + 92 + 20;
+    }
+    const n = Math.max(1, this.items.length), gap = 20, w = (W - left - 34 - gap * (n - 1)) / n;
+    this.buttons = this.items.map((id, i) => ({ id, x: left + i * (w + gap), y: 29, w, h: 92 }));
     this.buttons.forEach((b) => this.drawButton(b, labels[b.id], { primary: b.id === 'options' }));
+    this.tex.needsUpdate = true;
+  }
+}
+
+// ── grab bar above the reading panel: drag to move it, or Hide it ──
+export class HandleBar extends CanvasPanel {
+  constructor() { super(1000, 120, 0.48); this.mesh.visible = false; this.lang = 'en'; this.canMove = true; this.grabbing = false; }
+  set(lang, canMove, grabbing = false) {
+    if (lang === this.lang && canMove === this.canMove && grabbing === this.grabbing && this.buttons.length) return;
+    this.lang = lang; this.canMove = canMove; this.grabbing = grabbing; this.draw();
+  }
+  draw() {
+    const t = UI[this.lang], ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    const h = 96, y = (H - h) / 2;
+    if (this.canMove) {
+      const g = { id: 'grab', x: 8, y, w: 600, h }, b = { id: 'hide', x: 630, y, w: W - 638, h };
+      this.buttons = [g, b];
+      const hov = this.hover === 'grab' || this.grabbing;
+      roundRect(ctx, g.x, g.y, g.w, g.h, h / 2);
+      ctx.fillStyle = hov ? '#f0cf86' : 'rgba(22,19,16,0.9)'; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = GOLD; ctx.stroke();
+      // grip dots
+      ctx.fillStyle = hov ? '#1a1612' : GOLD;
+      for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) { ctx.beginPath(); ctx.arc(70 + c * 24, H / 2 - 12 + r * 24, 7, 0, Math.PI * 2); ctx.fill(); }
+      ctx.font = `700 40px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = hov ? '#1a1612' : INK; ctx.fillText(t.dragMe, 160, H / 2 + 1);
+      this.drawButton(b, t.hide);
+    } else {
+      const b = { id: 'hide', x: (W - 360) / 2, y, w: 360, h };
+      this.buttons = [b]; this.drawButton(b, t.hide);
+    }
+    this.tex.needsUpdate = true;
+  }
+}
+
+// ── small tab left behind when a reading panel is hidden ──
+export class ShowTab extends CanvasPanel {
+  constructor() { super(640, 120, 0.3); this.mesh.visible = false; this.key = ''; }
+  set(badge, lang, found) {
+    const key = badge + lang + found + this.hover; if (key === this.key) return; this.key = key;
+    this.badge = badge; this.lang = lang; this.found = found; this.draw();
+  }
+  draw() {
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height, t = UI[this.lang || 'en'];
+    const hov = this.hover === 'show';
+    ctx.clearRect(0, 0, W, H);
+    roundRect(ctx, 6, 6, W - 12, H - 12, (H - 12) / 2);
+    ctx.fillStyle = hov ? '#f0cf86' : 'rgba(22,19,16,0.94)'; ctx.fill();
+    ctx.lineWidth = 5; ctx.strokeStyle = GOLD; ctx.stroke();
+    ctx.beginPath(); ctx.arc(66, H / 2, 40, 0, Math.PI * 2); ctx.fillStyle = this.found ? GREEN : GOLD; ctx.fill();
+    ctx.fillStyle = '#1a1612'; ctx.font = `800 ${String(this.badge).length > 1 ? 32 : 44}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(this.badge), 66, H / 2 + 2);
+    ctx.fillStyle = hov ? '#1a1612' : INK; ctx.font = `700 44px ${FONT}`; ctx.textAlign = 'left';
+    ctx.fillText(t.showAgain, 130, H / 2 + 2);
+    this.buttons = [{ id: 'show', x: 0, y: 0, w: W, h: H }];
     this.tex.needsUpdate = true;
   }
 }
@@ -238,12 +304,12 @@ export class ClueCard extends CanvasPanel {
 
 // ── Options (unmanaged use) ─────────────────────────────────────
 export class OptionsPanel extends CanvasPanel {
-  constructor() { super(1024, 1080, 0.62); this.mesh.visible = false; this.S = null; }
-  show(S) { this.S = S; this.draw(); this.mesh.visible = true; }
+  constructor() { super(1024, 1260, 0.62); this.mesh.visible = false; this.S = null; this.headset = null; }
+  // headset: null (not in a classroom) or { n: current number or null, count }
+  show(S, headset = null) { this.S = S; this.headset = headset; this.draw(); this.mesh.visible = true; }
   draw() {
     if (!this.S) return;
     const S = this.S, t = UI[S.lang], ctx = this.ctx;
-    this.frame();
     const rows = [
       [t.optLang, [['lang:en', 'English', S.lang === 'en'], ['lang:es', 'Español', S.lang === 'es']]],
       [t.optHunt, [['hunt:on', t.on, S.hunt], ['hunt:off', t.off, !S.hunt]]],
@@ -251,13 +317,19 @@ export class OptionsPanel extends CanvasPanel {
       [t.optMode, [['mode:walk', t.walk, S.mode === 'walk'], ['mode:seated', t.seated, S.mode === 'seated']]],
       [t.optSize, [['size:life', t.life, S.size === 'life'], ['size:table', t.table, S.size === 'table']]],
     ];
+    if (this.headset) {
+      const hs = this.headset;
+      rows.push([t.optHeadset, Array.from({ length: hs.count }, (_, i) => [`headset:${i}`, String(i), hs.n === i])]);
+    }
+    const used = 40 + rows.length * 172 + 120;
+    this.frame(36, used);
+    this.setUsedHeight(used);
     this.buttons = [];
     let y = 40;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     for (const [title, opts] of rows) {
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
       ctx.fillStyle = GOLD; ctx.font = `800 34px ${FONT}`; ctx.fillText(title, 48, y); y += 52;
-      const bs = this.layoutRow(opts.map(([id]) => ({ id })), y, 90, 20, 48);
+      const bs = this.layoutRow(opts.map(([id]) => ({ id })), y, 90, opts.length > 3 ? 12 : 20, 48);
       bs.forEach((b, i) => { this.buttons.push(b); this.drawButton(b, opts[i][1], { selected: opts[i][2] }); });
       y += 120;
     }
@@ -315,6 +387,18 @@ export function markerTexture(n, found) {
   ctx.fillText(found ? '✓' : String(n), 64, 68);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   markerCache.set(key, tex);
+  return tex;
+}
+
+// a gold arrow pointing right (+x), used to guide students to the tour's dot
+export function arrowTexture() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.beginPath(); ctx.moveTo(236, 128); ctx.lineTo(120, 28); ctx.lineTo(120, 88); ctx.lineTo(24, 88);
+  ctx.lineTo(24, 168); ctx.lineTo(120, 168); ctx.lineTo(120, 228); ctx.closePath();
+  ctx.fillStyle = 'rgba(212,175,106,0.97)'; ctx.fill();
+  ctx.lineJoin = 'round'; ctx.lineWidth = 12; ctx.strokeStyle = '#fff8e6'; ctx.stroke();
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
 

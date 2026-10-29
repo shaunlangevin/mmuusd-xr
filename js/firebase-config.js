@@ -14,3 +14,10 @@ export const FIREBASE_CONFIG = {
 
 // Teacher accounts allowed to send commands (must match the database rules).
 export const TEACHERS = ['shaun.langevin@mmuusd.org', 'mike.weber@mmuusd.org'];
+
+// The room every headset joins when its link has no ?room= (and that teacher.html opens by default).
+// A link ending in ?room=off turns the teacher console off for that link.
+export const DEFAULT_ROOM = 'mmuusd';
+
+// How many headsets you have. They're numbered from 0 (so 6 headsets = 0–5).
+export const HEADSETS = 6;

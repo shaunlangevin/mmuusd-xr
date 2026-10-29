@@ -53,7 +53,7 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
 ## What students can do
 
 - **Dots:** select the 9 numbered dots on the stone. Dots 6–8 are on the back, so walking around pays off.
-- **Reading panel:** each dot opens a short reading with a "Think about it" question. Panels with laws show them in plain words first. The original 1915 wording is under **Tell me more**.
+- **Reading panel:** each dot opens a short reading with a "Think about it" question. In the headset it opens off to the side of the dot, so the stone stays in view. Students can grab the bar above it to move it (later panels open where they put it), or press **Hide** to shrink it to a small tab while the narration keeps playing. Panels with laws show them in plain words first. The original 1915 wording is under **Tell me more**.
 - **Extras:**
   - Dot 3 shows three real cuneiform signs.
   - Dot 5 shows a then-and-now map.
@@ -68,11 +68,12 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
 
 `teacher.html` lets approved staff (Shaun and Mike) control every headset in a room from a Chromebook:
 
-- freeze screens with preset messages
+- freeze screens with preset messages, or pause one headset by its number (0–5)
+- run a **guided tour**: Start, ◀ Previous, Next ▶ or pick a step, play the narration on every headset, End tour
 - send everyone to a dot
-- switch language, Detective mode, progress, seated/walking, size and the classroom lock
+- switch language, Detective mode, progress, seated/walking, size, the classroom lock, and whether students can move reading panels
 
-Headsets join by opening a link that ends in `?room=<code>`, for example `?room=5a`. They only **read** settings and never send anything back.
+Every headset follows the default room (`mmuusd`) with its normal link, so you don't need a special ArborXR link. Bookmark `teacher.html`. Headsets only **read** settings and never send anything back. Each headset asks for its number once (the sticker on it) and keeps it in its own browser.
 
 - Setup: `firebase/SETUP.md`
 - Privacy and safety summary (for administrators or the SDPC file): `firebase/PRIVACY.md`

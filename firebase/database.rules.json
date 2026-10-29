@@ -19,6 +19,16 @@
         "freeze":    { ".validate": "newData.isString() && newData.val().matches(/^(none|eyes|wait|remove|done)$/)" },
         "freezeAt":  { ".validate": "newData.isNumber() && newData.val() <= now" },
         "updatedAt": { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "tour":        { ".validate": "newData.isBoolean()" },
+        "tourDot":     { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
+        "tourAt":      { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "narrate":     { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
+        "narrateAt":   { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "moveWindows": { ".validate": "newData.isBoolean()" },
+        "paused": {
+          ".validate": "newData.hasChildren()",
+          "$h":        { ".validate": "$h.matches(/^h[0-9]$/) && newData.isNumber() && newData.val() <= now" }
+        },
         "$other":    { ".validate": false }
       }
     }

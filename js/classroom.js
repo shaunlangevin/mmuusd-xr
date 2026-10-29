@@ -6,6 +6,9 @@ export const ROOM_RE = /^[a-z0-9-]{1,24}$/;
 export const FREEZE_KINDS = ['eyes', 'wait', 'remove', 'done'];
 const FREEZE_MAX_MS = 2 * 60 * 60 * 1000;   // a freeze older than 2 hours is ignored
 const DOT_MAX_MS = 10 * 60 * 1000;          // a "go to dot" older than 10 minutes is ignored
+const TOUR_MAX_MS = 3 * 60 * 60 * 1000;     // a tour step older than 3 hours means the tour was left on by mistake
+const NARRATE_MAX_MS = 20 * 1000;           // "play narration" only counts for 20 seconds (late joiners don't hear old clips)
+const PAUSE_MAX_MS = FREEZE_MAX_MS;
 
 export function configured() { return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.databaseURL); }
 
@@ -38,6 +41,16 @@ export function clean(r, now) {
   if (r.size === 'life' || r.size === 'table') out.size = r.size;
   if (Number.isInteger(r.dot) && r.dot >= 1 && r.dot <= 20 && typeof r.dotAt === 'number' && now - r.dotAt < DOT_MAX_MS) {
     out.dot = r.dot; out.dotAt = r.dotAt;
+  }
+  const fresh = (at, max) => typeof at === 'number' && now - at < max;
+  const dotNum = (v) => Number.isInteger(v) && v >= 1 && v <= 20;
+  bool('moveWindows');
+  if (r.tour === true && dotNum(r.tourDot) && fresh(r.tourAt, TOUR_MAX_MS)) { out.tour = true; out.tourDot = r.tourDot; out.tourAt = r.tourAt; }
+  if (dotNum(r.narrate) && fresh(r.narrateAt, NARRATE_MAX_MS)) { out.narrate = r.narrate; out.narrateAt = r.narrateAt; }
+  // per-headset pause: { h0: time, h3: time } → [0, 3]  (numbers on the headsets' stickers, not students)
+  out.paused = [];
+  if (r.paused && typeof r.paused === 'object') {
+    for (const [k, v] of Object.entries(r.paused)) { const m = /^h([0-9])$/.exec(k); if (m && fresh(v, PAUSE_MAX_MS)) out.paused.push(+m[1]); }
   }
   out.freeze = (FREEZE_KINDS.includes(r.freeze) && typeof r.freezeAt === 'number' && now - r.freezeAt < FREEZE_MAX_MS) ? r.freeze : null;
   return out;

@@ -33,10 +33,21 @@ Allow these addresses:
 - **Teacher Chromebook only:** `*.firebaseapp.com`, `identitytoolkit.googleapis.com`, `securetoken.googleapis.com`, `apis.google.com`, `accounts.google.com`.
 
 ## 6. Check it
-1. Open `https://shaunlangevin.github.io/mmuusd-xr/teacher.html` and sign in.
-2. Pick a room code (for example `5a`) and press **Run safety check**. Every line should show a green ✓.
-3. Copy the **Headset link** (it ends in `?room=5a`) into ArborXR as a WebXR Link. You can add other settings too, for example `?room=5a&detective=on`.
-4. Put on a headset with that link, then press **Eyes up** on the Chromebook. The headset should show the message within a second or two.
+1. Open `https://shaunlangevin.github.io/mmuusd-xr/teacher.html` and sign in. It opens the default room, `mmuusd`, and you can bookmark it.
+2. Press **Run safety check**. Every line should show a green ✓.
+3. Your normal ArborXR link (with no `?room=`) already follows this room, so nothing needs to change in ArborXR.
+4. Put on a headset, pick its number on the start screen (the first time only), then press **Eyes up** on the Chromebook. The headset should show the message within a second or two.
+
+## Rooms
+- Every headset joins the default room (`DEFAULT_ROOM` in `js/firebase-config.js`, set to `mmuusd`) unless its link says otherwise.
+- If two classes ever use headsets at the same time, give one group links ending in `?room=<code>` (for example `?room=5a`), and open `teacher.html?room=5a` for that group.
+- A link ending in `?room=off` ignores the console completely.
+
+## Headset numbers
+- Each headset asks "Which headset is this?" once, on its start screen. The number is saved only in that headset's browser and is never sent anywhere. Students can change it later in **Options**, which the classroom lock hides.
+- If a headset forgets its number (for example after its browser data is cleared), it just asks again.
+- Optional: an ArborXR link ending in `?headset=3` sets the number automatically.
+- If you get more headsets, change `HEADSETS` in `js/firebase-config.js` (up to 10).
 
 ## Adding or removing a teacher
 The list of teachers lives in two places, and both need the same emails:

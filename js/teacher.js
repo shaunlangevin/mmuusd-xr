@@ -1,6 +1,9 @@
 // Teacher console. Signed-in teachers write a tiny settings record for one room;
 // headsets opened with ?room=<code> read it. Nothing is ever read from the headsets.
-import { FIREBASE_CONFIG, TEACHERS } from './firebase-config.js';
+import * as CFG from './firebase-config.js';
+const { FIREBASE_CONFIG, TEACHERS } = CFG;
+const DEFAULT_ROOM = CFG.DEFAULT_ROOM || 'mmuusd';
+const HEADSETS = Math.min(10, Math.max(1, CFG.HEADSETS || 6));
 
 const $ = (id) => document.getElementById(id);
 const ROOM_RE = /^[a-z0-9-]{1,24}$/;
@@ -46,8 +49,9 @@ async function start() {
     show('app');
     await loadExhibit(index.default);
     buildSettings();
-    const saved = (() => { try { return localStorage.getItem('xr-room') || ''; } catch { return ''; } })();
-    setRoom(saved || 'room1');
+    buildHeadsets();
+    // the default room needs no setup; teacher.html?room=<code> opens another one
+    setRoom(new URLSearchParams(location.search).get('room') || DEFAULT_ROOM);
   });
 
   // ── room ──
@@ -55,9 +59,12 @@ async function start() {
     r = (r || '').trim().toLowerCase();
     if (!ROOM_RE.test(r)) { status('Room codes use lowercase letters, numbers and dashes (up to 24).', true); return; }
     room = r; $('room').value = r;
-    try { localStorage.setItem('xr-room', r); } catch { /* fine */ }
     const base = new URL('./', location.href).href;
-    $('link').value = `${base}?room=${r}`;
+    const isDefault = r === DEFAULT_ROOM;
+    $('link').value = isDefault ? base : `${base}?room=${r}`;
+    $('linkNote').textContent = isDefault
+      ? 'This is the default room: headsets opened with the normal link (no ?room=) follow this page. Use another room code only if two classes use headsets at the same time.'
+      : `Headsets only follow this room if their ArborXR link ends in ?room=${r}. To come back here later, bookmark teacher.html?room=${r}.`;
     if (unsub) unsub();
     unsub = fb.onValue(fb.ref(db, `rooms/${r}`), (s) => { current = s.val() || {}; render(); }, (e) => status('Could not read the room: ' + e.message, true));
     status(`Controlling room “${r}”.`);
@@ -87,11 +94,44 @@ async function start() {
   function buildDots() {
     const box = $('dots'); box.innerHTML = '';
     exhibit.dots.forEach((d, i) => {
-      const b = document.createElement('button'); b.className = 'dot';
+      const b = document.createElement('button'); b.className = 'dot'; b.dataset.dot = i + 1;
       b.innerHTML = `<b>${i + 1}</b>`; b.append(document.createTextNode(d.title.en));
-      b.onclick = () => send({ dot: i + 1, dotAt: fb.serverTimestamp() }, `Go to dot ${i + 1}`);
+      // tour running: pick the tour step; otherwise open that dot on every headset
+      b.onclick = () => (tourOn() ? goStep(i + 1) : send({ dot: i + 1, dotAt: fb.serverTimestamp() }, `Go to dot ${i + 1}`));
       box.append(b);
     });
+  }
+
+  // ── guided tour ──
+  const TOUR_MAX = 3 * 3600e3;
+  const tourOn = () => current.tour === true && Number.isInteger(current.tourDot) && Date.now() - (current.tourAt || 0) < TOUR_MAX;
+  const nDots = () => (exhibit ? exhibit.dots.length : 0);
+  function goStep(n) {
+    n = Math.max(1, Math.min(nDots(), n));
+    send({ tour: true, tourDot: n, tourAt: fb.serverTimestamp() }, `Tour step ${n}`);
+  }
+  $('tourStart').onclick = () => goStep(1);
+  $('tourPrev').onclick = () => goStep((current.tourDot || 1) - 1);
+  $('tourNext').onclick = () => goStep((current.tourDot || 0) + 1);
+  $('tourEnd').onclick = () => send({ tour: false, tourAt: fb.serverTimestamp() }, 'End tour (students explore freely)');
+  $('narrate').onclick = () => {
+    const n = tourOn() ? current.tourDot : current.dot;
+    if (n) send({ narrate: n, narrateAt: fb.serverTimestamp() }, `Play narration for dot ${n}`);
+  };
+  document.querySelectorAll('[data-move]').forEach((b) => {
+    b.onclick = () => send({ moveWindows: b.dataset.move === 'true' }, `Students can move windows: ${b.textContent}`);
+  });
+
+  // ── pause one headset ──
+  const PAUSE_MAX = 2 * 3600e3;
+  const pausedNow = (i) => { const v = current.paused && current.paused['h' + i]; return typeof v === 'number' && Date.now() - v < PAUSE_MAX; };
+  function buildHeadsets() {
+    const box = $('headsets'); box.innerHTML = '';
+    for (let i = 0; i < HEADSETS; i++) {
+      const b = document.createElement('button'); b.className = 'hs'; b.dataset.hs = i;
+      b.onclick = () => send({ ['paused/h' + i]: pausedNow(i) ? null : fb.serverTimestamp() }, `${pausedNow(i) ? 'Unpause' : 'Pause'} headset ${i}`);
+      box.append(b);
+    }
   }
 
   const SETTINGS = [
@@ -123,6 +163,20 @@ async function start() {
   }
 
   function render() {
+    // tour
+    const on = tourOn(), step = current.tourDot, n = nDots();
+    $('tourStart').disabled = false; $('tourStart').textContent = on ? 'Restart tour' : 'Start tour';
+    $('tourPrev').disabled = !on || step <= 1; $('tourNext').disabled = !on || step >= n; $('tourEnd').disabled = !on;
+    const ts = $('tourStep'); ts.textContent = '';
+    if (on && exhibit) { const b = document.createElement('b'); b.textContent = `Step ${step} of ${n}: `; ts.append(b, exhibit.dots[step - 1].title.en); }
+    else ts.textContent = 'The tour is off. Students explore on their own.';
+    const narr = on ? step : current.dot;
+    $('narrate').disabled = !narr; $('narrate').textContent = narr ? `▶ Play narration for dot ${narr} on all headsets` : '▶ Play narration on all headsets';
+    $('dotsTitle').textContent = on ? 'Jump to a tour step' : 'Send everyone to a dot';
+    $('dotsNote').textContent = on ? 'The tour is running, so these pick the tour step.' : 'Opens that dot’s panel on every headset (works in Detective mode too).';
+    document.querySelectorAll('#dots .dot').forEach((b) => b.classList.toggle('cur', on && +b.dataset.dot === step));
+    document.querySelectorAll('[data-move]').forEach((b) => b.classList.toggle('sel', String(current.moveWindows !== false) === b.dataset.move));
+    document.querySelectorAll('#headsets .hs').forEach((b) => { const p = pausedNow(+b.dataset.hs); b.classList.toggle('sel', p); b.textContent = `Headset ${b.dataset.hs}${p ? ' · paused' : ''}`; });
     document.querySelectorAll('#settings button').forEach((b) => {
       const v = current[b.dataset.key];
       b.classList.toggle('sel', JSON.stringify(v === undefined ? null : v) === b.dataset.val);
@@ -151,6 +205,7 @@ async function start() {
     line(await expectFail(fb.get(fb.ref(anon, '/'))), 'Nobody can list or read the whole database');
     line(await expectFail(fb.get(fb.ref(anon, 'rooms'))), 'Nobody can list the other rooms');
     line(await expectOk(fb.get(fb.ref(anon, target))), 'Headsets can read this room’s settings');
+    line(await expectFail(fb.update(fb.ref(anon, target), { 'paused/h0': fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Someone not signed in cannot pause or unpause headsets');
     fb.goOffline(anon);
     // signed in as you: junk must still be rejected
     const me = fb.ref(db, target);
@@ -158,6 +213,9 @@ async function start() {
     line(await expectFail(fb.update(me, { lang: 'fr', updatedAt: fb.serverTimestamp() })), 'Unknown values are rejected');
     line(await expectFail(fb.update(me, { freeze: 'Click this link', freezeAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Custom freeze messages are rejected');
     line(await expectFail(fb.update(me, { dot: 99, dotAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Out-of-range dots are rejected');
+    line(await expectFail(fb.update(me, { tourDot: 0, tourAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Out-of-range tour steps are rejected');
+    line(await expectFail(fb.update(me, { 'paused/student-name': fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Only headset numbers can be paused (no names)');
+    line(await expectFail(fb.update(me, { 'paused/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Pauses can’t carry text');
     line(await expectOk(fb.update(me, { updatedAt: fb.serverTimestamp() })), 'Your account can send normal commands');
   };
 
