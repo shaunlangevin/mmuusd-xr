@@ -13,6 +13,7 @@
   .box { background: var(--panel); border: 2px solid var(--gold); border-radius: 18px; }
   #overlay { position: fixed; left: 16px; top: 16px; width: min(430px, calc(100% - 32px)); padding: 20px 22px;
     max-height: calc(100% - 32px); overflow: auto; }
+  .kit { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
   #overlay h1 { margin: 0 0 6px; font-size: 27px; }
   #subtitle { margin: 0 0 14px; color: var(--dim); font-size: 16px; line-height: 1.4; }
   .btns { display: flex; flex-direction: column; gap: 10px; }
@@ -85,6 +86,7 @@
   <div id="app"></div>
 
   <section id="overlay" class="box">
+    <div id="kit-label" class="kit" hidden></div>
     <h1 id="title">…</h1>
     <p id="subtitle"></p>
     <select id="exhibit-pick" hidden aria-label="Exhibit"></select>

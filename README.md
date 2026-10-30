@@ -37,7 +37,7 @@ All settings:
 - `mode=walk|seated`
 - `size=life|table`
 - `lock=1`
-- `exhibit=<folder name>`
+- `kit=<kit id>` and `exhibit=<folder name>`
 
 ## iPad and iPhone
 
@@ -99,11 +99,20 @@ Each dot also has:
 - `h`: its height on the stone, from 0 (bottom) to 1 (top)
 - `angle`: where it sits around the stone, where 0 is the front (the relief side), 90 is the right side, 180 is the back, and −90 is the left side
 
+## Unit kits
+
+Artifacts are grouped into **kits**: short, ordered lists of artifacts for one unit, such as *Grade 5 · Mesopotamia*. Students only ever see the current kit, so a growing collection doesn't become a distracting menu.
+
+- Kits are listed in `exhibits/index.json` (`kits`, plus `defaultKit`). Each artifact is stored once in its own folder and can belong to more than one kit.
+- On the teacher page, **Unit kit** picks the kit and today's artifact for your headsets. Changing the artifact ends any tour and reloads the headsets, so do it before students start.
+- Without the console, a link ending in `?kit=<kit id>` opens that kit. The start screen shows a picker only when the kit has more than one artifact (and not when locked).
+- Keep kits small: 3–5 artifacts.
+
 ## Adding another artifact later
 
-1. Make a new folder in `exhibits/`, for example `exhibits/ziggurat/`, with a `model.glb` and an `exhibit.json` copied from Hammurabi's and edited.
-2. Add it to `exhibits/index.json`.
-3. Link to it with `?exhibit=ziggurat`. When there's more than one exhibit, the start screen also shows a picker.
+1. Make a new folder in `exhibits/`, for example `exhibits/cylinder-seal/`, with a `model.glb` and an `exhibit.json` copied from Hammurabi's and edited.
+2. Add it to the `exhibits` list in `exhibits/index.json`, **and** to the `exhibits` list of the kit(s) it belongs to (or add a new kit).
+3. It then appears in that kit on the teacher page and on the start screen. A direct link with `?exhibit=cylinder-seal` also works.
 
 You can also give an exhibit a 360° background for the VR gallery by putting an equirectangular image in its folder and adding `"backdrop": "yourimage.jpg"` to its `exhibit.json`.
 

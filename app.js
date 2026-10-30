@@ -107,6 +107,7 @@ let guideLabel = null, guideLabelText = '';
 
 // ═════════════ state ════════════════════════════════════════════
 let EX = null;                    // exhibit data
+let KIT = null;                   // the unit kit this artifact belongs to (students only see this kit)
 let DOTS = [];
 let model = null;
 let markers = [];
@@ -130,6 +131,7 @@ const audio = new Audio(); let playing = false, playingIndex = -1;
 const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
 let hasCuneiformFont = false;
+const kitList = () => (EX?.index.kits || []).filter((k) => Array.isArray(k.exhibits));
 const sizeScale = () => (S.size === 'table' ? TABLE_SCALE : 1);
 const exPath = (f) => `exhibits/${EX.id}/${f}`;
 const clipName = (i) => (i === 'finish' ? 'finish' : String(i + 1).padStart(2, '0'));
@@ -137,7 +139,15 @@ const clipName = (i) => (i === 'finish' ? 'finish' : String(i + 1).padStart(2, '
 // ═════════════ exhibit loading ══════════════════════════════════
 async function loadExhibit() {
   const index = await (await fetch('exhibits/index.json')).json();
-  const id = params.get('exhibit') || index.default;
+  const known = (id) => (index.exhibits || []).some((e) => e.id === id);
+  const kits = (index.kits || []).filter((k) => Array.isArray(k.exhibits) && k.exhibits.some(known));
+  // kit: ?kit= link > default kit; artifact: ?exhibit= link > the kit's first artifact
+  const kitParam = params.get('kit');
+  KIT = kits.find((k) => k.id === kitParam) || null;
+  let id = known(params.get('exhibit')) ? params.get('exhibit') : null;
+  if (!KIT && id) KIT = kits.find((k) => k.exhibits.includes(id)) || null;
+  if (!KIT) KIT = kits.find((k) => k.id === index.defaultKit) || kits[0] || null;
+  if (!id) id = (KIT && KIT.exhibits.find(known)) || index.default;
   EX = await (await fetch(`exhibits/${id}/exhibit.json`)).json();
   EX.id = id; EX.index = index;
   DOTS = EX.dots;
@@ -663,7 +673,7 @@ function onToolbar(id) {
   if (id === 'exit') renderer.xr.getSession()?.end();
 }
 
-const optionsHeadset = () => (classroomOn() ? { n: HEADSET, count: HEADSETS } : null);
+const optionsHeadset = () => (classroomOn() ? { n: HEADSET, groups: GROUPS.map((g) => ({ name: g.name, first: g.first, last: g.last })) } : null);
 function openOptions() {
   if (touring) return;
   closeInfo();
@@ -1092,35 +1102,73 @@ function onSessionEnd() {
 // ═════════════ teacher console (optional, read-only) ═════════════
 // Settings sent from the teacher's Chromebook. Only *changes* are applied, so a student's own
 // Options choice stays until the teacher changes that same setting.
-// Every headset joins DEFAULT_ROOM unless its link says ?room=<code> (or ?room=off).
+// A headset's number decides its room (GROUPS in firebase-config.js: 0–5 South End, 6–11 North End),
+// so every headset uses the same link. No number yet → DEFAULT_ROOM. ?room=<code> overrides; ?room=off = no console.
 const DEFAULT_ROOM = CFG.DEFAULT_ROOM || 'mmuusd';
-const HEADSETS = Math.min(10, Math.max(1, CFG.HEADSETS || 6));
+const GROUPS = (Array.isArray(CFG.GROUPS) && CFG.GROUPS.length ? CFG.GROUPS : [{ name: '', room: DEFAULT_ROOM, first: 0, last: (CFG.HEADSETS || 6) - 1 }])
+  .filter((g) => /^[a-z0-9-]{1,24}$/.test(g.room) && Number.isInteger(g.first) && Number.isInteger(g.last) && g.first >= 0 && g.first <= g.last && g.last <= 19);
+const groupOf = (n) => (n == null ? null : GROUPS.find((g) => n >= g.first && n <= g.last) || null);
 const roomParam = (params.get('room') || '').toLowerCase();
-const ROOM = /^(off|none)$/.test(roomParam) ? '' : (roomParam || DEFAULT_ROOM);
+const roomOff = /^(off|none)$/.test(roomParam);
 let roomStatus = null, lastRemote = {}, lastDotAt = 0, pendingDot = -1, lastTourAt = 0, lastNarrateAt = 0;
 let roomSeen = false;   // has this page ever reached the teacher console?
 const classroomOn = () => !!ROOM && roomSeen;
 
 // ── this headset's number (the sticker on it): kept only in this browser, never sent ──
 const HEADSET_KEY = 'xr-headset';
-const validHeadset = (v) => v != null && /^[0-9]$/.test(String(v)) && +v < HEADSETS;
+const validHeadset = (v) => v != null && /^1?[0-9]$/.test(String(v)) && !!groupOf(+v);
 let HEADSET = (() => {
   const p = params.get('headset');           // optional: a per-headset ArborXR link can set it
   if (validHeadset(p)) { try { localStorage.setItem(HEADSET_KEY, p); } catch { /* fine */ } return +p; }
   try { const v = localStorage.getItem(HEADSET_KEY); return validHeadset(v) ? +v : null; } catch { return null; }
 })();
+function roomFor() { return roomOff ? '' : roomParam || groupOf(HEADSET)?.room || DEFAULT_ROOM; }
+let ROOM = roomFor();
+const roomLabel = () => (!roomParam && GROUPS.find((g) => g.room === ROOM)?.name) || ROOM;
 function setHeadset(n) {
   if (!validHeadset(n)) return;
   HEADSET = +n;
   try { localStorage.setItem(HEADSET_KEY, String(n)); } catch { /* still works for this visit */ }
   refreshToolbar(); refreshStartScreen();
-  applyPause();
+  if (roomFor() !== ROOM) switchRoom(roomFor());   // e.g. 3 → South End, 8 → North End
+  else applyPause();
+}
+
+// ── listening to the room ──
+let classroomMod = null, roomSub = null;
+function onRoomStatus(st) { roomStatus = st; if (st === 'connected') roomSeen = true; refreshStartScreen(); refreshToolbar(); }
+async function startListening() {
+  if (!ROOM) return;
+  const room = ROOM;
+  try {
+    classroomMod = classroomMod || await import('./classroom.js');
+    const sub = await classroomMod.listen(room, (r) => { if (room === ROOM) applyRemote(r); }, onRoomStatus);
+    if (room !== ROOM) sub?.stop(); else roomSub = sub;
+  } catch (e) { console.warn('classroom', e); roomStatus = 'error'; refreshStartScreen(); }
+}
+function switchRoom(r) {
+  roomSub?.stop(); roomSub = null;
+  ROOM = r;
+  lastRemote = {}; lastTourAt = 0; lastNarrateAt = 0;   // the new room's settings apply fresh
+  refreshStartScreen();
+  startListening();
 }
 
 function applyRemote(r) {
   const changed = (k) => r[k] !== undefined && r[k] !== lastRemote[k];
-  if (changed('exhibit') && r.exhibit !== EX.id && (EX.index.exhibits || []).some((e) => e.id === r.exhibit)) {
-    const p = new URLSearchParams(location.search); p.set('exhibit', r.exhibit); location.search = p.toString(); return;
+  // unit kit / artifact chosen on the teacher page (switching artifacts reloads the page)
+  if (changed('kit') || changed('exhibit')) {
+    const known = (id) => (EX.index.exhibits || []).some((e) => e.id === id);
+    const k = (r.kit && kitList().find((x) => x.id === r.kit)) || KIT;
+    const inKit = (id) => known(id) && (!k || k.exhibits.includes(id));
+    let ex = EX.id;
+    if (inKit(r.exhibit)) ex = r.exhibit;                                    // the teacher picked this artifact
+    else if (k && !inKit(EX.id)) ex = k.exhibits.find(known) || EX.id;       // new kit: start at its first artifact
+    if (ex !== EX.id) {
+      const p = new URLSearchParams(location.search); p.set('exhibit', ex); if (k) p.set('kit', k.id);
+      location.search = p.toString(); return;
+    }
+    if (k !== KIT) { KIT = k; $('exhibit-pick').innerHTML = ''; refreshStartScreen(); }
   }
   if (changed('lang')) setSetting('lang', r.lang);
   if (changed('progress')) setSetting('hunt', r.progress);
@@ -1300,13 +1348,16 @@ function refreshStartScreen() {
       'mode:walk': tt.walk, 'mode:seated': tt.seated }[b.dataset.set];
   });
   $('lbl-lang').textContent = tt.optLang; $('lbl-hunt').textContent = tt.optHunt; $('lbl-clues').textContent = tt.optClues; $('lbl-mode').textContent = tt.optMode;
-  // exhibit picker (only if there is more than one)
+  // artifact picker: only this unit kit's artifacts (and only if there is more than one)
+  $('kit-label').textContent = KIT ? L(KIT.title, S.lang) : '';
+  $('kit-label').hidden = !KIT;
   const pick = $('exhibit-pick');
-  const list = EX.index.exhibits || [];
+  const list = KIT ? KIT.exhibits.map((id) => (EX.index.exhibits || []).find((e) => e.id === id)).filter(Boolean) : (EX.index.exhibits || []);
   pick.hidden = S.lock || list.length < 2;
-  if (!pick.hidden && !pick.childElementCount) {
+  if (!pick.hidden && pick.dataset.lang !== S.lang + (KIT?.id || '')) {
+    pick.innerHTML = ''; pick.dataset.lang = S.lang + (KIT?.id || '');
     for (const e of list) { const o = document.createElement('option'); o.value = e.id; o.textContent = L(e.title, S.lang); o.selected = e.id === EX.id; pick.append(o); }
-    pick.onchange = () => { const p = new URLSearchParams(location.search); p.set('exhibit', pick.value); location.search = p.toString(); };
+    pick.onchange = () => { const p = new URLSearchParams(location.search); p.set('exhibit', pick.value); if (KIT) p.set('kit', KIT.id); location.search = p.toString(); };
   }
   if (xrSupport.checked) {
     if (xrSupport.quickLook) setStatus(tt.ipad);
@@ -1318,7 +1369,7 @@ function refreshStartScreen() {
   // classroom line: always for an explicit ?room= link; for the default room only once it's actually set up
   const showRoom = !!ROOM && (!!roomParam || classroomOn());
   $('room-status').hidden = !showRoom;
-  if (showRoom) $('room-status').textContent = tt.classroom(ROOM, roomStatus || 'connecting');
+  if (showRoom) $('room-status').textContent = tt.classroom(roomLabel(), roomStatus || 'connecting');
   // which headset is this? (only on headsets, only when the teacher console is set up)
   const hsRow = $('headset-row');
   hsRow.hidden = !classroomOn() || !(xrSupport.ar || xrSupport.vr) || (S.lock && HEADSET != null);
@@ -1326,12 +1377,17 @@ function refreshStartScreen() {
     $('lbl-headset').textContent = tt.headsetQ; $('headset-help').textContent = tt.headsetHelp;
     $('headset-help').hidden = HEADSET != null;
     hsRow.classList.toggle('ask', HEADSET == null);
-    const seg = $('headset-seg');
-    if (seg.childElementCount !== HEADSETS) {
-      seg.innerHTML = '';
-      for (let i = 0; i < HEADSETS; i++) { const b = document.createElement('button'); b.textContent = i; b.onclick = () => setHeadset(i); seg.append(b); }
+    const box = $('headset-seg');
+    if (!box.childElementCount) {   // one row of numbers per group (South End 0–5, North End 6–11)
+      for (const g of GROUPS) {
+        const wrap = document.createElement('div'); wrap.className = 'hs-group';
+        if (g.name) { const cap = document.createElement('span'); cap.textContent = g.name; wrap.append(cap); }
+        const seg = document.createElement('div'); seg.className = 'seg';
+        for (let i = g.first; i <= g.last; i++) { const b = document.createElement('button'); b.textContent = i; b.dataset.hs = i; b.onclick = () => setHeadset(i); seg.append(b); }
+        wrap.append(seg); box.append(wrap);
+      }
     }
-    [...seg.children].forEach((b, i) => b.classList.toggle('sel', HEADSET === i));
+    box.querySelectorAll('button').forEach((b) => b.classList.toggle('sel', HEADSET === +b.dataset.hs));
   }
   if (frozen) { freezePanel.set(tt.freezeFrom, tt.freeze[frozen]); $('freeze-from').textContent = tt.freezeFrom; $('freeze-text').textContent = tt.freeze[frozen]; }
   if (openIndex !== -1 && mode === 'desktop') showCard();
@@ -1384,16 +1440,13 @@ renderer.setAnimationLoop((time, frame) => {
     document.querySelector('[data-set="mode:walk"]').closest('.row').hidden = true;   // not used on iPad
   }
   refreshStartScreen();
-  if (ROOM) {
-    import('./classroom.js')
-      .then((m) => m.listen(ROOM, applyRemote, (st) => { roomStatus = st; if (st === 'connected') roomSeen = true; refreshStartScreen(); refreshToolbar(); }))
-      .catch((e) => { console.warn('classroom', e); roomStatus = 'error'; refreshStartScreen(); });
-  }
+  startListening();
   window.__steleReady = true;
   // hooks for automated testing (harmless in normal use)
   window.__dbg = {
     THREE, camera, controls, root, markers, clueCard, applyRemote, rig, handle, tab, guide, tourRing, setHidden, setHeadset,
     renderer, anchorObj: () => anchor, anchorState: () => ({ anchor: !!anchor, waiting: !!anchorWait, saved: readSpot() }),
+    kitState: () => ({ kit: KIT && KIT.id, exhibit: EX.id, picker: $('exhibit-pick').hidden ? null : [...$('exhibit-pick').options].map((o) => o.value) }),
     grabState: () => ({ grab: !!grab, placePref, rigAng, hidden }), tourState: () => ({ touring, tourStep, tourPending, turning: !!tourTurn, guide: guide.visible, guideText: guideLabelText, moveOK, headset: HEADSET, room: ROOM, frozen }), freezePanel, isFrozen: () => frozen, rigState: () => ({ rigGoal: rigGoal && rigGoal.toArray(), rigAway, xrFrames }), currentClue, useHint, revealed, toolbar, panel, options, extra, tracker, S, setSetting, openInfo, closeInfo,
     state: () => ({ mode, placing, S: { ...S }, openIndex, expanded, found: [...found], finishShown, clue: currentClue(), revealed: [...revealed],
       panel: panel.mesh.visible, extra: extra.mesh.visible, options: options.mesh.visible, toolbarItems: toolbar.items,
