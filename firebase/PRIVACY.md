@@ -14,7 +14,7 @@
 ## What is NOT collected
 - **No student names, accounts, sign-ins, IDs, answers, progress, audio, video, photos, camera or location data.**
 - **Headsets never write to the database.** They only read their room's settings. They don't sign in and aren't given any identifier.
-- **Headset numbers stay on the headset.** Each headset saves its own number (0–5, matching its sticker) in its browser so it knows when a pause is meant for it. That number is never sent anywhere. The teacher page can't see which headsets are connected or what they are looking at.
+- **Headset numbers stay on the headset.** Each headset saves its own number (matching its sticker: South End 0–5, North End 6–11) in its browser. The number decides which teacher page the headset follows and whether a pause is meant for it. It is never sent anywhere. The teacher page can't see which headsets are connected or what they are looking at.
 - **No record of where students look or what they open.** Where a student moves a reading panel is remembered only in that headset's memory until the page is closed.
 - **No Google Analytics, crash reporting, advertising or tracking code.** Only Firebase's database module (plus sign-in on the teacher page) is included, and it's hosted on our own GitHub site.
 
@@ -26,7 +26,7 @@
 - **Fixed menu only:**
   - language, progress tracking, Detective mode, walking or seated, size, classroom lock
   - "go to dot 1–20", guided tour step 1–20, "play narration" for dot 1–20
-  - pause or unpause headset 0–9
+  - pause or unpause headset 0–19
   - whether students can move reading panels
   - four preset freeze messages: Eyes up, Wait for instructions, Take off headset, Time to finish
 - **No free text.** The database rules reject anything else, and the headsets also ignore any value not on their own allowed list.
@@ -37,8 +37,8 @@
 - Freezes and per-headset pauses expire automatically after 2 hours. "Go to dot" commands are ignored after 10 minutes, tour steps after 3 hours, and "play narration" after 20 seconds.
 
 ## Technical notes for IT
-- **Default room:** every copy of the exhibit page listens to the default room (`mmuusd`) unless its link ends in `?room=off`, so the read-only connection described here also happens on Chromebooks and iPads that open the page.
+- **Rooms:** each copy of the exhibit page listens to one room: `south` for headsets 0–5, `north` for 6–11, or `mmuusd` until a number is picked (unless its link ends in `?room=off`), so the read-only connection described here also happens on Chromebooks and iPads that open the page.
 - **Network address:** like any website, Google's servers see each headset's network (IP) address when it connects. That's ordinary traffic from a district device with no student login.
 - **On the headset itself, the Firebase library keeps two small non-personal items in browser storage:** a connection note (which server address or connection type worked last), and a usage note with the library version and the date. Google may receive that usage note with requests. Neither contains anything about the student.
-- **The page's own browser storage:** one item, `xr-headset`, holding the headset's number (for example `3`). Nothing else is stored by the exhibit itself.
+- **The page's own browser storage:** `xr-headset`, holding the headset's number (for example `3`), and, in passthrough, `xr-spot:<exhibit>:<size>`, holding a random reference code for the spot where the stone was last placed. The headset's own system remembers that spot (a WebXR "anchor") so the stone reappears in the same place and stays put if the headset recentres. Nothing else is stored by the exhibit itself, and none of it is sent anywhere. The app does not use the headset cameras.
 - **Live check:** a "Run safety check" button on the teacher page tests the rules against the live database. It confirms that a signed-out connection can't write or pause headsets, that the whole database can't be read or listed, and that free text, unknown values, custom messages, out-of-range steps and anything other than a headset number in a pause are rejected.

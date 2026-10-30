@@ -15,9 +15,14 @@ export const FIREBASE_CONFIG = {
 // Teacher accounts allowed to send commands (must match the database rules).
 export const TEACHERS = ['shaun.langevin@mmuusd.org', 'mike.weber@mmuusd.org'];
 
-// The room every headset joins when its link has no ?room= (and that teacher.html opens by default).
-// A link ending in ?room=off turns the teacher console off for that link.
-export const DEFAULT_ROOM = 'mmuusd';
+// Headset groups. A headset's number (the sticker on it) decides which teacher page it follows,
+// so every headset can use the same ArborXR link. Each teacher's page opens to their own group.
+// Room names: lowercase letters, numbers and dashes.
+export const GROUPS = [
+  { name: 'South End', room: 'south', first: 0, last: 5, teacher: 'shaun.langevin@mmuusd.org' },
+  { name: 'North End', room: 'north', first: 6, last: 11, teacher: 'mike.weber@mmuusd.org' },
+];
 
-// How many headsets you have. They're numbered from 0 (so 6 headsets = 0–5).
-export const HEADSETS = 6;
+// Headsets that haven't picked a number yet listen here. A link ending in ?room=<code> overrides
+// everything above (that headset follows teacher.html?room=<code>), and ?room=off turns it off.
+export const DEFAULT_ROOM = 'mmuusd';

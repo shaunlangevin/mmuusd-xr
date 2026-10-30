@@ -27,7 +27,7 @@
         "moveWindows": { ".validate": "newData.isBoolean()" },
         "paused": {
           ".validate": "newData.hasChildren()",
-          "$h":        { ".validate": "$h.matches(/^h[0-9]$/) && newData.isNumber() && newData.val() <= now" }
+          "$h":        { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isNumber() && newData.val() <= now" }
         },
         "$other":    { ".validate": false }
       }

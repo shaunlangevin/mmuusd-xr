@@ -3,7 +3,10 @@
 import * as CFG from './firebase-config.js';
 const { FIREBASE_CONFIG, TEACHERS } = CFG;
 const DEFAULT_ROOM = CFG.DEFAULT_ROOM || 'mmuusd';
-const HEADSETS = Math.min(10, Math.max(1, CFG.HEADSETS || 6));
+// headset groups: a headset's number decides which room it follows (see js/firebase-config.js)
+const GROUPS = (Array.isArray(CFG.GROUPS) && CFG.GROUPS.length ? CFG.GROUPS : [{ name: '', room: DEFAULT_ROOM, first: 0, last: (CFG.HEADSETS || 6) - 1 }])
+  .filter((g) => /^[a-z0-9-]{1,24}$/.test(g.room) && Number.isInteger(g.first) && Number.isInteger(g.last) && g.first <= g.last && g.last <= 19);
+const groupFor = (room) => GROUPS.find((g) => g.room === room) || null;
 
 const $ = (id) => document.getElementById(id);
 const ROOM_RE = /^[a-z0-9-]{1,24}$/;
@@ -49,9 +52,10 @@ async function start() {
     show('app');
     await loadExhibit(index.default);
     buildSettings();
-    buildHeadsets();
-    // the default room needs no setup; teacher.html?room=<code> opens another one
-    setRoom(new URLSearchParams(location.search).get('room') || DEFAULT_ROOM);
+    buildGroups();
+    // opens to your own group (South End for Shaun, North End for Mike); teacher.html?room=<code> opens another room
+    const mine = GROUPS.find((g) => (g.teacher || '').toLowerCase() === email) || GROUPS[0];
+    setRoom(new URLSearchParams(location.search).get('room') || mine.room);
   });
 
   // ── room ──
@@ -59,15 +63,18 @@ async function start() {
     r = (r || '').trim().toLowerCase();
     if (!ROOM_RE.test(r)) { status('Room codes use lowercase letters, numbers and dashes (up to 24).', true); return; }
     room = r; $('room').value = r;
-    const base = new URL('./', location.href).href;
-    const isDefault = r === DEFAULT_ROOM;
-    $('link').value = isDefault ? base : `${base}?room=${r}`;
-    $('linkNote').textContent = isDefault
-      ? 'This is the default room: headsets opened with the normal link (no ?room=) follow this page. Use another room code only if two classes use headsets at the same time.'
-      : `Headsets only follow this room if their ArborXR link ends in ?room=${r}. To come back here later, bookmark teacher.html?room=${r}.`;
+    const base = new URL('./', location.href).href, g = groupFor(r);
+    $('link').value = g || r === DEFAULT_ROOM ? base : `${base}?room=${r}`;
+    $('linkNote').textContent = g
+      ? `Headsets ${g.first}–${g.last} follow this page automatically once they’ve picked their number. Every headset uses the same normal link.`
+      : r === DEFAULT_ROOM
+        ? 'Headsets that haven’t picked a number yet wait in this room.'
+        : `Headsets only follow this room if their ArborXR link ends in ?room=${r}. To come back here later, bookmark teacher.html?room=${r}.`;
+    document.querySelectorAll('#groupSeg button').forEach((b) => b.classList.toggle('sel', b.dataset.room === r));
+    buildHeadsets();
     if (unsub) unsub();
     unsub = fb.onValue(fb.ref(db, `rooms/${r}`), (s) => { current = s.val() || {}; render(); }, (e) => status('Could not read the room: ' + e.message, true));
-    status(`Controlling room “${r}”.`);
+    status(g ? `Controlling ${g.name || r} (headsets ${g.first}–${g.last}).` : `Controlling room “${r}”.`);
   }
   $('useRoom').onclick = () => setRoom($('room').value);
   $('room').addEventListener('keydown', (e) => { if (e.key === 'Enter') setRoom($('room').value); });
@@ -125,9 +132,21 @@ async function start() {
   // ── pause one headset ──
   const PAUSE_MAX = 2 * 3600e3;
   const pausedNow = (i) => { const v = current.paused && current.paused['h' + i]; return typeof v === 'number' && Date.now() - v < PAUSE_MAX; };
+  function buildGroups() {
+    const seg = $('groupSeg'); seg.innerHTML = '';
+    for (const g of GROUPS) {
+      const b = document.createElement('button'); b.dataset.room = g.room;
+      b.textContent = g.name ? `${g.name} (${g.first}–${g.last})` : `Headsets ${g.first}–${g.last}`;
+      b.onclick = () => setRoom(g.room);
+      seg.append(b);
+    }
+    $('groupRow').hidden = GROUPS.length < 2;
+  }
+  // pause buttons for the headsets that follow this room (all of them for a custom ?room= code)
   function buildHeadsets() {
     const box = $('headsets'); box.innerHTML = '';
-    for (let i = 0; i < HEADSETS; i++) {
+    const g = groupFor(room), list = g ? [g] : GROUPS;
+    for (let i = Math.min(...list.map((x) => x.first)); i <= Math.max(...list.map((x) => x.last)); i++) {
       const b = document.createElement('button'); b.className = 'hs'; b.dataset.hs = i;
       b.onclick = () => send({ ['paused/h' + i]: pausedNow(i) ? null : fb.serverTimestamp() }, `${pausedNow(i) ? 'Unpause' : 'Pause'} headset ${i}`);
       box.append(b);
@@ -185,7 +204,7 @@ async function start() {
     document.querySelectorAll('[data-freeze]').forEach((b) => b.classList.toggle('sel', fresh && current.freeze === b.dataset.freeze));
     const banner = $('banner');
     banner.style.display = fresh ? 'block' : 'none';
-    if (fresh) banner.textContent = `Headsets in room “${room}” are frozen: ${document.querySelector(`[data-freeze="${current.freeze}"]`).textContent}. Press Unfreeze to continue.`;
+    if (fresh) banner.textContent = `Headsets in ${groupFor(room)?.name || `room “${room}”`} are frozen: ${document.querySelector(`[data-freeze="${current.freeze}"]`).textContent}. Press Unfreeze to continue.`;
   }
 
   function status(msg, err = false) { const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }

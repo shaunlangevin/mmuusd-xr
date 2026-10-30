@@ -61,6 +61,7 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
 - **Track my progress:** opened dots turn green, an "Explored: 3 of 9" tracker sits above the toolbar, and exploring all 9 shows a final big question.
 - **Detective mode:** the dots start hidden. A clue card above the tracker shows one clue at a time, such as "Near the bottom of the front, find the smooth spot where writing was rubbed away." When a student points near the right spot, the dot pops up, and selecting it opens its panel and moves on to the next clue. A **Hint** button uncovers the current dot for students who are stuck. On a Chromebook or iPad, students hover or tap near the spot. Clue wording lives in `exhibit.json` (`"clue"`), and `"clueRadius"` (in metres, default 0.2) sets how close the student has to point.
 - **Listen:** this button appears on any panel that has an audio clip (see below).
+- **Saved spot (passthrough):** the stone is pinned to the real room, so it stays put even if the headset recentres (for example after being taken off and put back on). In walking mode each headset also remembers where the stone was placed, separately for life size and table size, and puts it back there next time. **Move** places it somewhere new and remembers the new spot. If the saved spot can't be found within a few seconds (a different room, or the headset's room setup was reset), the student just places it as usual.
 - **Toolbar:** Turn ‹ / Turn ›, Move, Options, Exit. The right thumbstick also turns the stone, and the toolbar follows the student if they walk away.
 - **Options in the headset:** language, track my progress, Detective mode, walking or sitting, life size or table size.
 
@@ -68,12 +69,12 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
 
 `teacher.html` lets approved staff (Shaun and Mike) control every headset in a room from a Chromebook:
 
-- freeze screens with preset messages, or pause one headset by its number (0–5)
+- freeze screens with preset messages, or pause one headset by its number
 - run a **guided tour**: Start, ◀ Previous, Next ▶ or pick a step, play the narration on every headset, End tour
 - send everyone to a dot
 - switch language, Detective mode, progress, seated/walking, size, the classroom lock, and whether students can move reading panels
 
-Every headset follows the default room (`mmuusd`) with its normal link, so you don't need a special ArborXR link. Bookmark `teacher.html`. Headsets only **read** settings and never send anything back. Each headset asks for its number once (the sticker on it) and keeps it in its own browser.
+Every headset uses the same normal link. Each headset asks for its number once (the sticker on it) and keeps it in its own browser. The number decides which teacher page it follows: **South End 0–5** (Shaun) and **North End 6–11** (Mike), so both ends can run at the same time. Bookmark `teacher.html`. It opens to your own headsets and has buttons to switch ends. Headsets only **read** settings and never send anything back.
 
 - Setup: `firebase/SETUP.md`
 - Privacy and safety summary (for administrators or the SDPC file): `firebase/PRIVACY.md`

@@ -663,7 +663,7 @@ function onToolbar(id) {
   if (id === 'exit') renderer.xr.getSession()?.end();
 }
 
-const optionsHeadset = () => (classroomOn() ? { n: HEADSET, count: HEADSETS } : null);
+const optionsHeadset = () => (classroomOn() ? { n: HEADSET, groups: GROUPS.map((g) => ({ name: g.name, first: g.first, last: g.last })) } : null);
 function openOptions() {
   if (touring) return;
   closeInfo();
@@ -694,10 +694,10 @@ function setSetting(k, v) {
   if (k === 'hunt' || k === 'clues') { refreshMarkerLooks(); if (k === 'clues' && !touring) closeInfo(); }
   if (k === 'size') {
     root.scale.setScalar(sizeScale());
-    if (renderer.xr.isPresenting) { if (S.mode === 'seated' || mode === 'vr') placeSeated(); else startPlacing(); }
+    if (renderer.xr.isPresenting) { if (S.mode === 'seated' || mode === 'vr') placeSeated(); else placeOrRestore(); }
   }
   if (k === 'mode' && renderer.xr.isPresenting) {
-    if (S.mode === 'seated') placeSeated(); else if (mode === 'ar') startPlacing(); else layoutToolbar();
+    if (S.mode === 'seated') placeSeated(); else if (mode === 'ar') placeOrRestore(); else layoutToolbar();
   }
   if (k === 'lock') refreshStartScreen();
   refreshToolbar(); refreshTracker(); refreshClue(); refreshStartScreen();
@@ -712,19 +712,24 @@ function headForward() { return new THREE.Vector3(0, 0, -1).applyQuaternion(came
 
 // seated: stand the stone up in front of the student without pointing
 function placeSeated() {
+  cancelRestore();
   placing = false; reticle.visible = false; hint.mesh.visible = false;
   const d = S.size === 'table' ? 0.8 : 1.6;
   root.position.copy(camera.position).setY(S.size === 'table' ? Math.max(0, camera.position.y - 0.75) : 0).addScaledVector(headForward(), d);
-  faceUser(); root.visible = true; syncPool(); layoutToolbar(); refreshClue(); runPendingDot();
+  faceUser(); root.visible = true; syncPool(); layoutToolbar(); refreshClue();
+  wantAnchor = { persist: false };   // pin it to the real room (survives the headset recentring)
+  runPendingDot();
 }
 function startPlacing(textOnly = false) {
-  if (!textOnly) { placing = true; closeInfo(); options.mesh.visible = false; }
+  if (!textOnly) { placing = true; closeInfo(); options.mesh.visible = false; cancelRestore(); dropAnchor(); }
   hint.setText(S.size === 'table' ? t().placeTable : t().placeWalk);
   hint.mesh.visible = placing;
 }
 function finishPlacing(target) {
   placing = false; reticle.visible = false; hint.mesh.visible = false;
-  root.position.copy(target); faceUser(); root.visible = true; syncPool(); layoutToolbar(); refreshClue(); runPendingDot();
+  root.position.copy(target); faceUser(); root.visible = true; syncPool(); layoutToolbar(); refreshClue();
+  wantAnchor = { persist: S.mode === 'walk' };   // walking: remember this spot for next time too
+  runPendingDot();
 }
 
 function layoutToolbar() {
@@ -772,6 +777,87 @@ function followToolbar(dt) {
     toolbar.mesh.lookAt(C);
     if (toolbar.mesh.position.distanceTo(toolbarGoal) < 0.01) toolbarGoal = null;
   }
+}
+
+// ═════════════ anchors: keep the stone fixed to the real room ═════════
+// When a headset is taken off and on (or the Meta button is held) it can recentre, which would make
+// the stone jump. An anchor is a spot the headset tracks in the real room, so the stone follows it.
+// Walking mode also remembers the spot (per exhibit and size), so next time the stone appears there.
+// Only a random reference code is kept in this browser; the headset itself stores the spot.
+let anchor = null, anchorLast = null, anchorWait = null, wantAnchor = null, anchorGen = 0;
+const spotKey = () => (EX ? `xr-spot:${EX.id}:${S.size}` : null);
+const readSpot = () => { try { return localStorage.getItem(spotKey()); } catch { return null; } };
+function yawOf(o) { return new THREE.Euler().setFromQuaternion(new THREE.Quaternion(o.x, o.y, o.z, o.w), 'YXZ').y; }
+function dropAnchor() {
+  anchorGen++; wantAnchor = null;
+  if (anchor) { try { anchor.delete(); } catch { /* already gone */ } }
+  anchor = null; anchorLast = null;
+}
+async function makeAnchor(frame, opts) {
+  wantAnchor = null;
+  const ref = renderer.xr.getReferenceSpace();
+  if (mode !== 'ar' || !frame?.createAnchor || !ref || typeof XRRigidTransform === 'undefined') return;
+  dropAnchor();
+  const gen = anchorGen, q = new THREE.Quaternion().setFromAxisAngle(UP, root.rotation.y), P = root.position;
+  try {
+    const a = await frame.createAnchor(new XRRigidTransform({ x: P.x, y: P.y, z: P.z }, { x: q.x, y: q.y, z: q.z, w: q.w }), ref);
+    if (gen !== anchorGen) { a.delete(); return; }
+    anchor = a; anchorLast = null;
+    if (opts.persist && a.requestPersistentHandle) {
+      const key = spotKey(), old = readSpot();
+      const h = await a.requestPersistentHandle();
+      try { localStorage.setItem(key, h); } catch { /* fine: just not remembered */ }
+      if (old && old !== h) renderer.xr.getSession()?.deletePersistentAnchor?.(old).catch(() => {});
+    }
+  } catch (e) { console.warn('anchor not available', e); }
+}
+// AR walking mode: put the stone back on this headset's saved spot, or ask the student to place it
+function placeOrRestore() {
+  const h = readSpot(), session = renderer.xr.getSession();
+  if (mode !== 'ar' || S.mode !== 'walk' || !h || !session?.restorePersistentAnchor) return startPlacing();
+  closeInfo(); options.mesh.visible = false; placing = false; reticle.visible = false;
+  dropAnchor();
+  root.visible = false;
+  hint.setText(t().findingSpot); hint.mesh.visible = true;
+  const gen = anchorGen;
+  anchorWait = { at: performance.now() };
+  session.restorePersistentAnchor(h).then((a) => {
+    if (gen !== anchorGen) { a.delete(); return; }
+    anchor = a; anchorLast = null;
+  }).catch((e) => {
+    console.warn('saved spot could not be restored', e);
+    try { localStorage.removeItem(spotKey()); } catch { /* fine */ }
+    if (gen === anchorGen) { cancelRestore(); startPlacing(); }
+  });
+}
+function cancelRestore() { if (anchorWait) { anchorWait = null; hint.mesh.visible = false; dropAnchor(); } }
+function followAnchor(frame) {
+  if (!anchor || placing || !frame) return;
+  const ref = renderer.xr.getReferenceSpace();
+  if (frame.trackedAnchors && !frame.trackedAnchors.has(anchor)) return;   // not tracked right now
+  const pose = ref && frame.getPose(anchor.anchorSpace, ref); if (!pose) return;
+  const tp = pose.transform.position;
+  const now = { p: new THREE.Vector3(tp.x, tp.y, tp.z), yaw: yawOf(pose.transform.orientation) };
+  if (anchorWait) {   // restored spot found: the stone appears there, facing the way it was placed
+    anchorWait = null; hint.mesh.visible = false;
+    root.position.copy(now.p); root.rotation.set(0, now.yaw, 0); root.visible = true;
+    syncPool(); layoutToolbar(); refreshClue(); runPendingDot();
+  } else if (anchorLast) {
+    const dy = wrapAngle(now.yaw - anchorLast.yaw);
+    if (now.p.distanceTo(anchorLast.p) > 0.002 || Math.abs(dy) > 0.002) shiftWorld(anchorLast, now, dy);
+  }
+  anchorLast = now;
+}
+// the room "moved" (headset recentred): move the stone and its floating panels with it
+function shiftWorld(a, b, dy) {
+  const qy = new THREE.Quaternion().setFromAxisAngle(UP, dy);
+  for (const o of [root, rig, toolbar.mesh, options.mesh]) {
+    const rel = o.position.clone().sub(a.p).applyAxisAngle(UP, dy);
+    o.position.copy(b.p).add(rel);
+    o.quaternion.premultiply(qy);
+  }
+  rigGoal = null; toolbarGoal = null; tourTurn = null;
+  syncPool();
 }
 
 // ═════════════ controllers & hands ═══════════════════════════════
@@ -868,8 +954,11 @@ function xrUpdate(frame, dt) {
     needsLayout = false;
     if (S.mode === 'seated') placeSeated();
     else if (mode === 'vr') { root.position.copy(camera.position).setY(0).addScaledVector(headForward(), 2.0); faceUser(); syncPool(); layoutToolbar(); }
-    else { startPlacing(); layoutToolbar(); }
+    else { placeOrRestore(); layoutToolbar(); }
   }
+  if (anchorWait && performance.now() - anchorWait.at > 6000) { console.warn('saved spot not found'); cancelRestore(); startPlacing(); }
+  if (wantAnchor) makeAnchor(frame, wantAnchor);
+  followAnchor(frame);
   for (const c of controllers) {
     const u = c.userData;
     if (!u.src) { u.dot.visible = false; u.uiHit = null; continue; }
@@ -894,8 +983,6 @@ function xrUpdate(frame, dt) {
       reticle.position.copy(target).y += 0.004; reticle.scale.setScalar(S.size === 'table' ? 0.5 : 1);
       root.visible = true; root.position.copy(target); faceUser();
     }
-    hint.mesh.position.copy(camera.position).addScaledVector(headForward(), 1.1).setY(camera.position.y + 0.12);
-    hint.mesh.lookAt(camera.position);
   } else {
     for (const c of controllers) {
       if (grab && grab.c === c) continue;   // that thumbstick is pushing/pulling the panel
@@ -903,6 +990,10 @@ function xrUpdate(frame, dt) {
       const x = gp && gp.axes.length >= 4 ? gp.axes[2] : 0;
       if (Math.abs(x) > 0.25) { root.rotation.y -= x * dt * 1.4; tourTurn = null; }
     }
+  }
+  if (hint.mesh.visible) {
+    hint.mesh.position.copy(camera.position).addScaledVector(headForward(), 1.1).setY(camera.position.y + 0.12);
+    hint.mesh.lookAt(camera.position);
   }
   updateGrab(dt);
   followRig(dt);
@@ -945,7 +1036,7 @@ function pickMarker(e) {
 async function enterXR(type) {
   if (renderer.xr.isPresenting) return;
   const init = type === 'ar'
-    ? { requiredFeatures: ['local-floor'], optionalFeatures: ['hit-test', 'hand-tracking'] }
+    ? { requiredFeatures: ['local-floor'], optionalFeatures: ['hit-test', 'hand-tracking', 'anchors'] }
     : { requiredFeatures: ['local-floor'], optionalFeatures: ['hand-tracking'] };
   try {
     const session = await navigator.xr.requestSession(type === 'ar' ? 'immersive-ar' : 'immersive-vr', init);
@@ -973,10 +1064,17 @@ function onSessionStart() {
   }
   placing = false; hint.mesh.visible = false;
   needsLayout = true; xrFrames = 0;
+  anchor = null; anchorLast = null; anchorWait = null; wantAnchor = null; anchorGen++;
+  // if the headset recentres and the stone isn't pinned with an anchor, ask to place it again
+  renderer.xr.getReferenceSpace()?.addEventListener?.('reset', () => {
+    if (mode !== 'ar' || anchor || anchorWait || placing || needsLayout) return;
+    if (S.mode === 'seated') placeSeated(); else startPlacing();
+  });
   if (touring) tourPending = true;   // opens once the stone is in place
 }
 function onSessionEnd() {
   mode = 'desktop'; placing = false;
+  anchor = null; anchorLast = null; anchorWait = null; wantAnchor = null; anchorGen++;   // anchors end with the session
   scene.background = BG; scene.fog = FOG; gallery.visible = true;
   root.position.set(0, 0, 0); root.rotation.set(0, 0, 0); root.scale.setScalar(1); root.visible = true; syncPool();
   toolbar.mesh.visible = false; hint.mesh.visible = false; reticle.visible = false; options.mesh.visible = false;
@@ -994,29 +1092,56 @@ function onSessionEnd() {
 // ═════════════ teacher console (optional, read-only) ═════════════
 // Settings sent from the teacher's Chromebook. Only *changes* are applied, so a student's own
 // Options choice stays until the teacher changes that same setting.
-// Every headset joins DEFAULT_ROOM unless its link says ?room=<code> (or ?room=off).
+// A headset's number decides its room (GROUPS in firebase-config.js: 0–5 South End, 6–11 North End),
+// so every headset uses the same link. No number yet → DEFAULT_ROOM. ?room=<code> overrides; ?room=off = no console.
 const DEFAULT_ROOM = CFG.DEFAULT_ROOM || 'mmuusd';
-const HEADSETS = Math.min(10, Math.max(1, CFG.HEADSETS || 6));
+const GROUPS = (Array.isArray(CFG.GROUPS) && CFG.GROUPS.length ? CFG.GROUPS : [{ name: '', room: DEFAULT_ROOM, first: 0, last: (CFG.HEADSETS || 6) - 1 }])
+  .filter((g) => /^[a-z0-9-]{1,24}$/.test(g.room) && Number.isInteger(g.first) && Number.isInteger(g.last) && g.first >= 0 && g.first <= g.last && g.last <= 19);
+const groupOf = (n) => (n == null ? null : GROUPS.find((g) => n >= g.first && n <= g.last) || null);
 const roomParam = (params.get('room') || '').toLowerCase();
-const ROOM = /^(off|none)$/.test(roomParam) ? '' : (roomParam || DEFAULT_ROOM);
+const roomOff = /^(off|none)$/.test(roomParam);
 let roomStatus = null, lastRemote = {}, lastDotAt = 0, pendingDot = -1, lastTourAt = 0, lastNarrateAt = 0;
 let roomSeen = false;   // has this page ever reached the teacher console?
 const classroomOn = () => !!ROOM && roomSeen;
 
 // ── this headset's number (the sticker on it): kept only in this browser, never sent ──
 const HEADSET_KEY = 'xr-headset';
-const validHeadset = (v) => v != null && /^[0-9]$/.test(String(v)) && +v < HEADSETS;
+const validHeadset = (v) => v != null && /^1?[0-9]$/.test(String(v)) && !!groupOf(+v);
 let HEADSET = (() => {
   const p = params.get('headset');           // optional: a per-headset ArborXR link can set it
   if (validHeadset(p)) { try { localStorage.setItem(HEADSET_KEY, p); } catch { /* fine */ } return +p; }
   try { const v = localStorage.getItem(HEADSET_KEY); return validHeadset(v) ? +v : null; } catch { return null; }
 })();
+function roomFor() { return roomOff ? '' : roomParam || groupOf(HEADSET)?.room || DEFAULT_ROOM; }
+let ROOM = roomFor();
+const roomLabel = () => (!roomParam && GROUPS.find((g) => g.room === ROOM)?.name) || ROOM;
 function setHeadset(n) {
   if (!validHeadset(n)) return;
   HEADSET = +n;
   try { localStorage.setItem(HEADSET_KEY, String(n)); } catch { /* still works for this visit */ }
   refreshToolbar(); refreshStartScreen();
-  applyPause();
+  if (roomFor() !== ROOM) switchRoom(roomFor());   // e.g. 3 → South End, 8 → North End
+  else applyPause();
+}
+
+// ── listening to the room ──
+let classroomMod = null, roomSub = null;
+function onRoomStatus(st) { roomStatus = st; if (st === 'connected') roomSeen = true; refreshStartScreen(); refreshToolbar(); }
+async function startListening() {
+  if (!ROOM) return;
+  const room = ROOM;
+  try {
+    classroomMod = classroomMod || await import('./classroom.js');
+    const sub = await classroomMod.listen(room, (r) => { if (room === ROOM) applyRemote(r); }, onRoomStatus);
+    if (room !== ROOM) sub?.stop(); else roomSub = sub;
+  } catch (e) { console.warn('classroom', e); roomStatus = 'error'; refreshStartScreen(); }
+}
+function switchRoom(r) {
+  roomSub?.stop(); roomSub = null;
+  ROOM = r;
+  lastRemote = {}; lastTourAt = 0; lastNarrateAt = 0;   // the new room's settings apply fresh
+  refreshStartScreen();
+  startListening();
 }
 
 function applyRemote(r) {
@@ -1220,7 +1345,7 @@ function refreshStartScreen() {
   // classroom line: always for an explicit ?room= link; for the default room only once it's actually set up
   const showRoom = !!ROOM && (!!roomParam || classroomOn());
   $('room-status').hidden = !showRoom;
-  if (showRoom) $('room-status').textContent = tt.classroom(ROOM, roomStatus || 'connecting');
+  if (showRoom) $('room-status').textContent = tt.classroom(roomLabel(), roomStatus || 'connecting');
   // which headset is this? (only on headsets, only when the teacher console is set up)
   const hsRow = $('headset-row');
   hsRow.hidden = !classroomOn() || !(xrSupport.ar || xrSupport.vr) || (S.lock && HEADSET != null);
@@ -1228,12 +1353,17 @@ function refreshStartScreen() {
     $('lbl-headset').textContent = tt.headsetQ; $('headset-help').textContent = tt.headsetHelp;
     $('headset-help').hidden = HEADSET != null;
     hsRow.classList.toggle('ask', HEADSET == null);
-    const seg = $('headset-seg');
-    if (seg.childElementCount !== HEADSETS) {
-      seg.innerHTML = '';
-      for (let i = 0; i < HEADSETS; i++) { const b = document.createElement('button'); b.textContent = i; b.onclick = () => setHeadset(i); seg.append(b); }
+    const box = $('headset-seg');
+    if (!box.childElementCount) {   // one row of numbers per group (South End 0–5, North End 6–11)
+      for (const g of GROUPS) {
+        const wrap = document.createElement('div'); wrap.className = 'hs-group';
+        if (g.name) { const cap = document.createElement('span'); cap.textContent = g.name; wrap.append(cap); }
+        const seg = document.createElement('div'); seg.className = 'seg';
+        for (let i = g.first; i <= g.last; i++) { const b = document.createElement('button'); b.textContent = i; b.dataset.hs = i; b.onclick = () => setHeadset(i); seg.append(b); }
+        wrap.append(seg); box.append(wrap);
+      }
     }
-    [...seg.children].forEach((b, i) => b.classList.toggle('sel', HEADSET === i));
+    box.querySelectorAll('button').forEach((b) => b.classList.toggle('sel', HEADSET === +b.dataset.hs));
   }
   if (frozen) { freezePanel.set(tt.freezeFrom, tt.freeze[frozen]); $('freeze-from').textContent = tt.freezeFrom; $('freeze-text').textContent = tt.freeze[frozen]; }
   if (openIndex !== -1 && mode === 'desktop') showCard();
@@ -1286,15 +1416,12 @@ renderer.setAnimationLoop((time, frame) => {
     document.querySelector('[data-set="mode:walk"]').closest('.row').hidden = true;   // not used on iPad
   }
   refreshStartScreen();
-  if (ROOM) {
-    import('./classroom.js')
-      .then((m) => m.listen(ROOM, applyRemote, (st) => { roomStatus = st; if (st === 'connected') roomSeen = true; refreshStartScreen(); refreshToolbar(); }))
-      .catch((e) => { console.warn('classroom', e); roomStatus = 'error'; refreshStartScreen(); });
-  }
+  startListening();
   window.__steleReady = true;
   // hooks for automated testing (harmless in normal use)
   window.__dbg = {
     THREE, camera, controls, root, markers, clueCard, applyRemote, rig, handle, tab, guide, tourRing, setHidden, setHeadset,
+    renderer, anchorObj: () => anchor, anchorState: () => ({ anchor: !!anchor, waiting: !!anchorWait, saved: readSpot() }),
     grabState: () => ({ grab: !!grab, placePref, rigAng, hidden }), tourState: () => ({ touring, tourStep, tourPending, turning: !!tourTurn, guide: guide.visible, guideText: guideLabelText, moveOK, headset: HEADSET, room: ROOM, frozen }), freezePanel, isFrozen: () => frozen, rigState: () => ({ rigGoal: rigGoal && rigGoal.toArray(), rigAway, xrFrames }), currentClue, useHint, revealed, toolbar, panel, options, extra, tracker, S, setSetting, openInfo, closeInfo,
     state: () => ({ mode, placing, S: { ...S }, openIndex, expanded, found: [...found], finishShown, clue: currentClue(), revealed: [...revealed],
       panel: panel.mesh.visible, extra: extra.mesh.visible, options: options.mesh.visible, toolbarItems: toolbar.items,

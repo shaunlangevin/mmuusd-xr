@@ -304,7 +304,7 @@ export class ClueCard extends CanvasPanel {
 
 // ── Options (unmanaged use) ─────────────────────────────────────
 export class OptionsPanel extends CanvasPanel {
-  constructor() { super(1024, 1260, 0.62); this.mesh.visible = false; this.S = null; this.headset = null; }
+  constructor() { super(1024, 1600, 0.62); this.mesh.visible = false; this.S = null; this.headset = null; }
   // headset: null (not in a classroom) or { n: current number or null, count }
   show(S, headset = null) { this.S = S; this.headset = headset; this.draw(); this.mesh.visible = true; }
   draw() {
@@ -317,9 +317,12 @@ export class OptionsPanel extends CanvasPanel {
       [t.optMode, [['mode:walk', t.walk, S.mode === 'walk'], ['mode:seated', t.seated, S.mode === 'seated']]],
       [t.optSize, [['size:life', t.life, S.size === 'life'], ['size:table', t.table, S.size === 'table']]],
     ];
-    if (this.headset) {
+    if (this.headset) {   // one row per headset group (e.g. South End 0–5, North End 6–11)
       const hs = this.headset;
-      rows.push([t.optHeadset, Array.from({ length: hs.count }, (_, i) => [`headset:${i}`, String(i), hs.n === i])]);
+      for (const g of hs.groups) {
+        const nums = Array.from({ length: g.last - g.first + 1 }, (_, k) => g.first + k);
+        rows.push([g.name ? `${t.optHeadset} · ${g.name}` : t.optHeadset, nums.map((i) => [`headset:${i}`, String(i), hs.n === i])]);
+      }
     }
     const used = 40 + rows.length * 172 + 120;
     this.frame(36, used);

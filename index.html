@@ -45,7 +45,8 @@
   #clue > div { flex: 1; } #clue-text { font-weight: 700; font-size: 18px; } #clue-help { font-size: 13px; color: var(--dim); margin-top: 2px; }
   #clue .label { margin: 0 0 2px; }
   #headset-row { margin-top: 16px; } #headset-row.ask { padding: 10px; border-radius: 12px; outline: 2px dashed var(--gold); }
-  #headset-seg button { padding: 9px 0; } .note { font-size: 13px; color: var(--dim); line-height: 1.4; }
+  #headset-seg { display: grid; gap: 8px; } #headset-seg button { padding: 9px 0; }
+  .hs-group > span { display: block; font-size: 12px; color: var(--dim); margin-bottom: 3px; } .note { font-size: 13px; color: var(--dim); line-height: 1.4; }
   #room-status { margin-top: 6px; font-size: 13px; color: var(--green); }
   #freeze { position: fixed; inset: 0; z-index: 50; background: rgba(10,9,8,0.92); display: grid; place-items: center; padding: 16px; }
   #freeze .box { padding: 32px 36px; max-width: 640px; text-align: center; }
@@ -99,7 +100,7 @@
       <div class="row"><span id="lbl-clues"></span><div class="seg"><button data-set="clues:on"></button><button data-set="clues:off"></button></div></div>
       <div class="row"><span id="lbl-mode"></span><div class="seg"><button data-set="mode:walk"></button><button data-set="mode:seated"></button></div></div>
     </div>
-    <div id="headset-row" class="row" hidden><span id="lbl-headset"></span><div class="seg" id="headset-seg"></div><div id="headset-help" class="note"></div></div>
+    <div id="headset-row" class="row" hidden><span id="lbl-headset"></span><div id="headset-seg"></div><div id="headset-help" class="note"></div></div>
     <div id="status"></div>
     <div id="room-status" hidden></div>
   </section>
