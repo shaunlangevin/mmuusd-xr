@@ -5,51 +5,115 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Classroom Controls</title>
 <style>
-  :root { --gold: #d4af6a; --ink: #f4ecdc; --dim: #c2b59e; --green: #5fbf7a; --red: #e0736a; --bg: #1b1814; --panel: #26211b; }
+  :root { --gold: #d4af6a; --ink: #f4ecdc; --dim: #c2b59e; --green: #5fbf7a; --red: #e0736a; --amber: #e8b45a;
+    --bg: #1b1814; --panel: #26211b; --line: #4a3f33; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #3a3229; }
-  h1 { margin: 0; font-size: 22px; } h2 { margin: 0 0 10px; font-size: 16px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.06em; }
-  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-  .card { background: var(--panel); border: 1px solid #4a3f33; border-radius: 16px; padding: 16px; }
-  .wide { grid-column: 1 / -1; }
-  button, input, select { font: inherit; }
-  button { font-weight: 700; font-size: 15px; padding: 10px 14px; border-radius: 999px; border: 2px solid var(--gold);
-    background: rgba(212,175,106,0.12); color: var(--ink); cursor: pointer; }
-  button:hover { filter: brightness(1.15); } button.sel { background: var(--gold); color: #1a1612; }
-  button.primary { background: var(--gold); color: #1a1612; } button.danger { border-color: var(--red); }
-  button.danger.sel { background: var(--red); color: #1a0e0c; }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .row { display: grid; grid-template-columns: 140px 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
-  .row > span { color: var(--dim); font-size: 14px; font-weight: 600; }
-  .seg { display: flex; flex-wrap: wrap; gap: 6px; } .seg button { padding: 8px 12px; font-size: 14px; }
-  .grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .dot { text-align: left; border-radius: 12px; padding: 10px 12px; font-size: 14px; } .dot b { color: var(--gold); margin-right: 6px; }
-  input[type=text] { background: #15120f; color: var(--ink); border: 2px solid #4a3f33; border-radius: 10px; padding: 9px 11px; }
-  #room { width: 120px; text-transform: lowercase; } #link { width: 100%; }
-  .note { color: var(--dim); font-size: 13px; line-height: 1.45; margin: 8px 0 0; }
-  #banner { grid-column: 1 / -1; display: none; padding: 14px 16px; border-radius: 14px; font-weight: 800; background: var(--red); color: #1a0e0c; }
-  #status { min-height: 1.3em; font-size: 14px; color: var(--green); } #status.err { color: var(--red); }
-  #checks li { margin: 4px 0; } .ok { color: var(--green); } .bad { color: var(--red); }
-  #tourStep { font-size: 18px; font-weight: 700; margin: 12px 0; min-height: 1.4em; }
-  #tourStep b { color: var(--gold); }
-  .bigseg { display: flex; flex-wrap: wrap; gap: 8px; } .bigseg button { font-size: 17px; padding: 12px 18px; }
-  .hs { font-size: 15px; } .hs.sel { background: var(--red); border-color: var(--red); color: #1a0e0c; }
-  .dot.cur { background: var(--gold); color: #1a1612; } .dot.cur b { color: #1a1612; }
   [hidden] { display: none !important; }
+  button, input { font: inherit; }
+  button { font-weight: 700; font-size: 15px; padding: 10px 16px; border-radius: 999px; border: 2px solid var(--gold);
+    background: rgba(212,175,106,0.12); color: var(--ink); cursor: pointer; }
+  button:hover:not(:disabled) { filter: brightness(1.15); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.sel, button.gold { background: var(--gold); color: #1a1612; }
+  button:focus-visible { outline: 3px solid #fff3d6; outline-offset: 2px; }
+
+  /* header */
+  header { position: sticky; top: 0; z-index: 3; background: var(--bg); display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center;
+    padding: 10px 16px; border-bottom: 1px solid #3a3229; }
+  h1 { margin: 0; font-size: 19px; }
+  .tabs { display: flex; gap: 4px; background: #15120f; border-radius: 999px; padding: 4px; }
+  .tabs button { border: 0; background: none; color: var(--dim); padding: 8px 18px; }
+  .tabs button[aria-selected="true"] { background: var(--gold); color: #1a1612; }
+  #groupSeg { display: flex; gap: 6px; flex-wrap: wrap; } #groupSeg button { padding: 7px 12px; font-size: 14px; }
+  #account { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--dim); }
+  #account button { padding: 6px 12px; font-size: 13px; }
+
+  /* status strip */
+  #strip { display: flex; flex-wrap: wrap; gap: 8px; padding: 9px 16px; background: #211c17; border-bottom: 1px solid #3a3229; font-size: 14px; }
+  .pill { padding: 5px 11px; border-radius: 999px; background: #2f2820; border: 1px solid var(--line); }
+  .pill.live { border-color: var(--green); color: var(--green); } .pill.warn { border-color: var(--amber); color: var(--amber); }
+  .pill.stop { background: var(--red); border-color: var(--red); color: #1a0e0c; font-weight: 800; }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 14px 16px 80px; display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
+  .wide { grid-column: 1 / -1; }
+  h2 { margin: 0 0 10px; font-size: 13px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.08em;
+    display: flex; justify-content: space-between; align-items: center; }
+  h3 { margin: 14px 0 6px; font-size: 13px; color: var(--dim); }
+  .q { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--dim); font-size: 13px; letter-spacing: 0; }
+  .help { background: #1f1a15; border-left: 3px solid var(--gold); padding: 8px 12px; margin: 0 0 12px; font-size: 13px; line-height: 1.5; color: var(--dim); border-radius: 0 8px 8px 0; }
+  .note { color: var(--dim); font-size: 13px; line-height: 1.45; margin: 10px 0 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* set up */
+  #presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  #presets button { border-radius: 14px; text-align: left; padding: 12px; }
+  #presets small { display: block; font-weight: 500; font-size: 12px; margin-top: 4px; color: var(--dim); }
+  #presets button.sel small { color: #3a2f20; }
+  .set { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 8px 0; border-top: 1px solid #3a3229; font-size: 14px; }
+  .set > span small { display: block; color: var(--dim); font-size: 12px; margin-top: 2px; }
+  .set .seg button { padding: 6px 11px; font-size: 13px; }
+  .check { list-style: none; padding: 0; margin: 0; } .check li { margin: 7px 0; font-size: 14px; }
+  .check label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; } .check input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--gold); }
+  input[type=text] { background: #15120f; color: var(--ink); border: 2px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  #room { width: 120px; text-transform: lowercase; } #link { flex: 1; min-width: 0; }
+  #checks { padding-left: 0; list-style: none; margin: 10px 0 0; font-size: 14px; } #checks li { margin: 4px 0; }
+  .ok { color: var(--green); } .bad { color: var(--red); }
+
+  /* teach */
+  .big { font-size: 18px; padding: 14px 22px; }
+  [data-freeze] { border-color: var(--amber); } [data-freeze="remove"] { border-color: var(--red); }
+  [data-freeze].sel { background: var(--amber); border-color: var(--amber); color: #1a1612; } [data-freeze="remove"].sel { background: var(--red); }
+  #everyone.frozen { border-color: var(--red); box-shadow: 0 0 0 2px rgba(224,115,106,0.35) inset; }
+  #unfreeze { margin-left: auto; }
+  .stepper { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .stepper .t { text-align: center; } .stepper small { display: block; color: var(--dim); font-size: 13px; font-weight: 700; letter-spacing: 0.06em; }
+  #tourTitle { font-size: 22px; font-weight: 800; }
+  .round { width: 56px; height: 56px; padding: 0; font-size: 22px; }
+  #dotsTitle { font-size: 13px; color: var(--dim); font-weight: 600; margin: 4px 0 8px; }
+  #dots { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  #dots button { width: 42px; height: 42px; padding: 0; border-radius: 50%; border-color: var(--line); color: var(--dim); }
+  #dots button.done { border-color: var(--gold); color: var(--ink); } #dots button.cur { background: var(--gold); border-color: var(--gold); color: #1a1612; }
+  #tourEnd { margin-left: auto; border-color: var(--red); }
+  #headsets { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  #headsets button { border-radius: 14px; padding: 12px 0; font-size: 20px; }
+  #headsets button.sel { background: var(--red); border-color: var(--red); color: #1a0e0c; }
+  #headsets small { display: block; font-size: 11px; font-weight: 600; min-height: 1.2em; }
+
+  #toast { position: fixed; right: 16px; bottom: 16px; z-index: 5; max-width: calc(100% - 32px); background: #1f3a27; border: 1px solid var(--green); color: #cfeedd;
+    padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; transition: opacity 0.3s; }
+  #toast.err { background: #3a1f1f; border-color: var(--red); color: #f3cfcb; }
+  #toast.gone { opacity: 0; pointer-events: none; }
+
+  @media (max-width: 720px) {
+    header { position: static; padding: 10px 12px; } h1 { font-size: 17px; width: 100%; }
+    main { grid-template-columns: 1fr; padding: 12px 12px 80px; }
+    #presets { grid-template-columns: 1fr 1fr; }
+    #headsets { grid-template-columns: repeat(3, 1fr); }
+    #account { margin-left: 0; }
+    .set { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>Classroom Controls</h1>
+  <div class="tabs" role="tablist" id="tabs" hidden>
+    <button role="tab" id="tabSetup" aria-controls="setup" aria-selected="true">Set up</button>
+    <button role="tab" id="tabTeach" aria-controls="teach" aria-selected="false">Teach</button>
+  </div>
+  <div id="groupSeg" aria-label="Which headsets"></div>
   <div id="account"></div>
 </header>
+<div id="strip" hidden aria-live="polite"></div>
 
 <main id="signedOut" hidden>
   <div class="card wide">
     <h2>Sign in</h2>
     <p>Sign in with your district Google account to control the headsets in your classroom.</p>
-    <button id="signIn" class="primary">Sign in with Google</button>
+    <button id="signIn" class="gold">Sign in with Google</button>
     <p class="note">Headsets never sign in and never send anything back. They only receive the settings you choose here.</p>
   </div>
 </main>
@@ -59,81 +123,102 @@
     <p>Paste your Firebase settings into <code>js/firebase-config.js</code> (see <code>firebase/SETUP.md</code>).</p></div>
 </main>
 
-<main id="app" hidden>
-  <div id="banner"></div>
-
+<!-- ════════ SET UP ════════ -->
+<main id="setup" role="tabpanel" aria-labelledby="tabSetup" hidden>
   <div class="card wide">
-    <h2>Classroom</h2>
-    <div class="row" id="groupRow"><span>Headsets</span><div class="seg" id="groupSeg"></div></div>
-    <div class="row"><span>Room code</span>
-      <div class="seg"><input id="room" type="text" maxlength="24" placeholder="e.g. 5a" aria-label="Room code"><button id="useRoom">Use</button></div></div>
-    <div class="row"><span>Headset link</span>
-      <div class="seg" style="flex-wrap:nowrap"><input id="link" type="text" readonly aria-label="Headset link"><button id="copy">Copy</button></div></div>
-    <p class="note" id="linkNote"></p>
-    <div id="status" role="status"></div>
-  </div>
-
-  <div class="card wide">
-    <h2>Unit kit</h2>
-    <div class="row"><span>Kit</span><div class="seg" id="kitSeg"></div></div>
-    <div class="row"><span>Artifact</span><div class="seg" id="artSeg"></div></div>
-    <p class="note" id="kitNote">Students only see the artifacts in the current kit. Changing the artifact ends any tour and reloads the headsets, so do it before students start (or have them re-enter afterward).</p>
+    <h2>Quick setup <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden>One tap sets several of the options below at once. The highlighted one matches what headsets are set to right now. You can still change any single setting afterward.</p>
+    <div id="presets"></div>
   </div>
 
   <div class="card">
-    <h2>Freeze screens</h2>
-    <div class="grid" id="freezeBtns">
-      <button class="danger" data-freeze="eyes">Eyes up</button>
-      <button class="danger" data-freeze="wait">Wait for instructions</button>
-      <button class="danger" data-freeze="remove">Take off headset</button>
-      <button class="danger" data-freeze="done">Time to finish</button>
-    </div>
-    <p style="margin:12px 0 0"><button id="unfreeze" class="primary">Unfreeze</button></p>
-    <p class="note">In passthrough, the stone disappears and students see the room plus your message. Freezes end on their own after 2 hours.</p>
-  </div>
-
-  <div class="card wide">
-    <h2>Guided tour</h2>
-    <div class="bigseg">
-      <button id="tourStart" class="primary">Start tour</button>
-      <button id="tourPrev">◀ Previous</button>
-      <button id="tourNext">Next ▶</button>
-      <button id="tourEnd" class="danger">End tour</button>
-    </div>
-    <p id="tourStep">The tour is off.</p>
-    <div class="bigseg"><button id="narrate">▶ Play narration on all headsets</button></div>
-    <p class="note">During the tour, students can’t open other dots, and Back/Next, Options, Move and Exit are hidden. They can still Listen, use Tell me more and Hide the reading. Walking: an arrow leads them to the dot, and its reading opens when they get there. Seated or table size: the stone turns to face them. Detective mode waits until the tour ends. Headsets that join late jump to the current step.</p>
+    <h2>Today's artifact <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden>Students only see the artifacts in the current kit. Changing the kit or artifact ends any tour and reloads the headsets, so choose before students start.</p>
+    <h3>Kit</h3><div class="seg" id="kitSeg"></div>
+    <h3>Artifact</h3><div class="seg" id="artSeg"></div>
   </div>
 
   <div class="card">
-    <h2 id="dotsTitle">Send everyone to a dot</h2>
-    <div class="grid" id="dots"></div>
-    <p class="note" id="dotsNote"></p>
-  </div>
-
-  <div class="card">
-    <h2>Pause one headset</h2>
-    <div class="grid" id="headsets"></div>
-    <p class="note">The number is the sticker on each headset. A paused headset shows “Your teacher paused this headset” until you press it again. Each headset picks its number once, on its start screen (or in Options). Pauses end on their own after 2 hours.</p>
+    <h2>Before class</h2>
+    <ul class="check">
+      <li><label><input type="checkbox"> Headsets charged, numbered stickers on, lenses clean</label></li>
+      <li><label><input type="checkbox"> Pick a Quick setup (or the settings below)</label></li>
+      <li><label><input type="checkbox"> Move button: Hide, then place each stone on the X from the footprint</label></li>
+      <li><label><input type="checkbox"> Practice card: On just before students start (if you're using it)</label></li>
+      <li><label><input type="checkbox"> After any update: run the safety check below</label></li>
+    </ul>
+    <p class="note">These boxes are just for you; they reset when the page reloads.</p>
   </div>
 
   <div class="card wide">
-    <h2>Settings</h2>
+    <h2>Settings <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden><b>Default</b> means you haven't chosen, so each headset uses its normal setting (shown in brackets) or whatever its ArborXR link says. Students can change unlocked settings in Options until you change that setting again.</p>
     <div id="settings"></div>
-    <div class="row"><span>Students can move windows</span><div class="seg" id="moveSeg">
-      <button data-move="true">On</button><button data-move="false">Off</button></div></div>
-    <p class="note">“Link” means each headset keeps whatever its ArborXR link says. Students can change unlocked settings in Options until you change that setting again.</p>
-    <p style="margin:10px 0 0"><button id="clear">Reset all to “Link”</button></p>
+    <p class="note" style="margin-top:14px"><button id="clear">Reset all to Default</button></p>
   </div>
 
   <div class="card">
-    <h2>Safety check</h2>
-    <p class="note" style="margin-top:0">Tests the database rules live: that strangers can’t send commands, that nothing but this room can be read, and that only the allowed values get through.</p>
+    <h2>Headset link &amp; room <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden>Every headset uses the same normal link; its number decides which teacher page it follows. A room code is only for special setups, such as a second set of headsets with their own link.</p>
+    <div class="row"><input id="link" type="text" readonly aria-label="Headset link"><button id="copy">Copy</button></div>
+    <p class="note" id="linkNote"></p>
+    <div class="row" style="margin-top:10px"><span class="note" style="margin:0">Room code</span><input id="room" type="text" maxlength="24" aria-label="Room code"><button id="useRoom">Use</button></div>
+  </div>
+
+  <div class="card">
+    <h2>Safety check <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden>Tests the live database rules: that strangers can't send commands or pause headsets, that nothing but this room can be read, and that only the allowed values get through. Run it after you publish new rules.</p>
     <button id="runCheck">Run safety check</button>
     <ul id="checks"></ul>
   </div>
 </main>
 
+<!-- ════════ TEACH ════════ -->
+<main id="teach" role="tabpanel" aria-labelledby="tabTeach" hidden>
+  <div class="card wide" id="everyone">
+    <h2>Everyone <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden>Freezes every headset with a calm message. In passthrough the stone disappears so students see the room. Press Resume to continue. Freezes end on their own after 2 hours.</p>
+    <div class="row">
+      <button class="big" data-freeze="eyes">Eyes up</button>
+      <button class="big" data-freeze="wait">Wait</button>
+      <button class="big" data-freeze="done">Time to finish</button>
+      <button class="big" data-freeze="remove">Take off headset</button>
+      <button class="big gold" id="unfreeze">Resume</button>
+    </div>
+  </div>
+
+  <div class="card wide" id="tourCard">
+    <h2>Guided tour <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden>You lead everyone through the dots. Students can't open other dots or turn the stone, so everyone's stone stays lined up; they can still Listen, Hide and move panels (if allowed). With Notice first on, each step opens with a look-closely prompt: let them talk, then Reveal reading (playing the narration reveals it too). Walking students get an arrow to the dot; seated or table-size stones turn to face them. Headsets that join late jump to the current step.</p>
+    <div id="tourOff">
+      <button class="big gold" id="tourStart">Start guided tour</button>
+      <p class="note">The tour is off, so students explore on their own.</p>
+    </div>
+    <div id="tourOn" hidden>
+      <div class="stepper">
+        <button class="round" id="tourPrev" aria-label="Previous step">◀</button>
+        <div class="t"><small id="tourCount"></small><div id="tourTitle"></div></div>
+        <button class="round gold" id="tourNext" aria-label="Next step">▶</button>
+      </div>
+    </div>
+    <div id="dotsTitle"></div>
+    <div id="dots"></div>
+    <div class="row">
+      <button class="big gold" id="tourReveal">Reveal reading</button>
+      <button class="big" id="narrate">▶ Play narration</button>
+      <button id="tourEnd" hidden>End tour</button>
+    </div>
+    <p class="note" id="tourNote"></p>
+  </div>
+
+  <div class="card wide">
+    <h2>Pause one headset <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden>The number is the sticker on each headset. Tap to pause just that headset ("Your teacher paused this headset"); tap again to resume. Pauses end on their own after 2 hours.</p>
+    <div id="headsets"></div>
+  </div>
+</main>
+
+<div id="toast" class="gone" role="status"></div>
 <script type="module" src="js/teacher.js"></script>
 </body>
 </html>

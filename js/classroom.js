@@ -48,6 +48,7 @@ export function clean(r, now) {
   const out = {};
   const bool = (k) => { if (typeof r[k] === 'boolean') out[k] = r[k]; };
   if (typeof r.exhibit === 'string' && /^[a-z0-9-]{1,32}$/.test(r.exhibit)) out.exhibit = r.exhibit;
+  if (typeof r.kit === 'string' && /^[a-z0-9-]{1,32}$/.test(r.kit)) out.kit = r.kit;
   if (r.lang === 'en' || r.lang === 'es') out.lang = r.lang;
   bool('progress'); bool('detective'); bool('lock');
   if (r.mode === 'walk' || r.mode === 'seated') out.mode = r.mode;
@@ -57,7 +58,8 @@ export function clean(r, now) {
   }
   const fresh = (at, max) => typeof at === 'number' && now - at < max;
   const dotNum = (v) => Number.isInteger(v) && v >= 1 && v <= 20;
-  bool('moveWindows');
+  bool('moveWindows'); bool('notice'); bool('practice'); bool('moveStone');
+  if (dotNum(r.reveal) && fresh(r.revealAt, TOUR_MAX_MS)) { out.reveal = r.reveal; out.revealAt = r.revealAt; }
   if (r.tour === true && dotNum(r.tourDot) && fresh(r.tourAt, TOUR_MAX_MS)) { out.tour = true; out.tourDot = r.tourDot; out.tourAt = r.tourAt; }
   if (dotNum(r.narrate) && fresh(r.narrateAt, NARRATE_MAX_MS)) { out.narrate = r.narrate; out.narrateAt = r.narrateAt; }
   // per-headset pause: { h0: time, h11: time } → [0, 11]  (numbers on the headsets' stickers, not students)

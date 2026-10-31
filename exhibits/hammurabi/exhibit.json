@@ -47,6 +47,10 @@
         "en": "Source detective",
         "es": "Detective de fuentes"
       },
+      "notice": {
+        "en": "Two people are carved at the top. One is standing and one is sitting. What do you notice about each one? Who might they be?",
+        "es": "Arriba hay dos personas talladas. Una está de pie y la otra está sentada. ¿Qué notas en cada una? ¿Quiénes podrían ser?"
+      },
       "clue": {
         "en": "Find the picture of the king and the sun god, at the top of the front.",
         "es": "Busca la imagen del rey y el dios del sol, arriba en el frente."
@@ -120,6 +124,10 @@
         "en": "Rivers, farms and rules",
         "es": "Ríos, granjas y reglas"
       },
+      "notice": {
+        "en": "You can't read this writing yet, but people long ago could. Many of these laws are about something farmers needed every day. What do you think it was?",
+        "es": "Todavía no puedes leer esta escritura, pero la gente de hace mucho tiempo sí podía. Muchas de estas leyes hablan de algo que los agricultores necesitaban todos los días. ¿Qué crees que era?"
+      },
       "clue": {
         "en": "Find the writing just below the picture, a little to the left.",
         "es": "Busca la escritura justo debajo de la imagen, un poco a la izquierda."
@@ -157,6 +165,10 @@
         "en": "Read the writing",
         "es": "Lee la escritura"
       },
+      "notice": {
+        "en": "Get close and look at the writing. What shapes do you see? How do you think someone made these marks?",
+        "es": "Acércate y mira la escritura. ¿Qué formas ves? ¿Cómo crees que alguien hizo estas marcas?"
+      },
       "clue": {
         "en": "In the middle of the front, find tiny wedge-shaped marks, a little to the right.",
         "es": "En el medio del frente, busca marcas pequeñitas en forma de cuña, un poco a la derecha."
@@ -177,6 +189,10 @@
       "title": {
         "en": "The missing laws",
         "es": "Las leyes que faltan"
+      },
+      "notice": {
+        "en": "Look near the bottom of this side. What is different about this part of the stone? What could have happened here?",
+        "es": "Mira cerca de la parte de abajo de este lado. ¿Qué es diferente en esta parte de la piedra? ¿Qué pudo haber pasado aquí?"
       },
       "clue": {
         "en": "Near the bottom of the front, find the smooth spot where writing was rubbed away.",
@@ -204,6 +220,10 @@
         "en": "Then and now",
         "es": "Antes y ahora"
       },
+      "notice": {
+        "en": "This huge stone was found far away from the city where it was made. How do you think it got there?",
+        "es": "Esta piedra enorme se encontró muy lejos de la ciudad donde se hizo. ¿Cómo crees que llegó allí?"
+      },
       "clue": {
         "en": "Look at the right side of the stone, about halfway up.",
         "es": "Mira el lado derecho de la piedra, más o menos a la mitad."
@@ -224,6 +244,10 @@
       "title": {
         "en": "Fair for everyone?",
         "es": "¿Justo para todos?"
+      },
+      "notice": {
+        "en": "The laws on this side are about punishments. Do you think everyone got the same punishment? Make a guess before you read.",
+        "es": "Las leyes de este lado hablan de castigos. ¿Crees que todos recibían el mismo castigo? Adivina antes de leer."
       },
       "clue": {
         "en": "Go around to the back. Look high up on the writing.",
@@ -257,6 +281,10 @@
         "en": "Rules for builders",
         "es": "Reglas para constructores"
       },
+      "notice": {
+        "en": "This part is about builders. If a house fell down, who should be in trouble? Guess what Hammurabi decided.",
+        "es": "Esta parte habla de los constructores. Si una casa se caía, ¿quién debía tener problemas? Adivina qué decidió Hammurabi."
+      },
       "clue": {
         "en": "Stay on the back. Look a little lower, toward the right.",
         "es": "Quédate en la parte de atrás. Mira un poco más abajo, hacia la derecha."
@@ -288,6 +316,10 @@
       "title": {
         "en": "How did people know the laws?",
         "es": "¿Cómo conocía la gente las leyes?"
+      },
+      "notice": {
+        "en": "Look how big this stone is. Why would a king put his laws on a giant stone where people could see it?",
+        "es": "Mira qué grande es esta piedra. ¿Por qué un rey pondría sus leyes en una piedra gigante donde la gente pudiera verla?"
       },
       "clue": {
         "en": "Near the bottom of the back, find where the writing ends.",
@@ -321,6 +353,10 @@
       "title": {
         "en": "How tall is it?",
         "es": "¿Qué tan alta es?"
+      },
+      "notice": {
+        "en": "Stand next to the stone. Guess: how tall is it? Is it taller than your teacher?",
+        "es": "Párate junto a la piedra. Adivina: ¿cuánto mide? ¿Es más alta que tu maestro o maestra?"
       },
       "clue": {
         "en": "Look at the left side of the stone, near the very top.",

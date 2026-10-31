@@ -24,10 +24,10 @@
 
 ## What can be sent
 - **Fixed menu only:**
-  - language, progress tracking, Detective mode, walking or seated, size, classroom lock
+  - unit kit and artifact, language, progress tracking, Detective mode, walking or seated, size, classroom lock
   - "go to dot 1–20", guided tour step 1–20, "play narration" for dot 1–20
   - pause or unpause headset 0–19
-  - whether students can move reading panels
+  - whether students can move reading panels, Notice first on/off, Practice card on/off, Move button show/hide, "reveal the reading for dot 1–20"
   - four preset freeze messages: Eyes up, Wait for instructions, Take off headset, Time to finish
 - **No free text.** The database rules reject anything else, and the headsets also ignore any value not on their own allowed list.
 - **It can't** open websites, start the camera or microphone, or see what students see.

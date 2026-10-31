@@ -8,6 +8,7 @@
         ".write": "auth != null && auth.token.email_verified == true && (auth.token.email == 'shaun.langevin@mmuusd.org' || auth.token.email == 'mike.weber@mmuusd.org') && $room.matches(/^[a-z0-9-]{1,24}$/)",
         ".validate": "newData.hasChildren(['updatedAt'])",
         "exhibit":   { ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9-]{1,32}$/)" },
+        "kit":       { ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9-]{1,32}$/)" },
         "lang":      { ".validate": "newData.isString() && newData.val().matches(/^(en|es)$/)" },
         "progress":  { ".validate": "newData.isBoolean()" },
         "detective": { ".validate": "newData.isBoolean()" },
@@ -25,6 +26,11 @@
         "narrate":     { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
         "narrateAt":   { ".validate": "newData.isNumber() && newData.val() <= now" },
         "moveWindows": { ".validate": "newData.isBoolean()" },
+        "notice":      { ".validate": "newData.isBoolean()" },
+        "practice":    { ".validate": "newData.isBoolean()" },
+        "moveStone":   { ".validate": "newData.isBoolean()" },
+        "reveal":      { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
+        "revealAt":    { ".validate": "newData.isNumber() && newData.val() <= now" },
         "paused": {
           ".validate": "newData.hasChildren()",
           "$h":        { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isNumber() && newData.val() <= now" }

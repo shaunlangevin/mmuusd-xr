@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { UI, L } from './i18n.js';
 import { drawMap, drawSigns, loadCuneiformFont } from './extras.js';
-import { InfoPanel, ExtraPanel, Toolbar, Tracker, ClueCard, OptionsPanel, HintPanel, FreezePanel, HandleBar, ShowTab, markerTexture, labelPlane, arrowTexture } from './ui3d.js';
+import { InfoPanel, ExtraPanel, Toolbar, Tracker, ClueCard, OptionsPanel, HintPanel, FreezePanel, HandleBar, ShowTab, PracticeCard, markerTexture, labelPlane, arrowTexture } from './ui3d.js';
 import * as CFG from './firebase-config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -20,10 +20,13 @@ const S = {
   mode: params.get('mode') === 'seated' ? 'seated' : 'walk',
   size: params.get('size') === 'table' ? 'table' : 'life',
   lock: flag(params.get('lock'), false),
+  notice: flag(params.get('notice'), true),     // "Notice first": a look-closely prompt before each reading
+  practice: flag(params.get('practice'), false), // offer the "Practice" card (off unless the teacher turns it on)
+  moveStone: flag(params.get('move'), true),      // show the Move button (re-place the stone)
 };
 const t = () => UI[S.lang];
 const tracking = () => S.hunt || S.clues;
-const BOOL_KEYS = ['hunt', 'clues'];
+const BOOL_KEYS = ['hunt', 'clues', 'notice', 'practice'];
 
 // ═════════════ renderer / scene ═════════════════════════════════
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -100,6 +103,9 @@ const tourRing = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.78, 48),
   new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false }));
 tourRing.renderOrder = 6; tourRing.visible = false; scene.add(tourRing);
 const guide = new THREE.Group(); guide.visible = false; scene.add(guide);
+const practiceCard = new PracticeCard();   // "Practice" + a pinching hand; waits low and to the left of the student's view
+scene.add(practiceCard.mesh); practiceCard.mesh.renderOrder = 31;
+let practiceGoal = null;
 const guideArrow = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.16),
   new THREE.MeshBasicMaterial({ map: arrowTexture(), transparent: true, depthTest: false, depthWrite: false }));
 guideArrow.renderOrder = 40; guide.add(guideArrow);
@@ -107,6 +113,7 @@ let guideLabel = null, guideLabelText = '';
 
 // ═════════════ state ════════════════════════════════════════════
 let EX = null;                    // exhibit data
+let KIT = null;                   // the unit kit this artifact belongs to (students only see this kit)
 let DOTS = [];
 let model = null;
 let markers = [];
@@ -118,6 +125,8 @@ let mode = 'desktop';             // 'desktop' | 'ar' | 'vr'
 let placing = false, needsLayout = false, xrFrames = 0, activeCtrl = null;
 let openIndex = -1, expanded = false;
 let hidden = false;            // reading panel collapsed to a small tab
+const readingShown = new Set();   // dots whose reading has been revealed (Notice first)
+let practice = null, practiceDone = false;   // practice run: {stage: hide|show|close}; nothing starts until the card is pinched
 let grab = null;               // a student is dragging the panel by its grab bar
 let placePref = null;          // where this student likes panels (set by dragging one; this visit only)
 let rigAng = -0.65;            // which side the open panel went to (negative = right of the dot)
@@ -130,6 +139,7 @@ const audio = new Audio(); let playing = false, playingIndex = -1;
 const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
 let hasCuneiformFont = false;
+const kitList = () => (EX?.index.kits || []).filter((k) => Array.isArray(k.exhibits));
 const sizeScale = () => (S.size === 'table' ? TABLE_SCALE : 1);
 const exPath = (f) => `exhibits/${EX.id}/${f}`;
 const clipName = (i) => (i === 'finish' ? 'finish' : String(i + 1).padStart(2, '0'));
@@ -137,7 +147,15 @@ const clipName = (i) => (i === 'finish' ? 'finish' : String(i + 1).padStart(2, '
 // ═════════════ exhibit loading ══════════════════════════════════
 async function loadExhibit() {
   const index = await (await fetch('exhibits/index.json')).json();
-  const id = params.get('exhibit') || index.default;
+  const known = (id) => (index.exhibits || []).some((e) => e.id === id);
+  const kits = (index.kits || []).filter((k) => Array.isArray(k.exhibits) && k.exhibits.some(known));
+  // kit: ?kit= link > default kit; artifact: ?exhibit= link > the kit's first artifact
+  const kitParam = params.get('kit');
+  KIT = kits.find((k) => k.id === kitParam) || null;
+  let id = known(params.get('exhibit')) ? params.get('exhibit') : null;
+  if (!KIT && id) KIT = kits.find((k) => k.exhibits.includes(id)) || null;
+  if (!KIT) KIT = kits.find((k) => k.id === index.defaultKit) || kits[0] || null;
+  if (!id) id = (KIT && KIT.exhibits.find(known)) || index.default;
   EX = await (await fetch(`exhibits/${id}/exhibit.json`)).json();
   EX.id = id; EX.index = index;
   DOTS = EX.dots;
@@ -354,6 +372,7 @@ $('clue-hint').onclick = useHint;
 function openInfo(i) {
   const n = DOTS.length;
   if (pendingFinish && !touring) { pendingFinish = false; return showFinish(); }
+  if (openIndex === 'practice') closeInfo();
   i = ((i % n) + n) % n;
   if (openIndex !== i) { if (playingIndex !== i) stopAudio(); expanded = false; }
   openIndex = i; hidden = false;
@@ -366,7 +385,23 @@ function openInfo(i) {
   refreshInfo(true);
 }
 
+// Notice first: this dot shows its look-closely prompt until the reading is revealed
+const noticePhase = (i) => typeof i === 'number' && S.notice && !!DOTS[i]?.notice && !readingShown.has(i);
+function showReading(i) {
+  if (typeof i !== 'number' || readingShown.has(i)) return;
+  readingShown.add(i); expanded = false;
+  if (openIndex === i) refreshInfo(false);
+}
 function infoState() {
+  if (openIndex === 'practice') {
+    const tt = t();
+    return { dot: { title: tt.practiceTitle, text: tt.practiceText }, lang: S.lang, badge: '\u2713', single: true,
+      noClose: !practice || practice.stage !== 'close', hasAudio: false, hasMore: false, expanded: false };
+  }
+  if (noticePhase(openIndex)) {
+    return { dot: DOTS[openIndex], index: openIndex, lang: S.lang, notice: true, single: true,
+      canReveal: !touring, wait: touring, noClose: touring && mode !== 'desktop', found: tracking() && found.has(openIndex) };
+  }
   if (openIndex === 'finish') {
     const f = EX.finish;
     return { dot: { title: f.title, text: f.text, think: f.think }, lang: S.lang, badge: '★', single: true, noClose: touring && mode !== 'desktop',
@@ -401,6 +436,10 @@ function refreshInfo(reposition = false) {
 function setHidden(h) {
   if (openIndex === -1 || hidden === h) return;
   hidden = h; if (h && grab) endGrab();
+  if (practice && openIndex === 'practice') {
+    if (h && practice.stage === 'hide') { practice.stage = 'show'; hint.setText(t().practiceShow); }
+    else if (!h && practice.stage === 'show') { practice.stage = 'close'; hint.setText(t().practiceDone); }
+  }
   refreshInfo(false);
 }
 const rigOpen = () => openIndex !== -1 && mode !== 'desktop';
@@ -579,6 +618,7 @@ function endGrab() {
 }
 
 function closeInfo() {
+  if (openIndex === 'practice') { practice = null; hint.mesh.visible = false; }
   stopAudio();
   openIndex = -1; expanded = false; hidden = false;
   if (grab) endGrab();
@@ -598,6 +638,18 @@ function showFinish() {
 function showCard() {
   const st = infoState(), d = st.dot, tt = t();
   const card = $('card'); card.hidden = false;
+  $('card-showme').textContent = tt.showMe; $('card-showme').hidden = true;
+  if (st.notice) {   // Notice first: the prompt, then "Show me" (or wait for the teacher during a tour)
+    $('card-num').textContent = st.index + 1; $('card-num').classList.toggle('found', !!st.found);
+    $('card-title').textContent = tt.lookClosely;
+    $('card-body').textContent = L(d.notice, S.lang);
+    ['card-facts', 'card-law', 'card-extra', 'card-more', 'card-credit', 'card-listen', 'card-moreBtn', 'card-prev', 'card-next'].forEach((id) => { $(id).hidden = true; });
+    $('card-think-label').textContent = '';
+    $('card-think').textContent = tt.stems.join('  ') + (st.wait ? '  ' + tt.waitReveal : '');
+    $('card-showme').hidden = !st.canReveal;
+    $('card-close').hidden = !!st.noClose; $('card-close').textContent = tt.close;
+    return;
+  }
   $('card-num').textContent = st.badge ?? st.index + 1;
   $('card-num').classList.toggle('found', !!st.found);
   $('card-title').textContent = L(d.title, S.lang);
@@ -633,6 +685,7 @@ $('card-prev').onclick = () => openInfo(openIndex - 1);
 $('card-next').onclick = () => openInfo(openIndex + 1);
 $('card-listen').onclick = () => toggleAudio(openIndex);
 $('card-moreBtn').onclick = () => { expanded = !expanded; refreshInfo(); };
+$('card-showme').onclick = () => showReading(openIndex);
 
 // ═════════════ tracker / toolbar / options ═══════════════════════
 function refreshTracker() {
@@ -648,9 +701,9 @@ function refreshTracker() {
 }
 function refreshToolbar() {
   const items = ['left', 'right'];
-  if (touring) { /* teacher is leading: just turning */ }
-  else if (!S.lock) { items.push('move', 'options', 'exit'); }
-  else if (S.mode === 'walk' && S.size === 'life') items.push('move');
+  if (touring) { items.length = 0; }   // teacher is leading: no turning, so everyone's stone stays lined up
+  else if (!S.lock) { if (S.moveStone) items.push('move'); items.push('options', 'exit'); }
+  else if (S.moveStone && S.mode === 'walk' && S.size === 'life') items.push('move');
   toolbar.set(items, S.lang, classroomOn() && HEADSET != null ? String(HEADSET) : '');
 }
 
@@ -700,6 +753,8 @@ function setSetting(k, v) {
     if (S.mode === 'seated') placeSeated(); else if (mode === 'ar') placeOrRestore(); else layoutToolbar();
   }
   if (k === 'lock') refreshStartScreen();
+  if (k === 'notice' && openIndex !== -1) refreshInfo(false);
+  if (k === 'practice') { if (v) practiceDone = false; else if (practice) closeInfo(); }   // turning it on again offers it to the next student
   refreshToolbar(); refreshTracker(); refreshClue(); refreshStartScreen();
 }
 
@@ -860,6 +915,24 @@ function shiftWorld(a, b, dy) {
   syncPool();
 }
 
+// ═════════════ practice (offered, never automatic) ═════════════════
+// When the teacher turns Practice on, a "Practice" card with a pinching hand waits beside the
+// toolbar. Pinching it is the first lesson; then the student hides and brings back a practice
+// panel. Nothing starts by itself, so a headset can be set up and handed over mid-session.
+const practiceOffered = () => S.practice && !practiceDone && !practice && !touring && !placing && !anchorWait && root.visible && toolbar.mesh.visible;
+function openPractice() {
+  if (practice) return;
+  practice = { stage: 'hide' };
+  if (openIndex !== -1) closeInfo();
+  openIndex = 'practice'; hidden = false; expanded = false;
+  hint.setText(t().practiceHide); hint.mesh.visible = true;
+  refreshInfo(true);
+}
+function finishPractice() {
+  practiceDone = true;
+  closeInfo();
+}
+
 // ═════════════ controllers & hands ═══════════════════════════════
 const controllers = [];
 const rayGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
@@ -898,6 +971,7 @@ function setRayFrom(c) {
 function uiTargets() {
   const out = [];
   for (const p of [options, panel, handle, tab, toolbar]) if (p.mesh.visible) out.push(p.mesh);
+  if (practiceCard.mesh.visible) out.push(practiceCard.mesh);
   if (toolbar.mesh.visible && clueCard.mesh.visible && !options.mesh.visible) out.push(clueCard.mesh);
   if (!options.mesh.visible) markers.forEach((m, i) => { if (m.visible && selectable(i)) out.push(m); });
   return out;
@@ -914,6 +988,7 @@ function onSelect(c) {
     if (o === panel.mesh) return onPanelButton(panel.buttonAt(hit.uv));
     if (o === handle.mesh) { if (handle.buttonAt(hit.uv) === 'hide') setHidden(true); return; }
     if (o === tab.mesh) return setHidden(false);
+    if (o === practiceCard.mesh) return openPractice();
     if (o === clueCard.mesh) { if (clueCard.buttonAt(hit.uv) === 'hint') useHint(); return; }
     if (o.userData.index !== undefined) {
       const i = o.userData.index;
@@ -926,6 +1001,8 @@ function onSelect(c) {
   if (clueOn() && openIndex === -1) { setRayFrom(c); const i = rayNearClue(raycaster.ray); if (i >= 0) { reveal(i); openInfo(i); } }
 }
 function onPanelButton(id) {
+  if (id === 'close' && openIndex === 'practice') return finishPractice();
+  if (id === 'reveal') return showReading(openIndex);
   if (id === 'close') closeInfo();
   else if (id === 'next') openInfo(openIndex + 1);
   else if (id === 'prev') openInfo(openIndex - 1);
@@ -956,6 +1033,19 @@ function xrUpdate(frame, dt) {
     else if (mode === 'vr') { root.position.copy(camera.position).setY(0).addScaledVector(headForward(), 2.0); faceUser(); syncPool(); layoutToolbar(); }
     else { placeOrRestore(); layoutToolbar(); }
   }
+  const offer = practiceOffered();
+  if (offer) {
+    practiceCard.set(S.lang, Math.floor(performance.now() / 650) % 2);   // two-frame pinch
+    // lazy follow: glides back to the lower left of the view only when it drifts out of sight
+    const C = camera.position, fwd = headForward(), left = new THREE.Vector3().crossVectors(UP, fwd).normalize();
+    const want = () => C.clone().addScaledVector(fwd, 0.95).addScaledVector(left, 0.3).setY(C.y - 0.3);
+    if (!practiceCard.mesh.visible) { practiceCard.mesh.position.copy(want()); practiceGoal = null; }
+    const to = practiceCard.mesh.position.clone().sub(C).setY(0), d = to.length();
+    if (!practiceGoal && (d > 1.6 || d < 0.4 || fwd.dot(to.normalize()) < Math.cos(0.75))) practiceGoal = want();
+    if (practiceGoal) { practiceCard.mesh.position.lerp(practiceGoal, 1 - Math.exp(-dt * 4)); if (practiceCard.mesh.position.distanceTo(practiceGoal) < 0.01) practiceGoal = null; }
+    practiceCard.mesh.lookAt(C);
+  }
+  practiceCard.mesh.visible = offer;
   if (anchorWait && performance.now() - anchorWait.at > 6000) { console.warn('saved spot not found'); cancelRestore(); startPlacing(); }
   if (wantAnchor) makeAnchor(frame, wantAnchor);
   followAnchor(frame);
@@ -969,7 +1059,7 @@ function xrUpdate(frame, dt) {
   if (clueOn() && !placing) for (const c of controllers) { if (!c.userData.src) continue; setRayFrom(c); const i = rayNearClue(raycaster.ray); if (i >= 0) reveal(i); }
   const hits = controllers.map((c) => c.userData.uiHit).filter(Boolean);
   for (const m of markers) m.userData.hover = hits.some((h) => h.object === m);
-  for (const p of [toolbar, panel, options, handle, tab]) {
+  for (const p of [toolbar, panel, options, handle, tab, practiceCard]) {
     if (!p.mesh.visible) continue;
     const h = hits.find((x) => x.object === p.mesh);
     p.setHover(h ? p.buttonAt(h.uv) : null);
@@ -988,7 +1078,7 @@ function xrUpdate(frame, dt) {
       if (grab && grab.c === c) continue;   // that thumbstick is pushing/pulling the panel
       const gp = c.userData.src?.gamepad;
       const x = gp && gp.axes.length >= 4 ? gp.axes[2] : 0;
-      if (Math.abs(x) > 0.25) { root.rotation.y -= x * dt * 1.4; tourTurn = null; }
+      if (Math.abs(x) > 0.25 && !touring) { root.rotation.y -= x * dt * 1.4; }
     }
   }
   if (hint.mesh.visible) {
@@ -1079,6 +1169,7 @@ function onSessionEnd() {
   root.position.set(0, 0, 0); root.rotation.set(0, 0, 0); root.scale.setScalar(1); root.visible = true; syncPool();
   toolbar.mesh.visible = false; hint.mesh.visible = false; reticle.visible = false; options.mesh.visible = false;
   guide.visible = false; tourTurn = null; if (grab) endGrab();
+  practice = null; practiceCard.mesh.visible = false;
   closeInfo();
   if (touring) { tourPending = true; runTourStep(); }   // reopen the tour's dot on the 2D page
   controls.enabled = true;
@@ -1146,8 +1237,19 @@ function switchRoom(r) {
 
 function applyRemote(r) {
   const changed = (k) => r[k] !== undefined && r[k] !== lastRemote[k];
-  if (changed('exhibit') && r.exhibit !== EX.id && (EX.index.exhibits || []).some((e) => e.id === r.exhibit)) {
-    const p = new URLSearchParams(location.search); p.set('exhibit', r.exhibit); location.search = p.toString(); return;
+  // unit kit / artifact chosen on the teacher page (switching artifacts reloads the page)
+  if (changed('kit') || changed('exhibit')) {
+    const known = (id) => (EX.index.exhibits || []).some((e) => e.id === id);
+    const k = (r.kit && kitList().find((x) => x.id === r.kit)) || KIT;
+    const inKit = (id) => known(id) && (!k || k.exhibits.includes(id));
+    let ex = EX.id;
+    if (inKit(r.exhibit)) ex = r.exhibit;                                    // the teacher picked this artifact
+    else if (k && !inKit(EX.id)) ex = k.exhibits.find(known) || EX.id;       // new kit: start at its first artifact
+    if (ex !== EX.id) {
+      const p = new URLSearchParams(location.search); p.set('exhibit', ex); if (k) p.set('kit', k.id);
+      location.search = p.toString(); return;
+    }
+    if (k !== KIT) { KIT = k; $('exhibit-pick').innerHTML = ''; refreshStartScreen(); }
   }
   if (changed('lang')) setSetting('lang', r.lang);
   if (changed('progress')) setSetting('hunt', r.progress);
@@ -1155,6 +1257,9 @@ function applyRemote(r) {
   if (changed('mode')) setSetting('mode', r.mode);
   if (changed('size')) setSetting('size', r.size);
   if (changed('lock')) { setSetting('lock', r.lock); if (r.lock) options.mesh.visible = false; }
+  if (changed('notice')) setSetting('notice', r.notice);
+  if (changed('practice')) setSetting('practice', r.practice);
+  if (changed('moveStone')) setSetting('moveStone', r.moveStone);
   lastRemote = { ...r };
   // can students drag panels? (on unless the teacher turns it off)
   const mv = r.moveWindows !== false;
@@ -1164,10 +1269,15 @@ function applyRemote(r) {
     const step = r.tourDot - 1;
     if (!touring || step !== tourStep || r.tourAt > lastTourAt) { lastTourAt = r.tourAt; setTour(true, step); }
   } else if (touring) setTour(false);
+  // teacher pressed "Reveal reading" for this tour step (only counts if pressed after the step began)
+  if (touring && r.reveal === tourStep + 1 && r.revealAt >= (r.tourAt || 0)) showReading(tourStep);
   if (!touring && r.dot && r.dotAt > lastDotAt) { lastDotAt = r.dotAt; pendingDot = r.dot - 1; runPendingDot(); }
   else if (r.dotAt > lastDotAt) lastDotAt = r.dotAt;
   applyPause();
-  if (r.narrate && r.narrateAt > lastNarrateAt) { lastNarrateAt = r.narrateAt; if (!frozen && r.narrate <= DOTS.length) playClip(r.narrate - 1); }
+  if (r.narrate && r.narrateAt > lastNarrateAt) {   // narration also shows the reading
+    lastNarrateAt = r.narrateAt;
+    if (!frozen && r.narrate <= DOTS.length) { showReading(r.narrate - 1); playClip(r.narrate - 1); }
+  }
 }
 // a class-wide freeze wins; otherwise a pause aimed at this headset's number
 function applyPause() {
@@ -1207,6 +1317,7 @@ function setTour(on, step) {
     if (step < 0 || step >= DOTS.length) { touring = was; return; }
     options.mesh.visible = false; pendingDot = -1;
     tourStep = step; tourTurn = null;
+    readingShown.delete(step);   // Notice first: everyone looks and talks before the teacher reveals the reading
     if (openIndex !== step || hidden) closeInfo();
     tourPending = openIndex !== step;
   } else {
@@ -1327,13 +1438,16 @@ function refreshStartScreen() {
       'mode:walk': tt.walk, 'mode:seated': tt.seated }[b.dataset.set];
   });
   $('lbl-lang').textContent = tt.optLang; $('lbl-hunt').textContent = tt.optHunt; $('lbl-clues').textContent = tt.optClues; $('lbl-mode').textContent = tt.optMode;
-  // exhibit picker (only if there is more than one)
+  // artifact picker: only this unit kit's artifacts (and only if there is more than one)
+  $('kit-label').textContent = KIT ? L(KIT.title, S.lang) : '';
+  $('kit-label').hidden = !KIT;
   const pick = $('exhibit-pick');
-  const list = EX.index.exhibits || [];
+  const list = KIT ? KIT.exhibits.map((id) => (EX.index.exhibits || []).find((e) => e.id === id)).filter(Boolean) : (EX.index.exhibits || []);
   pick.hidden = S.lock || list.length < 2;
-  if (!pick.hidden && !pick.childElementCount) {
+  if (!pick.hidden && pick.dataset.lang !== S.lang + (KIT?.id || '')) {
+    pick.innerHTML = ''; pick.dataset.lang = S.lang + (KIT?.id || '');
     for (const e of list) { const o = document.createElement('option'); o.value = e.id; o.textContent = L(e.title, S.lang); o.selected = e.id === EX.id; pick.append(o); }
-    pick.onchange = () => { const p = new URLSearchParams(location.search); p.set('exhibit', pick.value); location.search = p.toString(); };
+    pick.onchange = () => { const p = new URLSearchParams(location.search); p.set('exhibit', pick.value); if (KIT) p.set('kit', KIT.id); location.search = p.toString(); };
   }
   if (xrSupport.checked) {
     if (xrSupport.quickLook) setStatus(tt.ipad);
@@ -1422,6 +1536,10 @@ renderer.setAnimationLoop((time, frame) => {
   window.__dbg = {
     THREE, camera, controls, root, markers, clueCard, applyRemote, rig, handle, tab, guide, tourRing, setHidden, setHeadset,
     renderer, anchorObj: () => anchor, anchorState: () => ({ anchor: !!anchor, waiting: !!anchorWait, saved: readSpot() }),
+    kitState: () => ({ kit: KIT && KIT.id, exhibit: EX.id, picker: $('exhibit-pick').hidden ? null : [...$('exhibit-pick').options].map((o) => o.value) }),
+    practiceState: () => ({ stage: practice && practice.stage, done: practiceDone, card: practiceCard.mesh.visible, hint: hint.mesh.visible && hint.text }),
+    noticeState: () => ({ notice: S.notice, phase: noticePhase(openIndex), shown: [...readingShown] }),
+    showReading, practiceCard,
     grabState: () => ({ grab: !!grab, placePref, rigAng, hidden }), tourState: () => ({ touring, tourStep, tourPending, turning: !!tourTurn, guide: guide.visible, guideText: guideLabelText, moveOK, headset: HEADSET, room: ROOM, frozen }), freezePanel, isFrozen: () => frozen, rigState: () => ({ rigGoal: rigGoal && rigGoal.toArray(), rigAway, xrFrames }), currentClue, useHint, revealed, toolbar, panel, options, extra, tracker, S, setSetting, openInfo, closeInfo,
     state: () => ({ mode, placing, S: { ...S }, openIndex, expanded, found: [...found], finishShown, clue: currentClue(), revealed: [...revealed],
       panel: panel.mesh.visible, extra: extra.mesh.visible, options: options.mesh.visible, toolbarItems: toolbar.items,

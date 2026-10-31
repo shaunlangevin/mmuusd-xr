@@ -1,6 +1,27 @@
 {
+  "_about": "Kits are short, ordered lists of artifacts for one unit. Students only ever see the current kit. Each artifact is stored once (in exhibits/<id>/) and can be in more than one kit.",
+  "defaultKit": "g5-mesopotamia",
   "default": "hammurabi",
+  "kits": [
+    {
+      "id": "g5-mesopotamia",
+      "title": {
+        "en": "Grade 5 · Mesopotamia",
+        "es": "5.º grado · Mesopotamia"
+      },
+      "unit": "Grade 5 Ancient Cultures, Bend 1: Mesopotamia and the Fertile Crescent",
+      "exhibits": [
+        "hammurabi"
+      ]
+    }
+  ],
   "exhibits": [
-    { "id": "hammurabi", "title": { "en": "The Code of Hammurabi", "es": "El Código de Hammurabi" } }
+    {
+      "id": "hammurabi",
+      "title": {
+        "en": "The Code of Hammurabi",
+        "es": "El Código de Hammurabi"
+      }
+    }
   ]
 }

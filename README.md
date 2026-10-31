@@ -37,6 +37,7 @@ All settings:
 - `mode=walk|seated`
 - `size=life|table`
 - `lock=1`
+- `notice=on|off`, `practice=on|off`, `move=off` (hides the Move button)
 - `kit=<kit id>` and `exhibit=<folder name>`
 
 ## iPad and iPhone
@@ -52,6 +53,8 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
 
 ## What students can do
 
+- **Practice card (off by default):** when the teacher turns on *Practice card*, a small card with a pinching hand floats at the lower left of the student's view. Pinching it starts a one-minute practice (open a panel, Hide it, bring it back). Nothing starts by itself, so a teacher can place the stone and hand the headset over. Turn it off and on again to offer it to the next student, or use `?practice=on` in a link.
+- **Notice first:** each dot opens with a *Look closely* prompt and sentence starters ("I notice…") before the reading. Students press **Show me** to see the reading. In a guided tour, the teacher reveals it for everyone (**Reveal reading**, or by playing the narration). The prompts are the `notice` field of each dot in `exhibit.json`. Turn it off with Notice first: Off, or `?notice=off`.
 - **Dots:** select the 9 numbered dots on the stone. Dots 6–8 are on the back, so walking around pays off.
 - **Reading panel:** each dot opens a short reading with a "Think about it" question. In the headset it opens off to the side of the dot, so the stone stays in view. Students can grab the bar above it to move it (later panels open where they put it), or press **Hide** to shrink it to a small tab while the narration keeps playing. Panels with laws show them in plain words first. The original 1915 wording is under **Tell me more**.
 - **Extras:**
@@ -67,7 +70,7 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
 
 ## Teacher console (optional)
 
-`teacher.html` lets approved staff (Shaun and Mike) control every headset in a room from a Chromebook:
+`teacher.html` lets approved staff (Shaun and Mike) control every headset in a room from a Chromebook or phone. It has two tabs: **Set up** (opens first: quick setups, today's artifact, a before-class checklist, settings, the headset link and the safety check) and **Teach** (during the lesson: freeze everyone, the guided tour, and pausing one headset, with a status strip showing what students are seeing). It lets you:
 
 - freeze screens with preset messages, or pause one headset by its number
 - run a **guided tour**: Start, ◀ Previous, Next ▶ or pick a step, play the narration on every headset, End tour
@@ -104,7 +107,7 @@ Each dot also has:
 Artifacts are grouped into **kits**: short, ordered lists of artifacts for one unit, such as *Grade 5 · Mesopotamia*. Students only ever see the current kit, so a growing collection doesn't become a distracting menu.
 
 - Kits are listed in `exhibits/index.json` (`kits`, plus `defaultKit`). Each artifact is stored once in its own folder and can belong to more than one kit.
-- On the teacher page, **Unit kit** picks the kit and today's artifact for your headsets. Changing the artifact ends any tour and reloads the headsets, so do it before students start.
+- On the teacher page, **Today's artifact** (Set up tab) picks the kit and artifact for your headsets. Changing the artifact ends any tour and reloads the headsets, so do it before students start.
 - Without the console, a link ending in `?kit=<kit id>` opens that kit. The start screen shows a picker only when the kit has more than one artifact (and not when locked).
 - Keep kits small: 3–5 artifacts.
 

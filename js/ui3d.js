@@ -132,12 +132,30 @@ export class InfoPanel extends CanvasPanel {
     if (d.think) { label(t.think); text(L(d.think, lang), `700 ${Math.round(34 * s)}px ${FONT}`, INK); }
     return { ops, height: y };
   }
+  // "Notice first": a look-closely prompt shown before the reading
+  noticeLayout(s) {
+    const st = this.state, lang = st.lang, t = UI[lang];
+    const ctx = this.ctx, W = this.canvas.width, pad = 52, maxW = W - pad * 2;
+    const ops = []; let y = 46;
+    const text = (str, font, color, x = pad, w = maxW, lh = 1.3) => {
+      ctx.font = font; const px = parseFloat(font.match(/(\d+)px/)[1]);
+      for (const l of wrap(ctx, str, w)) { ops.push({ t: l, x, y, f: font, c: color }); y += px * lh; }
+    };
+    text(t.lookClosely, `800 ${Math.round(52 * s)}px ${FONT}`, GOLD, pad + 96, maxW - 96, 1.15);
+    y = Math.max(y, 46 + 84) + 12 * s;
+    text(L(st.dot.notice, lang), `700 ${Math.round(40 * s)}px ${FONT}`, INK);
+    y += 16 * s;
+    for (const stem of t.stems) text(stem, `italic 400 ${Math.round(32 * s)}px ${FONT}`, DIM);
+    if (st.wait) { y += 18 * s; text(t.waitReveal, `600 ${Math.round(30 * s)}px ${FONT}`, '#f6e2b4'); }
+    return { ops, height: y };
+  }
   draw() {
     if (!this.state) return;
     const st = this.state, t = UI[st.lang];
     const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height, footer = 130;
-    let s = 1, Lyt = this.layout(s);
-    while (Lyt.height > H - footer - 6 && s > 0.55) { s -= 0.03; Lyt = this.layout(s); }
+    const lay = (k) => (st.notice ? this.noticeLayout(k) : this.layout(k));
+    let s = 1, Lyt = lay(s);
+    while (Lyt.height > H - footer - 6 && s > 0.55) { s -= 0.03; Lyt = lay(s); }
     const used = Math.min(H, Lyt.height + footer + 6);
     this.frame(36, used);
     this.setUsedHeight(used);
@@ -152,13 +170,17 @@ export class InfoPanel extends CanvasPanel {
       ctx.font = op.f; ctx.fillStyle = op.c; ctx.fillText(op.t, op.x, op.y);
     }
     const items = [];
-    if (!st.single) items.push({ id: 'prev', label: t.back, w: 1 });
-    if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : t.listen, w: 1.1 });
-    if (st.hasMore) items.push({ id: 'more', label: st.expanded ? t.less : t.more, w: 1.5 });
+    if (st.notice) {
+      if (st.canReveal) items.push({ id: 'reveal', label: t.showMe, w: 1.6 });
+    } else {
+      if (!st.single) items.push({ id: 'prev', label: t.back, w: 1 });
+      if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : t.listen, w: 1.1 });
+      if (st.hasMore) items.push({ id: 'more', label: st.expanded ? t.less : t.more, w: 1.5 });
+    }
     if (!st.noClose) items.push({ id: 'close', label: t.close, w: 1 });
-    if (!st.single) items.push({ id: 'next', label: t.next, w: 1 });
-    this.buttons = this.layoutRow(items, used - footer + 22, 88, 14, 40);
-    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' }));
+    if (!st.single && !st.notice) items.push({ id: 'next', label: t.next, w: 1 });
+    this.buttons = items.length ? this.layoutRow(items, used - footer + 22, 88, 14, 40) : [];
+    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' || b.id === 'reveal' }));
     this.tex.needsUpdate = true;
   }
 }
@@ -231,6 +253,42 @@ export class HandleBar extends CanvasPanel {
       const b = { id: 'hide', x: (W - 360) / 2, y, w: 360, h };
       this.buttons = [b]; this.drawButton(b, t.hide);
     }
+    this.tex.needsUpdate = true;
+  }
+}
+
+// ── "Practice" card: a hand that pinches (two frames). Pinching the card starts the practice. ──
+export class PracticeCard extends CanvasPanel {
+  constructor() { super(640, 260, 0.36); this.mesh.visible = false; this.frameNo = -1; this.lang = 'en'; }
+  set(lang, frameNo) {
+    if (lang === this.lang && frameNo === this.frameNo) return;
+    this.lang = lang; this.frameNo = frameNo; this.draw();
+  }
+  draw() {
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height, t = UI[this.lang];
+    const hov = this.hover === 'go';
+    this.frame(40);
+    if (hov) { roundRect(ctx, 4, 4, W - 8, H - 8, 40); ctx.lineWidth = 9; ctx.strokeStyle = '#f0cf86'; ctx.stroke(); }
+    // hand, side view: palm + wrist, then index finger and thumb (apart in frame 0, pinched in frame 1)
+    const ox = 22, oy = 22, pinched = this.frameNo === 1;
+    ctx.fillStyle = INK;
+    roundRect(ctx, ox + 34, oy + 92, 92, 96, 30); ctx.fill();
+    roundRect(ctx, ox + 50, oy + 176, 62, 50, 12); ctx.fill();
+    ctx.lineCap = 'round'; ctx.strokeStyle = INK; ctx.lineWidth = 26;
+    const tipI = pinched ? [ox + 184, oy + 92] : [ox + 182, oy + 34];
+    const tipT = pinched ? [ox + 186, oy + 112] : [ox + 196, oy + 158];
+    ctx.beginPath(); ctx.moveTo(ox + 108, oy + 104); ctx.lineTo(...tipI); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox + 112, oy + 162); ctx.lineTo(...tipT); ctx.stroke();
+    if (pinched) {   // a little burst where the fingers meet
+      ctx.strokeStyle = GOLD; ctx.lineWidth = 6;
+      for (const [dx, dy] of [[34, -22], [42, 4], [32, 30]]) { ctx.beginPath(); ctx.moveTo(ox + 206 + dx * 0.35, oy + 102 + dy * 0.35); ctx.lineTo(ox + 206 + dx, oy + 102 + dy); ctx.stroke(); }
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = GOLD; ctx.font = `800 64px ${FONT}`; ctx.fillText(t.practiceLabel, 290, 100);
+    ctx.fillStyle = INK; let fs = 32; ctx.font = `600 ${fs}px ${FONT}`;
+    const lines = wrap(ctx, t.practiceCue, W - 290 - 30);
+    lines.slice(0, 2).forEach((l, i) => ctx.fillText(l, 290, 160 + i * 40));
+    this.buttons = [{ id: 'go', x: 0, y: 0, w: W, h: H }];
     this.tex.needsUpdate = true;
   }
 }

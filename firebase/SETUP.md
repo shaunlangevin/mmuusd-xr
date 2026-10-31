@@ -34,7 +34,7 @@ Allow these addresses:
 
 ## 6. Check it
 1. Open `https://shaunlangevin.github.io/mmuusd-xr/teacher.html` and sign in. It opens your own headsets (South End for Shaun, North End for Mike), and you can bookmark it.
-2. Press **Run safety check**. Every line should show a green ✓.
+2. On the **Set up** tab, press **Run safety check** (bottom of the page). Every line should show a green ✓.
 3. Every headset uses the same normal ArborXR link (with no `?room=`). Nothing needs to change in ArborXR.
 4. Put on a headset, pick its number on the start screen (the first time only), then press **Eyes up** on the Chromebook. The headset should show the message within a second or two.
 
