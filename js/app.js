@@ -840,6 +840,43 @@ function followToolbar(dt) {
 // Walking mode also remembers the spot (per exhibit and size), so next time the stone appears there.
 // Only a random reference code is kept in this browser; the headset itself stores the spot.
 let anchor = null, anchorLast = null, anchorWait = null, wantAnchor = null, anchorGen = 0;
+// ── diagnostics (only with ?debug=1): what the headset is doing with anchors and recentring ──
+const DEBUG = params.get('debug') === '1';
+const dbg = { features: '?', anchor: 'none', tracked: '-', persist: '-', restore: '-', resets: 0, jumps: 0, shifts: 0, vis: '-', events: [] };
+function dlog(msg) {
+  if (!DEBUG) return;
+  dbg.events.push(`${(performance.now() / 1000).toFixed(0)}s ${msg}`); if (dbg.events.length > 7) dbg.events.shift();
+  console.log('[xr]', msg);
+  const pre = document.getElementById('debug'); if (pre) pre.textContent = debugLines().join('\n');
+}
+const debugLines = () => [
+  `mode ${mode} · features: ${dbg.features}`,
+  `anchor: ${dbg.anchor} · tracked: ${dbg.tracked}`,
+  `saved spot: ${dbg.persist} · restore: ${dbg.restore}`,
+  `resets ${dbg.resets} · jumps ${dbg.jumps} · shifts ${dbg.shifts} · visibility ${dbg.vis}`,
+  ...dbg.events,
+];
+let debugPanel = null, debugAt = 0;
+function updateDebugPanel(now) {
+  if (!DEBUG) return;
+  if (!debugPanel) {
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 440;
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    debugPanel = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5 * 440 / 1024), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+    debugPanel.renderOrder = 50; debugPanel.userData = { c, tex }; scene.add(debugPanel);
+  }
+  debugPanel.visible = renderer.xr.isPresenting;
+  if (!debugPanel.visible) return;
+  const C = camera.position, fwd = headForward(), right = new THREE.Vector3().crossVectors(fwd, UP).normalize();
+  debugPanel.position.copy(C).addScaledVector(fwd, 0.9).addScaledVector(right, 0.32).setY(C.y - 0.28);
+  debugPanel.lookAt(C);
+  if (now - debugAt < 400) return; debugAt = now;
+  const { c, tex } = debugPanel.userData, g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height); g.fillStyle = 'rgba(10,10,10,0.82)'; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = '#9ff59f'; g.font = '600 30px monospace'; g.textBaseline = 'top';
+  debugLines().forEach((l, i) => g.fillText(l.slice(0, 60), 18, 14 + i * 38));
+  tex.needsUpdate = true;
+}
 const spotKey = () => (EX ? `xr-spot:${EX.id}:${S.size}` : null);
 const readSpot = () => { try { return localStorage.getItem(spotKey()); } catch { return null; } };
 function yawOf(o) { return new THREE.Euler().setFromQuaternion(new THREE.Quaternion(o.x, o.y, o.z, o.w), 'YXZ').y; }
@@ -851,35 +888,45 @@ function dropAnchor() {
 async function makeAnchor(frame, opts) {
   wantAnchor = null;
   const ref = renderer.xr.getReferenceSpace();
-  if (mode !== 'ar' || !frame?.createAnchor || !ref || typeof XRRigidTransform === 'undefined') return;
+  if (mode !== 'ar' || !frame?.createAnchor || !ref || typeof XRRigidTransform === 'undefined') {
+    if (mode === 'ar') { dbg.anchor = 'NOT SUPPORTED'; dlog('createAnchor not available'); }
+    return;
+  }
   dropAnchor();
+  dbg.anchor = 'creating…';
   const gen = anchorGen, q = new THREE.Quaternion().setFromAxisAngle(UP, root.rotation.y), P = root.position;
   try {
     const a = await frame.createAnchor(new XRRigidTransform({ x: P.x, y: P.y, z: P.z }, { x: q.x, y: q.y, z: q.z, w: q.w }), ref);
     if (gen !== anchorGen) { a.delete(); return; }
-    anchor = a; anchorLast = null;
+    anchor = a; anchorLast = null; dbg.anchor = 'OK'; dlog('anchor created');
     if (opts.persist && a.requestPersistentHandle) {
       const key = spotKey(), old = readSpot();
-      const h = await a.requestPersistentHandle();
-      try { localStorage.setItem(key, h); } catch { /* fine: just not remembered */ }
-      if (old && old !== h) renderer.xr.getSession()?.deletePersistentAnchor?.(old).catch(() => {});
-    }
-  } catch (e) { console.warn('anchor not available', e); }
+      try {
+        const h = await a.requestPersistentHandle();
+        try { localStorage.setItem(key, h); } catch { /* fine: just not remembered */ }
+        if (old && old !== h) renderer.xr.getSession()?.deletePersistentAnchor?.(old).catch(() => {});
+        dbg.persist = 'saved'; dlog('spot saved');
+      } catch (e) { dbg.persist = 'FAILED ' + (e.name || e); dlog('save failed: ' + (e.message || e)); }
+    } else if (opts.persist) { dbg.persist = 'not supported'; }
+  } catch (e) { dbg.anchor = 'FAILED ' + (e.name || e); dlog('anchor failed: ' + (e.message || e)); console.warn('anchor not available', e); }
 }
 // AR walking mode: put the stone back on this headset's saved spot, or ask the student to place it
 function placeOrRestore() {
   const h = readSpot(), session = renderer.xr.getSession();
+  if (mode === 'ar' && !session?.restorePersistentAnchor) dbg.restore = 'not supported';
+  else if (mode === 'ar' && !h) dbg.restore = 'nothing saved yet';
   if (mode !== 'ar' || S.mode !== 'walk' || !h || !session?.restorePersistentAnchor) return startPlacing();
   closeInfo(); options.mesh.visible = false; placing = false; reticle.visible = false;
   dropAnchor();
   root.visible = false;
   hint.setText(t().findingSpot); hint.mesh.visible = true;
   const gen = anchorGen;
-  anchorWait = { at: performance.now() };
+  anchorWait = { at: performance.now() }; dbg.restore = 'looking…'; dlog('restoring saved spot');
   session.restorePersistentAnchor(h).then((a) => {
     if (gen !== anchorGen) { a.delete(); return; }
-    anchor = a; anchorLast = null;
+    anchor = a; anchorLast = null; dbg.anchor = 'OK (restored)';
   }).catch((e) => {
+    dbg.restore = 'FAILED ' + (e.name || e); dlog('restore failed: ' + (e.message || e));
     console.warn('saved spot could not be restored', e);
     try { localStorage.removeItem(spotKey()); } catch { /* fine */ }
     if (gen === anchorGen) { cancelRestore(); startPlacing(); }
@@ -889,12 +936,13 @@ function cancelRestore() { if (anchorWait) { anchorWait = null; hint.mesh.visibl
 function followAnchor(frame) {
   if (!anchor || placing || !frame) return;
   const ref = renderer.xr.getReferenceSpace();
-  if (frame.trackedAnchors && !frame.trackedAnchors.has(anchor)) return;   // not tracked right now
-  const pose = ref && frame.getPose(anchor.anchorSpace, ref); if (!pose) return;
+  if (frame.trackedAnchors && !frame.trackedAnchors.has(anchor)) { dbg.tracked = 'no'; return; }   // not tracked right now
+  const pose = ref && frame.getPose(anchor.anchorSpace, ref); if (!pose) { dbg.tracked = 'no pose'; return; }
+  dbg.tracked = 'yes';
   const tp = pose.transform.position;
   const now = { p: new THREE.Vector3(tp.x, tp.y, tp.z), yaw: yawOf(pose.transform.orientation) };
   if (anchorWait) {   // restored spot found: the stone appears there, facing the way it was placed
-    anchorWait = null; hint.mesh.visible = false;
+    anchorWait = null; hint.mesh.visible = false; dbg.restore = 'found'; dlog('saved spot found');
     root.position.copy(now.p); root.rotation.set(0, now.yaw, 0); root.visible = true;
     syncPool(); layoutToolbar(); refreshClue(); runPendingDot();
   } else if (anchorLast) {
@@ -905,6 +953,8 @@ function followAnchor(frame) {
 }
 // the room "moved" (headset recentred): move the stone and its floating panels with it
 function shiftWorld(a, b, dy) {
+  const moved = a.p.distanceTo(b.p);
+  if (moved > 0.02 || Math.abs(dy) > 0.02) { dbg.shifts++; dlog(`anchor moved ${moved.toFixed(2)} m, ${(dy * 57.3).toFixed(0)}°`); }
   const qy = new THREE.Quaternion().setFromAxisAngle(UP, dy);
   for (const o of [root, rig, toolbar.mesh, options.mesh]) {
     const rel = o.position.clone().sub(a.p).applyAxisAngle(UP, dy);
@@ -1046,7 +1096,9 @@ function xrUpdate(frame, dt) {
     practiceCard.mesh.lookAt(C);
   }
   practiceCard.mesh.visible = offer;
-  if (anchorWait && performance.now() - anchorWait.at > 6000) { console.warn('saved spot not found'); cancelRestore(); startPlacing(); }
+  if (anchorWait && performance.now() - anchorWait.at > 6000) { console.warn('saved spot not found'); dbg.restore = 'TIMED OUT'; dlog('saved spot not found in 6 s'); cancelRestore(); startPlacing(); }
+  checkHeadJump();
+  updateDebugPanel(performance.now());
   if (wantAnchor) makeAnchor(frame, wantAnchor);
   followAnchor(frame);
   for (const c of controllers) {
@@ -1122,6 +1174,20 @@ function pickMarker(e) {
   return hit ? hit.object : null;
 }
 
+// Safety net: if the headset recentres (a sudden jump of the head pose, or a reset event) and no
+// anchor is holding the stone, ask to place it again rather than leaving it in the wrong spot.
+let lastHead = null;
+function checkHeadJump() {
+  const C = camera.position;
+  if (lastHead && xrFrames > 10 && C.distanceTo(lastHead) > 0.35) { dbg.jumps++; dlog(`head jumped ${C.distanceTo(lastHead).toFixed(2)} m`); replaceIfUnpinned('jump'); }
+  lastHead = (lastHead || new THREE.Vector3()).copy(C);
+}
+function replaceIfUnpinned(why) {
+  if (mode !== 'ar' || anchor || anchorWait || placing || needsLayout || !root.visible) return;
+  dlog('no anchor holding the stone → place again (' + why + ')');
+  if (S.mode === 'seated') placeSeated(); else startPlacing();
+}
+
 // ═════════════ sessions ═════════════════════════════════════════
 async function enterXR(type) {
   if (renderer.xr.isPresenting) return;
@@ -1157,9 +1223,14 @@ function onSessionStart() {
   anchor = null; anchorLast = null; anchorWait = null; wantAnchor = null; anchorGen++;
   // if the headset recentres and the stone isn't pinned with an anchor, ask to place it again
   renderer.xr.getReferenceSpace()?.addEventListener?.('reset', () => {
-    if (mode !== 'ar' || anchor || anchorWait || placing || needsLayout) return;
-    if (S.mode === 'seated') placeSeated(); else startPlacing();
+    dbg.resets++; dlog('reference space reset');
+    replaceIfUnpinned('reset');
   });
+  const session = renderer.xr.getSession();
+  dbg.features = session?.enabledFeatures ? session.enabledFeatures.join(',') : 'unknown';
+  dbg.anchor = 'none'; dbg.persist = '-'; dbg.restore = '-'; lastHead = null;
+  session?.addEventListener?.('visibilitychange', () => { dbg.vis = session.visibilityState; dlog('visibility ' + session.visibilityState); lastHead = null; });
+  dlog(`session start (${mode})`);
   if (touring) tourPending = true;   // opens once the stone is in place
 }
 function onSessionEnd() {
@@ -1531,11 +1602,12 @@ renderer.setAnimationLoop((time, frame) => {
   }
   refreshStartScreen();
   startListening();
+  if (DEBUG) { $('debug').hidden = false; $('debug').textContent = 'Diagnostics on. Enter passthrough, place the stone, then take the headset off and on.'; }
   window.__steleReady = true;
   // hooks for automated testing (harmless in normal use)
   window.__dbg = {
     THREE, camera, controls, root, markers, clueCard, applyRemote, rig, handle, tab, guide, tourRing, setHidden, setHeadset,
-    renderer, anchorObj: () => anchor, anchorState: () => ({ anchor: !!anchor, waiting: !!anchorWait, saved: readSpot() }),
+    debugLines, renderer, anchorObj: () => anchor, anchorState: () => ({ anchor: !!anchor, waiting: !!anchorWait, saved: readSpot() }),
     kitState: () => ({ kit: KIT && KIT.id, exhibit: EX.id, picker: $('exhibit-pick').hidden ? null : [...$('exhibit-pick').options].map((o) => o.value) }),
     practiceState: () => ({ stage: practice && practice.stage, done: practiceDone, card: practiceCard.mesh.visible, hint: hint.mesh.visible && hint.text }),
     noticeState: () => ({ notice: S.notice, phase: noticePhase(openIndex), shown: [...readingShown] }),
