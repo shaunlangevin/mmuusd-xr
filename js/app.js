@@ -840,6 +840,7 @@ function followToolbar(dt) {
 // Walking mode also remembers the spot (per exhibit and size), so next time the stone appears there.
 // Only a random reference code is kept in this browser; the headset itself stores the spot.
 let anchor = null, anchorLast = null, anchorWait = null, wantAnchor = null, anchorGen = 0;
+let anchorHandle = null, anchorLostAt = 0;   // saved-spot code for the current anchor; when it stopped being tracked
 // ── diagnostics (only with ?debug=1): what the headset is doing with anchors and recentring ──
 const DEBUG = params.get('debug') === '1';
 const dbg = { features: '?', anchor: 'none', tracked: '-', persist: '-', restore: '-', resets: 0, jumps: 0, shifts: 0, vis: '-', events: [] };
@@ -883,7 +884,7 @@ function yawOf(o) { return new THREE.Euler().setFromQuaternion(new THREE.Quatern
 function dropAnchor() {
   anchorGen++; wantAnchor = null;
   if (anchor) { try { anchor.delete(); } catch { /* already gone */ } }
-  anchor = null; anchorLast = null;
+  anchor = null; anchorLast = null; anchorHandle = null; anchorLostAt = 0;
 }
 async function makeAnchor(frame, opts) {
   wantAnchor = null;
@@ -904,6 +905,7 @@ async function makeAnchor(frame, opts) {
       try {
         const h = await a.requestPersistentHandle();
         try { localStorage.setItem(key, h); } catch { /* fine: just not remembered */ }
+        if (gen === anchorGen) anchorHandle = h;
         if (old && old !== h) renderer.xr.getSession()?.deletePersistentAnchor?.(old).catch(() => {});
         dbg.persist = 'saved'; dlog('spot saved');
       } catch (e) { dbg.persist = 'FAILED ' + (e.name || e); dlog('save failed: ' + (e.message || e)); }
@@ -916,19 +918,25 @@ function placeOrRestore() {
   if (mode === 'ar' && !session?.restorePersistentAnchor) dbg.restore = 'not supported';
   else if (mode === 'ar' && !h) dbg.restore = 'nothing saved yet';
   if (mode !== 'ar' || S.mode !== 'walk' || !h || !session?.restorePersistentAnchor) return startPlacing();
+  restoreFrom(h, 0);
+}
+// bring the stone back from a saved spot (new visit, or the headset lost its anchor after sleeping)
+function restoreFrom(h, turnOffset, recovering = false) {
+  const session = renderer.xr.getSession();
   closeInfo(); options.mesh.visible = false; placing = false; reticle.visible = false;
-  dropAnchor();
+  if (recovering) { anchorGen++; anchor = null; anchorLast = null; anchorHandle = null; anchorLostAt = 0; }   // leave the lost anchor alone
+  else dropAnchor();
   root.visible = false;
   hint.setText(t().findingSpot); hint.mesh.visible = true;
   const gen = anchorGen;
-  anchorWait = { at: performance.now() }; dbg.restore = 'looking…'; dlog('restoring saved spot');
+  anchorWait = { at: performance.now(), turnOffset }; dbg.restore = 'looking…'; dlog('restoring saved spot');
   session.restorePersistentAnchor(h).then((a) => {
     if (gen !== anchorGen) { a.delete(); return; }
-    anchor = a; anchorLast = null; dbg.anchor = 'OK (restored)';
+    anchor = a; anchorLast = null; anchorHandle = h; dbg.anchor = 'OK (restored)';
   }).catch((e) => {
     dbg.restore = 'FAILED ' + (e.name || e); dlog('restore failed: ' + (e.message || e));
     console.warn('saved spot could not be restored', e);
-    try { localStorage.removeItem(spotKey()); } catch { /* fine */ }
+    if (!recovering) { try { localStorage.removeItem(spotKey()); } catch { /* fine */ } }
     if (gen === anchorGen) { cancelRestore(); startPlacing(); }
   });
 }
@@ -936,14 +944,16 @@ function cancelRestore() { if (anchorWait) { anchorWait = null; hint.mesh.visibl
 function followAnchor(frame) {
   if (!anchor || placing || !frame) return;
   const ref = renderer.xr.getReferenceSpace();
-  if (frame.trackedAnchors && !frame.trackedAnchors.has(anchor)) { dbg.tracked = 'no'; return; }   // not tracked right now
-  const pose = ref && frame.getPose(anchor.anchorSpace, ref); if (!pose) { dbg.tracked = 'no pose'; return; }
-  dbg.tracked = 'yes';
+  const lost = (why) => { dbg.tracked = why; if (!anchorLostAt) anchorLostAt = performance.now(); };
+  if (frame.trackedAnchors && !frame.trackedAnchors.has(anchor)) return lost('no');   // not tracked right now
+  const pose = ref && frame.getPose(anchor.anchorSpace, ref); if (!pose) return lost('no pose');
+  dbg.tracked = 'yes'; anchorLostAt = 0;
   const tp = pose.transform.position;
   const now = { p: new THREE.Vector3(tp.x, tp.y, tp.z), yaw: yawOf(pose.transform.orientation) };
   if (anchorWait) {   // restored spot found: the stone appears there, facing the way it was placed
+    const turnOffset = anchorWait.turnOffset;
     anchorWait = null; hint.mesh.visible = false; dbg.restore = 'found'; dlog('saved spot found');
-    root.position.copy(now.p); root.rotation.set(0, now.yaw, 0); root.visible = true;
+    root.position.copy(now.p); root.rotation.set(0, now.yaw + (turnOffset || 0), 0); root.visible = true;
     syncPool(); layoutToolbar(); refreshClue(); runPendingDot();
   } else if (anchorLast) {
     const dy = wrapAngle(now.yaw - anchorLast.yaw);
@@ -1097,6 +1107,7 @@ function xrUpdate(frame, dt) {
   }
   practiceCard.mesh.visible = offer;
   if (anchorWait && performance.now() - anchorWait.at > 6000) { console.warn('saved spot not found'); dbg.restore = 'TIMED OUT'; dlog('saved spot not found in 6 s'); cancelRestore(); startPlacing(); }
+  if (anchor && anchorLostAt && !anchorWait && !placing && performance.now() - anchorLostAt > 2000) recoverAnchor();
   checkHeadJump();
   updateDebugPanel(performance.now());
   if (wantAnchor) makeAnchor(frame, wantAnchor);
@@ -1181,6 +1192,16 @@ function checkHeadJump() {
   const C = camera.position;
   if (lastHead && xrFrames > 10 && C.distanceTo(lastHead) > 0.35) { dbg.jumps++; dlog(`head jumped ${C.distanceTo(lastHead).toFixed(2)} m`); replaceIfUnpinned('jump'); }
   lastHead = (lastHead || new THREE.Vector3()).copy(C);
+}
+// The headset can lose an anchor after it sleeps (taken off) and never find it again. After 2 s
+// without tracking, reload the same spot from its saved copy; if there isn't one, ask to place again.
+function recoverAnchor() {
+  const h = anchorHandle, session = renderer.xr.getSession();
+  const turnOffset = anchorLast ? root.rotation.y - anchorLast.yaw : 0;   // keep any turning the student did
+  dlog('anchor lost for 2 s');
+  if (h && session?.restorePersistentAnchor) return restoreFrom(h, turnOffset, true);
+  dropAnchor();
+  replaceIfUnpinned('anchor lost');
 }
 function replaceIfUnpinned(why) {
   if (mode !== 'ar' || anchor || anchorWait || placing || needsLayout || !root.visible) return;
