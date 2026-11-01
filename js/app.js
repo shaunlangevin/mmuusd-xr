@@ -145,8 +145,9 @@ const exPath = (f) => `exhibits/${EX.id}/${f}`;
 const clipName = (i) => (i === 'finish' ? 'finish' : String(i + 1).padStart(2, '0'));
 
 // ═════════════ exhibit loading ══════════════════════════════════
+// no-cache = always ask GitHub whether the file changed (cheap), so a new kit or edited text shows up right after an upload
 async function loadExhibit() {
-  const index = await (await fetch('exhibits/index.json')).json();
+  const index = await (await fetch('exhibits/index.json', { cache: 'no-cache' })).json();
   const known = (id) => (index.exhibits || []).some((e) => e.id === id);
   const kits = (index.kits || []).filter((k) => Array.isArray(k.exhibits) && k.exhibits.some(known));
   // kit: ?kit= link > default kit; artifact: ?exhibit= link > the kit's first artifact
@@ -156,7 +157,7 @@ async function loadExhibit() {
   if (!KIT && id) KIT = kits.find((k) => k.exhibits.includes(id)) || null;
   if (!KIT) KIT = kits.find((k) => k.id === index.defaultKit) || kits[0] || null;
   if (!id) id = (KIT && KIT.exhibits.find(known)) || index.default;
-  EX = await (await fetch(`exhibits/${id}/exhibit.json`)).json();
+  EX = await (await fetch(`exhibits/${id}/exhibit.json`, { cache: 'no-cache' })).json();
   EX.id = id; EX.index = index;
   DOTS = EX.dots;
   hasCuneiformFont = await loadCuneiformFont();

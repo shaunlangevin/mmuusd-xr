@@ -79,11 +79,11 @@ async function start() {
   $('tabTeach').onclick = () => setTab('teach');
 
   // exhibits (for the dot buttons)
-  const index = await (await fetch('exhibits/index.json')).json();
+  const index = await (await fetch('exhibits/index.json', { cache: 'no-cache' })).json();
   let exhibit = null, loadingEx = null;
   async function loadExhibit(id) {
     loadingEx = id;
-    const ex = await (await fetch(`exhibits/${id}/exhibit.json`)).json(); ex.id = id;
+    const ex = await (await fetch(`exhibits/${id}/exhibit.json`, { cache: 'no-cache' })).json(); ex.id = id;
     if (loadingEx !== id) return;
     exhibit = ex; buildDots(); render();
   }
