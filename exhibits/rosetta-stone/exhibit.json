@@ -1,0 +1,321 @@
+{
+  "id": "rosetta-stone",
+  "title": {
+    "en": "The Rosetta Stone",
+    "es": "La piedra de Rosetta"
+  },
+  "subtitle": {
+    "en": "One message carved three ways in ancient Egypt, about 2,200 years ago.",
+    "es": "Un mensaje tallado de tres maneras en el antiguo Egipto, hace unos 2,200 años."
+  },
+  "model": {
+    "file": "model.glb",
+    "heightMeters": 1.123,
+    "upAxis": "y",
+    "rotationDeg": 0,
+    "credit": {
+      "en": "3D model: “The Rosetta Stone” © The Trustees of the British Museum, CC BY-NC-SA 4.0. Turned and sized for this app.",
+      "es": "Modelo 3D: “The Rosetta Stone” © The Trustees of the British Museum, CC BY-NC-SA 4.0. Girado y ajustado de tamaño para esta app."
+    }
+  },
+  "usdz": "model.usdz",
+  "lawCredit": {
+    "en": "translated by Carol Andrews, British Museum",
+    "es": "traducción al inglés de Carol Andrews, Museo Británico"
+  },
+  "finish": {
+    "title": {
+      "en": "You explored all 8 dots!",
+      "es": "¡Exploraste los 8 puntos!"
+    },
+    "text": {
+      "en": "Great detective work. This stone shows what Egyptians believed about their king, and what the king did for them.",
+      "es": "¡Buen trabajo de detective! Esta piedra muestra lo que los egipcios creían sobre su rey y lo que el rey hizo por ellos."
+    },
+    "think": {
+      "en": "Big question: Pick one belief or practice you found on this stone. Who helped spread it? What question would you ask that person? Talk it over with the people near you.",
+      "es": "Gran pregunta: Elige una creencia o costumbre que encontraste en esta piedra. ¿Quién ayudó a difundirla? ¿Qué pregunta le harías a esa persona? Hablen de esto con las personas que están cerca."
+    }
+  },
+  "dots": [
+    {
+      "id": "source",
+      "h": 0.385,
+      "angle": 0,
+      "x": -0.18,
+      "clueRadius": 0.3,
+      "title": {
+        "en": "One message, three ways",
+        "es": "Un mensaje, tres maneras"
+      },
+      "notice": {
+        "en": "Look at the front. Can you find lines that split the writing into parts? How many parts are there? Does the writing in each part look the same or different?",
+        "es": "Mira el frente. ¿Puedes encontrar líneas que dividen la escritura en partes? ¿Cuántas partes hay? ¿La escritura de cada parte se ve igual o diferente?"
+      },
+      "clue": {
+        "en": "Find a line across the front that separates two kinds of writing.",
+        "es": "Busca una línea en el frente que separa dos tipos de escritura."
+      },
+      "text": {
+        "en": "This stone is a primary source. It has the same message carved three times, in three kinds of writing. For a long time, nobody could read hieroglyphs, but experts could read Greek. In 1822, comparing the parts helped a French scholar named Champollion [sham-POH-lee-on] figure out how to read hieroglyphs.",
+        "es": "Esta piedra es una fuente primaria. Tiene el mismo mensaje tallado tres veces, con tres tipos de escritura. Durante mucho tiempo nadie podía leer los jeroglíficos, pero los expertos sí sabían leer griego. En 1822, comparar las partes ayudó a un sabio francés llamado Champollion [shan-po-LIÓN] a descubrir cómo leer los jeroglíficos."
+      },
+      "facts": [
+        {
+          "k": {
+            "en": "Who made it?",
+            "es": "¿Quién la hizo?"
+          },
+          "v": {
+            "en": "Egyptian priests",
+            "es": "Sacerdotes egipcios"
+          }
+        },
+        {
+          "k": {
+            "en": "When?",
+            "es": "¿Cuándo?"
+          },
+          "v": {
+            "en": "196 BC",
+            "es": "El año 196 a. C."
+          }
+        },
+        {
+          "k": {
+            "en": "Where?",
+            "es": "¿Dónde?"
+          },
+          "v": {
+            "en": "Egypt, along the Nile River",
+            "es": "Egipto, junto al río Nilo"
+          }
+        },
+        {
+          "k": {
+            "en": "For whom?",
+            "es": "¿Para quién?"
+          },
+          "v": {
+            "en": "People all over Egypt",
+            "es": "La gente de todo Egipto"
+          }
+        },
+        {
+          "k": {
+            "en": "Why?",
+            "es": "¿Por qué?"
+          },
+          "v": {
+            "en": "To honor the king and share his new rules",
+            "es": "Para honrar al rey y dar a conocer sus nuevas reglas"
+          }
+        }
+      ],
+      "think": {
+        "en": "Why would someone write the same message three different ways?",
+        "es": "¿Por qué alguien escribiría el mismo mensaje de tres maneras diferentes?"
+      }
+    },
+    {
+      "id": "hieroglyphs",
+      "h": 0.76,
+      "angle": 0,
+      "x": 0.12,
+      "title": {
+        "en": "Sacred writing",
+        "es": "Escritura sagrada"
+      },
+      "notice": {
+        "en": "Look closely at the writing near the top. What shapes can you find? Do any look like animals, people or objects?",
+        "es": "Mira con atención la escritura cerca de la parte de arriba. ¿Qué formas encuentras? ¿Alguna parece un animal, una persona o un objeto?"
+      },
+      "clue": {
+        "en": "Find the writing at the very top of the front, just below the broken edge.",
+        "es": "Busca la escritura que está arriba del todo en el frente, justo debajo del borde roto."
+      },
+      "text": {
+        "en": "These are hieroglyphs [HY-roh-glifs]. Egyptians called them “the words of the gods.” Priests used them on temple walls and holy objects. Some signs stand for sounds, and some stand for ideas. The top of the stone broke off, so only the last 14 lines of hieroglyphs are left.",
+        "es": "Estos son jeroglíficos. Los egipcios los llamaban “las palabras de los dioses”. Los sacerdotes los usaban en las paredes de los templos y en objetos sagrados. Algunos signos representan sonidos y otros representan ideas. La parte de arriba de la piedra se rompió, así que solo quedan las últimas 14 líneas de jeroglíficos."
+      },
+      "think": {
+        "en": "Why do you think priests used a special kind of writing for messages about the gods and the king?",
+        "es": "¿Por qué crees que los sacerdotes usaban un tipo especial de escritura para los mensajes sobre los dioses y el rey?"
+      }
+    },
+    {
+      "id": "demotic",
+      "h": 0.53,
+      "angle": 0,
+      "x": 0.12,
+      "title": {
+        "en": "Everyday writing",
+        "es": "Escritura de todos los días"
+      },
+      "notice": {
+        "en": "Compare the middle writing with the writing at the top. How is it different? Which one looks faster to write?",
+        "es": "Compara la escritura del medio con la de arriba. ¿En qué es diferente? ¿Cuál parece más rápida de escribir?"
+      },
+      "clue": {
+        "en": "Find the middle part of the front, where the writing looks like quick, curly marks.",
+        "es": "Busca la parte del medio del frente, donde la escritura parece hecha de marcas rápidas y onduladas."
+      },
+      "text": {
+        "en": "This middle part is Demotic [dih-MOT-ik]. The word means “writing of the people.” It was a fast way to write Egyptian. Scribes used it every day for letters, business records and agreements, like who owned a field. Writing in Demotic meant more Egyptian officials could read the message.",
+        "es": "Esta parte del medio es demótico. La palabra significa “escritura del pueblo”. Era una manera rápida de escribir en egipcio. Los escribas la usaban todos los días para cartas, registros de negocios y acuerdos, como quién era dueño de un campo. Escribir en demótico permitía que más funcionarios egipcios pudieran leer el mensaje."
+      },
+      "think": {
+        "en": "How might everyday writing change the life of a farmer or a shop owner?",
+        "es": "¿Cómo podría cambiar la vida de un agricultor o de un comerciante gracias a la escritura de todos los días?"
+      }
+    },
+    {
+      "id": "greek",
+      "h": 0.2,
+      "angle": 0,
+      "x": -0.12,
+      "title": {
+        "en": "The rulers' language",
+        "es": "El idioma de los gobernantes"
+      },
+      "notice": {
+        "en": "Look at the bottom part. Do any of these letters look like letters you know?",
+        "es": "Mira la parte de abajo. ¿Alguna de estas letras se parece a letras que conoces?"
+      },
+      "clue": {
+        "en": "Find the bottom part of the front, with neat rows of small letters.",
+        "es": "Busca la parte de abajo del frente, con filas ordenadas de letras pequeñas."
+      },
+      "text": {
+        "en": "The bottom part is in Greek. The king, Ptolemy [TOL-uh-mee] V, came from a family from Macedonia, near Greece. His family had ruled Egypt for more than 100 years, and the government used Greek. The new rulers kept many Egyptian traditions, but they also brought their own language and ways.",
+        "es": "La parte de abajo está en griego. El rey, Ptolomeo V, venía de una familia de Macedonia, cerca de Grecia. Su familia había gobernado Egipto por más de 100 años, y el gobierno usaba el griego. Los nuevos gobernantes mantuvieron muchas tradiciones egipcias, pero también trajeron su propio idioma y sus costumbres."
+      },
+      "think": {
+        "en": "When new rulers arrive, what changes in a culture, and what stays the same?",
+        "es": "Cuando llegan nuevos gobernantes, ¿qué cambia en una cultura y qué sigue igual?"
+      }
+    },
+    {
+      "id": "god-king",
+      "h": 0.27,
+      "angle": 0,
+      "x": 0.15,
+      "title": {
+        "en": "A god on Earth?",
+        "es": "¿Un dios en la Tierra?"
+      },
+      "notice": {
+        "en": "This message is about a king who was only about 12 years old. How do you think people were supposed to feel about him?",
+        "es": "Este mensaje habla de un rey que tenía solo unos 12 años. ¿Cómo crees que la gente debía sentirse sobre él?"
+      },
+      "clue": {
+        "en": "Find the right side of the Greek writing, near the bottom of the front.",
+        "es": "Busca el lado derecho de la escritura griega, cerca de la parte de abajo del frente."
+      },
+      "text": {
+        "en": "The priests called young King Ptolemy “the living image of Amun,” the king of the gods. Egyptians believed their pharaoh was a god living on Earth. The message ordered a statue of him in every temple. Priests would care for it three times a day, and his birthday became a holiday.",
+        "es": "Los sacerdotes llamaron al joven rey Ptolomeo “la imagen viviente de Amón”, el rey de los dioses. Los egipcios creían que su faraón era un dios que vivía en la Tierra. El mensaje ordenaba poner una estatua de él en cada templo. Los sacerdotes la cuidarían tres veces al día, y su cumpleaños se volvió un día de fiesta."
+      },
+      "more": {
+        "en": "The Greek part calls him “the living image of Zeus,” the king of the Greek gods. The same idea was written in a way each group would understand.",
+        "es": "La parte en griego lo llama “la imagen viviente de Zeus”, el rey de los dioses griegos. La misma idea se escribió de una manera que cada grupo pudiera entender."
+      },
+      "think": {
+        "en": "If people believed the king was a god, how might that change the way they followed his rules?",
+        "es": "Si la gente creía que el rey era un dios, ¿cómo cambiaría eso la manera en que seguían sus reglas?"
+      }
+    },
+    {
+      "id": "taxes",
+      "h": 0.55,
+      "angle": 0,
+      "x": -0.2,
+      "title": {
+        "en": "Gifts and tax cuts",
+        "es": "Regalos y menos impuestos"
+      },
+      "notice": {
+        "en": "A message from a king often asks for something or gives something. What do you think this king might be giving to the people?",
+        "es": "Un mensaje de un rey muchas veces pide algo o da algo. ¿Qué crees que este rey podría estar dando a la gente?"
+      },
+      "clue": {
+        "en": "Find the left side of the middle writing on the front.",
+        "es": "Busca el lado izquierdo de la escritura del medio en el frente."
+      },
+      "text": {
+        "en": "Before this message, parts of Egypt had been fighting against the king. The message lists what he did: he cut some taxes, gave silver and grain to the temples, repaired temples and freed people from prison. In return, the priests honored him as a god.",
+        "es": "Antes de este mensaje, algunas partes de Egipto habían estado peleando contra el rey. El mensaje dice lo que él hizo: bajó algunos impuestos, dio plata y grano a los templos, reparó templos y liberó a personas de la cárcel. A cambio, los sacerdotes lo honraron como a un dios."
+      },
+      "law": {
+        "plain": {
+          "en": "He got rid of some taxes and made other taxes smaller.",
+          "es": "Quitó algunos impuestos y bajó otros."
+        },
+        "original": "Of the revenues and taxes levied in Egypt some he has wholly remitted and others he has lightened.",
+        "source": {
+          "en": "the Greek text",
+          "es": "el texto en griego"
+        }
+      },
+      "think": {
+        "en": "Why might a ruler lower taxes after a time of fighting? Who pays for temples, roads and schools where you live?",
+        "es": "¿Por qué un gobernante bajaría los impuestos después de un tiempo de peleas? ¿Quién paga los templos, las calles y las escuelas donde vives?"
+      }
+    },
+    {
+      "id": "temple",
+      "h": 0.55,
+      "angle": 180,
+      "extra": "height",
+      "title": {
+        "en": "Made for a temple wall",
+        "es": "Hecha para la pared de un templo"
+      },
+      "notice": {
+        "en": "Look at the back of the stone. How is it different from the front? Why might someone leave it like this?",
+        "es": "Mira la parte de atrás de la piedra. ¿En qué es diferente del frente? ¿Por qué alguien la dejaría así?"
+      },
+      "clue": {
+        "en": "Find the rough, plain side of the stone.",
+        "es": "Busca el lado áspero y liso de la piedra, sin escritura."
+      },
+      "text": {
+        "en": "The back is rough because the stone probably stood against a temple wall. People only saw the front. The message ordered a copy to be set up in temples all over Egypt, so everyone would hear about the king. Once, this stone was about 1.5 meters tall, with a rounded top and a carving of the king with the gods.",
+        "es": "La parte de atrás es áspera porque la piedra probablemente estaba contra la pared de un templo. La gente solo veía el frente. El mensaje ordenaba poner una copia en templos de todo Egipto, para que todos supieran del rey. Antes, esta piedra medía unos 1.5 metros, con la parte de arriba redondeada y una imagen tallada del rey con los dioses."
+      },
+      "more": {
+        "en": "Other stones with this same message have been found in different parts of Egypt. Experts compare them to fill in some of the words that broke off this one.",
+        "es": "Se han encontrado otras piedras con este mismo mensaje en distintas partes de Egipto. Los expertos las comparan para completar algunas de las palabras que se rompieron en esta."
+      },
+      "think": {
+        "en": "Today, how do leaders share new rules with everyone? How is that like a stone in every temple?",
+        "es": "Hoy en día, ¿cómo dan a conocer los líderes las nuevas reglas a todos? ¿En qué se parece eso a una piedra en cada templo?"
+      }
+    },
+    {
+      "id": "journey",
+      "h": 0.55,
+      "angle": -90,
+      "title": {
+        "en": "Words in English?",
+        "es": "¿Palabras en inglés?"
+      },
+      "notice": {
+        "en": "Look closely at this narrow side, and then at the other narrow side. Someone painted words here. Can you read any of them?",
+        "es": "Mira con atención este lado angosto y luego el otro lado angosto. Alguien pintó palabras aquí. ¿Puedes leer alguna?"
+      },
+      "clue": {
+        "en": "Find the narrow side of the stone that has faint white letters painted on it.",
+        "es": "Busca el lado angosto de la piedra que tiene letras blancas pintadas, casi borradas."
+      },
+      "text": {
+        "en": "In 1799, French soldiers found this stone while fixing a fort near the town of Rashid [rah-SHEED], which Europeans called Rosetta. In 1801, the British army defeated the French and took it. These labels say “Captured in Egypt by the British Army in 1801” and “Presented by King George III.” It has been in the British Museum in London since 1802. Egypt has asked for it to come back, and a copy stands in a museum in Rashid.",
+        "es": "En 1799, unos soldados franceses encontraron esta piedra mientras arreglaban un fuerte cerca del pueblo de Rashid, que los europeos llamaban Rosetta. En 1801, el ejército británico venció a los franceses y se la llevó. Estas etiquetas dicen en inglés “Capturada en Egipto por el ejército británico en 1801” y “Regalada por el rey Jorge III”. Está en el Museo Británico de Londres desde 1802. Egipto ha pedido que la devuelvan, y una copia está en un museo de Rashid."
+      },
+      "think": {
+        "en": "These labels were added about 2,000 years after the stone was carved. What do they tell you about the stone's journey?",
+        "es": "Estas etiquetas se agregaron unos 2,000 años después de que se talló la piedra. ¿Qué te dicen sobre el viaje de la piedra?"
+      }
+    }
+  ]
+}

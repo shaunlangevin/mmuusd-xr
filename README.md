@@ -95,12 +95,13 @@ Upload them to the same folders on GitHub. The **Listen** button appears by itse
 
 ## Changing the words
 
-All the text, in English and Spanish, is in `exhibits/hammurabi/exhibit.json`. You can edit it in GitHub's file editor (pencil icon). It's picky about quotes and commas, so change only the words between the quote marks.
+All the text, in English and Spanish, is in each artifact's `exhibit.json` (for example `exhibits/hammurabi/exhibit.json` or `exhibits/rosetta-stone/exhibit.json`). You can edit it in GitHub's file editor (pencil icon). It's picky about quotes and commas, so change only the words between the quote marks.
 
 Each dot also has:
 
 - `h`: its height on the stone, from 0 (bottom) to 1 (top)
 - `angle`: where it sits around the stone, where 0 is the front (the relief side), 90 is the right side, 180 is the back, and −90 is the left side
+- `x` (optional): a sideways shift in metres, + to the right as you face the dot. Use it on wide, flat faces like the Rosetta Stone's, where changing `angle` alone barely moves a dot.
 
 ## Unit kits
 
@@ -110,6 +111,7 @@ Artifacts are grouped into **kits**: short, ordered lists of artifacts for one u
 - On the teacher page, **Today's artifact** (Set up tab) picks the kit and artifact for your headsets. Changing the artifact ends any tour and reloads the headsets, so do it before students start.
 - Without the console, a link ending in `?kit=<kit id>` opens that kit. The start screen shows a picker only when the kit has more than one artifact (and not when locked).
 - Keep kits small: 3–5 artifacts.
+- Kits so far: **Grade 5 · Mesopotamia** (`g5-mesopotamia`: The Code of Hammurabi) and **Grade 5 · Egypt** (`g5-egypt`: The Rosetta Stone).
 
 ## Adding another artifact later
 
@@ -124,4 +126,7 @@ You can also give an exhibit a 360° background for the VR gallery by putting an
 - **3D model:** "Stela of Hammurabi (replica)" by Peter Der Manuelian, Harvard Museum of the Ancient Near East (object 1901.10.1), licensed **CC BY-NC-SA 4.0**. The sign, floor and base were removed, the bottom was capped, and the side textures were resized for headsets. Under that license, this adapted model (`exhibits/hammurabi/model.glb`) is shared under the same CC BY-NC-SA 4.0 terms, for non-commercial use, with credit.
 - **Law quotations:** L. W. King's 1915 English translation (public domain).
 - **Facts:** the Louvre's page on the Code of Hammurabi and the Wikipedia article "Code of Hammurabi". The unit alignment comes from the MMUUSD Grade 5 Ancient Cultures planning guide.
+- **Rosetta Stone 3D model:** "The Rosetta Stone" © The Trustees of the British Museum, shared under **CC BY-NC-SA 4.0** (Sketchfab). It was turned to face forward and sized to its real height (112.3 cm); nothing else was changed. This adapted model (`exhibits/rosetta-stone/model.glb` and `model.usdz`) is shared under the same terms, for non-commercial use, with credit.
+- **Rosetta Stone quote:** one sentence from Carol Andrews' English translation of the Greek text (British Museum), used for teaching.
+- **Rosetta Stone facts:** the British Museum collection record (EA24), the Wikipedia articles "Rosetta Stone" and "Rosetta Stone decree", and The National (July 2026) on the return question. Unit alignment: MMUUSD Grade 5 Ancient Cultures, Bend 2.
 - **Code libraries:** three.js (MIT license, in `vendor/`) and the Noto Sans Cuneiform font (SIL Open Font License, in `fonts/`).

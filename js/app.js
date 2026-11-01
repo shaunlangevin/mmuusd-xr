@@ -213,7 +213,8 @@ function computeAnchors() {
   for (const d of DOTS) {
     const a = THREE.MathUtils.degToRad(d.angle || 0), y = (d.h ?? 0.5) * H;
     const dir = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
-    raycaster.set(dir.clone().multiplyScalar(4).setY(y), dir.clone().negate()); raycaster.far = 5;
+    const side = new THREE.Vector3(dir.z, 0, -dir.x).multiplyScalar(d.x || 0);   // optional sideways shift (metres, + = right as you face the dot) for wide, flat faces
+    raycaster.set(dir.clone().multiplyScalar(4).add(side).setY(y), dir.clone().negate()); raycaster.far = 5;
     const hit = raycaster.intersectObject(model, true)[0];
     if (hit) {
       d._p = hit.point.clone();
@@ -412,7 +413,7 @@ function infoState() {
     dot: d, index: openIndex, lang: S.lang, expanded, playing, found: tracking() && found.has(openIndex),
     single: clueOn() || touring, noClose: touring && mode !== 'desktop',   // in a tour, students use Hide instead of Close
     hasAudio: hasAudio(openIndex), hasMore: !!(d.more || (d.law && d.law.original)),
-    lawCredit: EX.lawCredit, credit: d.id === 'height' ? L(EX.model.credit, S.lang) : '',
+    lawCredit: EX.lawCredit, credit: (d.id === 'height' || d.extra === 'height') ? L(EX.model.credit, S.lang) : '',
   };
 }
 
