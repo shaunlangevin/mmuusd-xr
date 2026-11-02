@@ -383,7 +383,7 @@ export class OptionsPanel extends CanvasPanel {
     ];
     if (this.acc) {   // supports: each one toggles on its own (Bigger text, Read to me, Calm mode)
       const a = this.acc;
-      rows.push([t.optSupports, [['acc:big', t.bigText, a.big], ['acc:read', t.readAloud, a.read], ['acc:calm', t.calm, a.calm]]]);
+      rows.push([t.optSupports, [['acc:big', t.bigText, a.big], ['acc:read', t.readAloud, a.read], ['acc:calm', t.calm, a.calm], ['acc:auto', t.autoPlay, a.auto]]]);
     }
     if (this.headset) {   // one row per headset group (e.g. South End 0–5, North End 6–11)
       const hs = this.headset;

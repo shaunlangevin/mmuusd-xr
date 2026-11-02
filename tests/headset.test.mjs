@@ -76,6 +76,46 @@ export default (test) => {
     await p.close();
   });
 
+  test('auto-play and the console\'s three play buttons (prompt, reading, Tell me more)', async () => {
+    const p = await page({ xr: true });
+    await ready(p, '?headset=2&exhibit=hammurabi');
+    const send = room(p, 'south');
+    await send({ practice: false, mode: 'seated' });   // seated: the stone turns each step to face the student, so every step opens
+    await p.click('#btn-vr'); await sleep(2000);
+    await p.waitForFunction(() => window.__dbg.state().noticeAudio.en.filter(Boolean).length === 9, null, { timeout: 20000 });
+    // playback starts a moment late in the emulator, so wait (up to 8 s) for the expected clip before checking
+    const playingSoon = (kind) => p.waitForFunction((k) => { const s = window.__dbg.state(); return s.playing && s.playingKind === k; }, kind, { timeout: 8000 }).catch(() => {});
+    const openSoon = (i) => p.waitForFunction((i) => window.__dbg.state().openIndex === i, i, { timeout: 8000 }).catch(() => {});
+    const au = () => p.evaluate(() => { const s = window.__dbg.state(); return { open: s.openIndex, playing: s.playing, kind: s.playingKind, expanded: s.expanded, btns: window.__dbg.panel.buttons.map((b) => b.id) }; });
+    // without auto-play: a tour step opens silently, with a Listen button on the prompt
+    await send({ tour: true, tourDot: 2, tourAt: Date.now() }, 1500);
+    await openSoon(1); await sleep(300);
+    let a = await au(); eq([a.open, a.playing], [1, false], 'no auto-play: silent'); ok(a.btns.includes('listen'), 'Listen on the prompt');
+    await send({ narrate: 2, narrateKind: 'notice', narrateAt: Date.now() }, 900);
+    await playingSoon('notice');
+    a = await au(); eq([a.playing, a.kind], [true, 'notice'], 'teacher plays the prompt; the reading stays hidden');
+    ok(await p.evaluate(() => window.__dbg.noticeState().phase), 'still on the prompt');
+    await send({ narrate: 2, narrateKind: 'more', narrateAt: Date.now() + 5 }, 900);
+    await playingSoon('more');
+    a = await au(); eq([a.playing, a.kind, a.expanded], [true, 'more', true], 'teacher plays Tell me more: it opens and plays');
+    // with auto-play for the room
+    await send({ autoPlay: true, tourDot: 3, tourAt: Date.now() + 10 }, 1800);
+    await openSoon(2); await sleep(300);
+    await playingSoon('notice');
+    a = await au(); eq([a.open, a.playing, a.kind], [2, true, 'notice'], 'auto-play: the prompt starts by itself');
+    await send({ reveal: 3, revealAt: Date.now() + 20 }, 900);
+    await playingSoon('main');
+    a = await au(); eq([a.playing, a.kind], [true, 'main'], 'revealing the reading starts its recording');
+    await send({ autoPlay: null, access: { h2: 'a' }, tourDot: 4, tourAt: Date.now() + 30 }, 1800);
+    await openSoon(3); await sleep(300);
+    await playingSoon('notice');
+    a = await au(); eq([a.open, a.playing, a.kind], [3, true, 'notice'], 'auto-play for just this headset works too');
+    await send({ access: null, tourDot: 5, tourAt: Date.now() + 40 }, 1800);
+    await openSoon(4); await sleep(300);
+    a = await au(); eq([a.open, a.playing], [4, false], 'turned off: silent again');
+    await p.close();
+  });
+
   test('freeze everyone, and pause one headset by its number', async () => {
     const p = await page({ xr: true });
     await ready(p, '?headset=2');

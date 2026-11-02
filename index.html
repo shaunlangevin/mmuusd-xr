@@ -44,7 +44,7 @@
   #tracker button.cur { outline: 3px solid #fff3d6; outline-offset: 1px; }
   #tracker button:disabled { opacity: 0.35; border-style: dashed; }
   button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #fff3d6; outline-offset: 2px; }
-  #acc-row .seg button { font-size: 14px; padding: 9px 6px; }
+  #acc-row .seg { flex-wrap: wrap; } #acc-row .seg button { font-size: 14px; padding: 9px 6px; flex: 1 1 40%; }
   #btn-text { margin-top: 12px; width: 100%; font-size: 15px; padding: 9px 12px; background: none; }
   #textview { position: fixed; inset: 0; z-index: 40; background: rgba(10,9,8,0.96); overflow: auto; padding: 24px 16px 60px; }
   #textview .inner { max-width: 760px; margin: 0 auto; }
@@ -127,7 +127,7 @@
       <div class="row"><span id="lbl-clues"></span><div class="seg"><button data-set="clues:on"></button><button data-set="clues:off"></button></div></div>
       <div class="row"><span id="lbl-mode"></span><div class="seg"><button data-set="mode:walk"></button><button data-set="mode:seated"></button></div></div>
     </div>
-    <div class="row" id="acc-row" style="margin-top:10px"><span id="lbl-acc"></span><div class="seg"><button data-acc="big" aria-pressed="false"></button><button data-acc="read" aria-pressed="false"></button><button data-acc="calm" aria-pressed="false"></button></div><div id="acc-help" class="note"></div></div>
+    <div class="row" id="acc-row" style="margin-top:10px"><span id="lbl-acc"></span><div class="seg"><button data-acc="big" aria-pressed="false"></button><button data-acc="read" aria-pressed="false"></button><button data-acc="calm" aria-pressed="false"></button><button data-acc="auto" aria-pressed="false"></button></div><div id="acc-help" class="note"></div></div>
     <button id="btn-text"></button>
     <div id="headset-row" class="row" hidden><span id="lbl-headset"></span><div id="headset-seg"></div><div id="headset-help" class="note"></div></div>
     <div id="status"></div>

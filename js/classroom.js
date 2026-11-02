@@ -59,15 +59,18 @@ export function clean(r, now) {
   const fresh = (at, max) => typeof at === 'number' && now - at < max;
   const dotNum = (v) => Number.isInteger(v) && v >= 1 && v <= 20;
   bool('moveWindows'); bool('notice'); bool('practice'); bool('moveStone');
-  bool('bigText'); bool('readAloud'); bool('calm');   // supports for every headset in the room
-  // supports for one headset: { h3: 'br' } → { 3: 'br' }  (b = bigger text, r = read to me, c = calm; sticker numbers, not students)
+  bool('bigText'); bool('readAloud'); bool('calm'); bool('autoPlay');   // supports for every headset in the room
+  // supports for one headset: { h3: 'br' } → { 3: 'br' }  (b = bigger text, r = read to me, c = calm, a = auto-play; sticker numbers, not students)
   out.access = {};
   if (r.access && typeof r.access === 'object') {
-    for (const [k, v] of Object.entries(r.access)) { const m = /^h(1?[0-9])$/.exec(k); if (m && typeof v === 'string' && /^[brc]{1,3}$/.test(v)) out.access[+m[1]] = v; }
+    for (const [k, v] of Object.entries(r.access)) { const m = /^h(1?[0-9])$/.exec(k); if (m && typeof v === 'string' && /^[brca]{1,4}$/.test(v)) out.access[+m[1]] = v; }
   }
   if (dotNum(r.reveal) && fresh(r.revealAt, TOUR_MAX_MS)) { out.reveal = r.reveal; out.revealAt = r.revealAt; }
   if (r.tour === true && dotNum(r.tourDot) && fresh(r.tourAt, TOUR_MAX_MS)) { out.tour = true; out.tourDot = r.tourDot; out.tourAt = r.tourAt; }
-  if (dotNum(r.narrate) && fresh(r.narrateAt, NARRATE_MAX_MS)) { out.narrate = r.narrate; out.narrateAt = r.narrateAt; }
+  if (dotNum(r.narrate) && fresh(r.narrateAt, NARRATE_MAX_MS)) {
+    out.narrate = r.narrate; out.narrateAt = r.narrateAt;
+    out.narrateKind = ['notice', 'main', 'more'].includes(r.narrateKind) ? r.narrateKind : 'main';   // which recording: prompt, reading or Tell me more
+  }
   // per-headset pause: { h0: time, h11: time } → [0, 11]  (numbers on the headsets' stickers, not students)
   out.paused = [];
   if (r.paused && typeof r.paused === 'object') {

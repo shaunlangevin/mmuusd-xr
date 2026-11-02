@@ -25,6 +25,7 @@
         "tourAt":      { ".validate": "newData.isNumber() && newData.val() <= now" },
         "narrate":     { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
         "narrateAt":   { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "narrateKind": { ".validate": "newData.isString() && newData.val().matches(/^(notice|main|more)$/)" },
         "moveWindows": { ".validate": "newData.isBoolean()" },
         "notice":      { ".validate": "newData.isBoolean()" },
         "practice":    { ".validate": "newData.isBoolean()" },
@@ -34,9 +35,10 @@
         "bigText":     { ".validate": "newData.isBoolean()" },
         "readAloud":   { ".validate": "newData.isBoolean()" },
         "calm":        { ".validate": "newData.isBoolean()" },
+        "autoPlay":    { ".validate": "newData.isBoolean()" },
         "access": {
           ".validate": "newData.hasChildren()",
-          "$h":        { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isString() && newData.val().matches(/^[brc]{1,3}$/)" }
+          "$h":        { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isString() && newData.val().matches(/^[brca]{1,4}$/)" }
         },
         "paused": {
           ".validate": "newData.hasChildren()",

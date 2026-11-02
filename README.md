@@ -38,7 +38,7 @@ All settings:
 - `size=life|table`
 - `lock=1`
 - `notice=on|off`, `practice=on|off`, `move=off` (hides the Move button)
-- supports: `text=big`, `read=on`, `calm=on`
+- supports: `text=big`, `read=on`, `calm=on`, `autoplay=on`
 - `kit=<kit id>` and `exhibit=<folder name>`
 
 ## iPad and iPhone
@@ -71,6 +71,7 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
 - **Supports (UDL):** three supports a student can turn on themselves (start screen, or Options in the headset), or that the teacher can turn on for the whole room (Set up → Settings) or quietly for one headset (Teach → Supports for one headset):
   - **Bigger text:** reading panels and menus about 30% larger (on a Chromebook, bigger text on the page).
   - **Read to me:** a **Read to me** button reads the open panel aloud, including the *Look closely* prompts, using the device's built-in voice. Panels that have a recorded clip keep their **Listen** button instead. If a device has no built-in voice for the language, the button doesn't appear (`?debug=1` shows how many voices a headset has).
+  - **Auto-play:** recordings start by themselves: the *Look closely* prompt when a dot opens, the reading when it appears, Tell me more when it's opened.
   - **Calm mode:** no pulsing, bouncing or flashing; slower turns and gentler panel movement. It also switches on by itself on a device set to "reduce motion."
 - **Chromebook and iPad accessibility:** the numbered dots along the bottom are buttons, so students can use Tab and Enter (or a screen reader or switch) instead of clicking on the 3D stone. Number keys 1–9 open a dot, and Esc closes it. **Read it all as text** on the start screen shows every dot's reading on one plain page (hidden in Detective mode, because it would give away the clues).
 
@@ -79,7 +80,7 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
 `teacher.html` lets approved staff (Shaun and Mike) control every headset in a room from a Chromebook or phone. It has two tabs: **Set up** (opens first: quick setups, today's artifact, a before-class checklist, settings, the headset link and the safety check) and **Teach** (during the lesson: freeze everyone, the guided tour, and pausing one headset, with a status strip showing what students are seeing). It lets you:
 
 - freeze screens with preset messages, or pause one headset by its number
-- run a **guided tour**: Start, ◀ Previous, Next ▶ or pick a step, play the narration on every headset, End tour
+- run a **guided tour**: Start, ◀ Previous, Next ▶ or pick a step, End tour. The tour card shows the step's script (the *Look closely* prompt, the reading with its Think about it question, and Tell me more) with an English/Español view switch, and a ▶ button for each recording: **Play prompt**, **Play narration** and **Play Tell me more**
 - send everyone to a dot
 - switch language, Detective mode, progress, seated/walking, size, the classroom lock, and whether students can move reading panels
 

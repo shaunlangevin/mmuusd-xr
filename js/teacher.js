@@ -34,9 +34,11 @@ const SETTINGS = [
   { key: 'bigText', label: 'Bigger text', desc: 'Reading panels and menus about 30% larger', opts: ONOFF, def: false },
   { key: 'readAloud', label: 'Read to me', desc: 'Adds a Read to me button that reads panels aloud with the headset’s built-in voice (for text that has no recording)', opts: ONOFF, def: false },
   { key: 'calm', label: 'Calm mode', desc: 'No pulsing, bouncing or quick movements; slower turns', opts: ONOFF, def: false },
+  { key: 'autoPlay', label: 'Auto-play', desc: 'Recordings start by themselves: the prompt when a dot opens, the reading when it appears, Tell me more when it opens', opts: ONOFF, def: false },
 ];
-// per-headset supports: stored as letters, e.g. access/h3 = "br" (b = bigger text, r = read to me, c = calm)
-const SUPPORTS = [['b', 'A+', 'Bigger text'], ['r', '🔊', 'Read to me'], ['c', 'Calm', 'Calm mode']];
+// per-headset supports: stored as letters, e.g. access/h3 = "br" (b = bigger text, r = read to me, c = calm, a = auto-play)
+const SUPPORTS = [['b', 'A+', 'Bigger text'], ['r', '🔊', 'Read to me'], ['c', 'Calm', 'Calm mode'], ['a', 'Auto', 'Auto-play']];
+const SUPPORT_KEYS = { b: 'bigText', r: 'readAloud', c: 'calm', a: 'autoPlay' };
 const SET_BY_KEY = Object.fromEntries(SETTINGS.filter((s) => s.key).map((s) => [s.key, s]));
 // one tap sets several options (each preset only touches the keys it lists)
 const PRESETS = [
@@ -241,10 +243,62 @@ async function start() {
   $('tourEnd').onclick = () => send({ tour: false, tourAt: fb.serverTimestamp() }, 'Tour ended; students explore freely');
   const revealedNow = () => tourOn() && current.reveal === current.tourDot && (current.revealAt || 0) >= (current.tourAt || 0);
   $('tourReveal').onclick = () => { if (tourOn()) send({ reveal: current.tourDot, revealAt: fb.serverTimestamp() }, `Reading shown for dot ${current.tourDot}`); };
-  $('narrate').onclick = () => {
-    const n = tourOn() ? current.tourDot : current.dot;
-    if (n) send({ narrate: n, narrateAt: fb.serverTimestamp() }, `Narration playing for dot ${n}`);
+  // the dot the script shows: the tour step, or the dot last sent to everyone (for 10 minutes)
+  const shownDot = () => (tourOn() ? current.tourDot : Number.isInteger(current.dot) && Date.now() - (current.dotAt || 0) < 10 * 60e3 ? current.dot : null);
+  const playPart = (kind, label) => {
+    const n = shownDot();
+    if (n) send({ narrate: n, narrateKind: kind, narrateAt: fb.serverTimestamp() }, `${label} playing for dot ${n}`);
   };
+  $('narrate').onclick = () => playPart('main', 'Narration');
+  $('playNotice').onclick = () => playPart('notice', 'Prompt');
+  $('playMore').onclick = () => playPart('more', 'Tell me more');
+
+  // ── the script: what students see and hear for the shown dot ──
+  let scriptLang = 'en';
+  document.querySelectorAll('[data-sl]').forEach((b) => { b.onclick = () => { scriptLang = b.dataset.sl; render(); }; });
+  const clipCache = {};   // does a recording exist? (asked once per file)
+  function clipExists(n, kind, lang) {
+    const name = String(n).padStart(2, '0') + (kind === 'main' ? '' : '-' + kind);
+    const url = `exhibits/${exhibit.id}/audio/${lang}/${name}.mp3`;
+    if (!(url in clipCache)) { clipCache[url] = null; fetch(url, { method: 'HEAD', cache: 'no-cache' }).then((r) => { clipCache[url] = r.ok; render(); }).catch(() => { clipCache[url] = false; render(); }); }
+    return clipCache[url];
+  }
+  const T = (o) => (o == null ? '' : typeof o === 'string' ? o : o[scriptLang] ?? o.en ?? '');
+  const STEMS = { en: 'I notice… · I think it might be… because…', es: 'Yo noto… · Creo que podría ser… porque…' };
+  function renderScript(noticeOn) {
+    const n = exhibit ? shownDot() : null, d = n && exhibit.dots[n - 1];
+    $('script').hidden = !d; $('scriptEmpty').hidden = !!d;
+    if (!d) return;
+    const on = tourOn(), hl = eff('lang'), revealed = revealedNow();
+    $('scriptTitle').textContent = `Dot ${n}: ${T(d.title)}`;
+    document.querySelectorAll('[data-sl]').forEach((b) => b.classList.toggle('sel', b.dataset.sl === scriptLang));
+    $('scriptNote').textContent = hl !== scriptLang ? `Headsets are in ${hl === 'es' ? 'Spanish' : 'English'}, so students see and hear the ${hl === 'es' ? 'Spanish' : 'English'} version.` : '';
+    // prompt
+    const hasNotice = noticeOn && !!d.notice;
+    $('partNotice').hidden = !hasNotice;
+    $('txtNotice').textContent = T(d.notice); $('txtStems').textContent = STEMS[scriptLang] || STEMS.en;
+    const promptNow = on && hasNotice && !revealed;
+    $('tagNotice').textContent = promptNow ? 'Students see this now' : !on && hasNotice ? 'Each student sees this first' : '';
+    $('tagMain').textContent = on && (!hasNotice || revealed) ? 'Students see this now' : !on && hasNotice ? 'After Show me' : '';
+    // reading
+    const main = $('txtMain'); main.innerHTML = '';
+    main.append(el('p', { textContent: T(d.text) }));
+    if (d.facts) { const dl = el('dl'); d.facts.forEach((f) => dl.append(el('dt', { textContent: T(f.k) }), el('dd', { textContent: T(f.v) }))); main.append(dl); }
+    if (d.law) main.append(el('p', { className: 'plain' }, el('b', { textContent: scriptLang === 'es' ? 'En palabras sencillas: ' : 'In plain words: ' }), T(d.law.plain)));
+    if (d.think) main.append(el('p', { className: 'think' }, el('b', { textContent: scriptLang === 'es' ? 'Piensa: ' : 'Think about it: ' }), T(d.think)));
+    // Tell me more
+    const hasMore = !!(d.more || d.law?.original);
+    $('partMore').hidden = !hasMore;
+    const more = $('txtMore'); more.innerHTML = '';
+    if (d.more) more.append(el('p', { textContent: T(d.more) }));
+    if (d.law?.original) more.append(el('p', { className: 'orig', textContent: `“${T(d.law.original)}” (${T(d.law.source)})` }));
+    // play buttons, labelled with whether a recording exists in the headsets' language
+    for (const [id, kind, show] of [['playNotice', 'notice', hasNotice], ['narrate', 'main', true], ['playMore', 'more', hasMore]]) {
+      const ok = show ? clipExists(n, kind, hl) : false;
+      $(id).disabled = ok === false;
+      $(id).title = ok === false ? `No ${hl === 'es' ? 'Spanish' : 'English'} recording for this part yet` : '';
+    }
+  }
 
   // ── headsets: groups + pause tiles ──
   const PAUSE_MAX = 2 * 3600e3;
@@ -277,7 +331,7 @@ async function start() {
     }
   }
   const accessMap = () => { const a = current.access && typeof current.access === 'object' ? current.access : {};
-    return Object.fromEntries(Object.entries(a).filter(([k, v]) => /^h1?[0-9]$/.test(k) && typeof v === 'string' && /^[brc]{1,3}$/.test(v))); };
+    return Object.fromEntries(Object.entries(a).filter(([k, v]) => /^h1?[0-9]$/.test(k) && typeof v === 'string' && /^[brca]{1,4}$/.test(v))); };
   function toggleSupport(i, letter, name) {
     const cur = accessMap()['h' + i] || '', on = cur.includes(letter);
     const next = SUPPORTS.map(([l]) => l).filter((l) => (l === letter ? !on : cur.includes(l))).join('');
@@ -306,7 +360,7 @@ async function start() {
       if (noticeOn) revealedNow() ? pill('Reading shown') : pill('Reading hidden: students are noticing', 'warn');
     } else pill('Tour off: exploring freely');
     if (pausedList.length) pill(`Paused: headset${pausedList.length > 1 ? 's' : ''} ${pausedList.join(', ')}`, 'warn');
-    const roomSup = SUPPORTS.filter(([l]) => eff({ b: 'bigText', r: 'readAloud', c: 'calm' }[l]) === true).map(([, , name]) => name);
+    const roomSup = SUPPORTS.filter(([l]) => eff(SUPPORT_KEYS[l]) === true).map(([, , name]) => name);
     if (roomSup.length) pill(`Supports for everyone: ${roomSup.join(', ')}`);
     const hsSup = Object.entries(accessMap()).map(([h, v]) => `${h.slice(1)} (${SUPPORTS.filter(([l]) => v.includes(l)).map(([, short]) => short).join(' ')})`);
     if (hsSup.length) pill(`Supports: headset ${hsSup.join(', ')}`);
@@ -323,12 +377,10 @@ async function start() {
     $('tourTitle').textContent = on ? dotTitle(step) : '';
     $('dotsTitle').textContent = on ? 'Jump to a step:' : 'Send everyone to a dot:';
     document.querySelectorAll('#dots button').forEach((b) => { const d = +b.dataset.dot; b.classList.toggle('cur', on && d === step); b.classList.toggle('done', on && d < step); });
-    $('tourReveal').hidden = !on || !noticeOn;
+    $('tourReveal').hidden = !on || !noticeOn || !exhibit?.dots[step - 1]?.notice;
     $('tourReveal').disabled = revealedNow();
     $('tourReveal').textContent = revealedNow() ? 'Reading shown ✓' : 'Reveal reading';
-    const narr = on ? step : current.dot;
-    $('narrate').disabled = !narr;
-    $('narrate').textContent = narr ? `▶ Play narration (dot ${narr})` : '▶ Play narration';
+    renderScript(noticeOn);
     $('tourNote').textContent = !on ? 'Tap a number to open that dot on every headset.'
       : noticeOn && !revealedNow() ? `Students are looking at dot ${step} and talking. Reveal the reading when they’re ready.`
         : step < n ? 'The reading is showing. Press ▶ for the next dot.' : 'Last dot. End the tour when you’re ready.';
@@ -384,7 +436,8 @@ async function start() {
     line(await expectFail(fb.update(me, { tourDot: 0, tourAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Out-of-range tour steps are rejected');
     line(await expectFail(fb.update(me, { 'paused/student-name': fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Only headset numbers can be paused (no names)');
     line(await expectFail(fb.update(me, { 'paused/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Pauses can’t carry text');
-    line(await expectFail(fb.update(me, { 'access/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Supports only accept the three support letters (no text)');
+    line(await expectFail(fb.update(me, { 'access/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Supports only accept the four support letters (no text)');
+    line(await expectFail(fb.update(me, { narrate: 1, narrateKind: 'everything', narrateAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Only the three recording types can be played');
     line(await expectFail(fb.update(me, { 'access/student-name': 'b', updatedAt: fb.serverTimestamp() })), 'Supports are only for headset numbers (no names)');
     line(await expectOk(fb.update(me, { updatedAt: fb.serverTimestamp() })), 'Your account can send normal commands');
   };

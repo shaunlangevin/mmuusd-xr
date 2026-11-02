@@ -50,7 +50,10 @@ export default (test) => {
     ok(await p.isVisible('#tourReveal'), 'Reveal reading shows during a tour (Notice first is on by default)');
     await p.click('#tourReveal'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { reveal: 1, revealAt: 'TS' }], 'Reveal');
     await p.click('#tourNext'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 2, tourAt: 'TS' }], 'Next step');
-    await p.click('#narrate'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { narrate: 2, narrateAt: 'TS' }], 'Play narration');
+    ok(await p.isVisible('#script'), 'the script shows for the current step');
+    ok((await p.textContent('#txtMain')).length > 40, 'with the reading text');
+    await p.click('#narrate'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { narrate: 2, narrateKind: 'main', narrateAt: 'TS' }], 'Play narration');
+    await p.click('#playNotice'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { narrate: 2, narrateKind: 'notice', narrateAt: 'TS' }], 'Play prompt');
     await p.click('#tourEnd'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { tour: false, tourAt: 'TS' }], 'End tour');
     await p.click('#headsets button[data-hs="4"]'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { 'paused/h4': 'TS' }], 'Pause headset 4');
     await p.click('#headsets button[data-hs="4"]'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { 'paused/h4': null }], 'Resume headset 4');
@@ -59,6 +62,30 @@ export default (test) => {
     eq(norm(await last(p)), ['rooms/south', { 'access/h1': 'bc' }], 'Bigger text + Calm for headset 1');
     ok((await p.textContent('#strip')).includes('headset 1 (A+ Calm)'), 'status strip lists supports');
     await p.click('#clearSupports'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { 'access/h1': null }], 'Clear all supports');
+    await p.close();
+  });
+
+  test('Teach tab script: prompt, reading, Tell me more, language and recordings', async () => {
+    const p = await signedIn();
+    await p.click('#tabTeach'); await sleep(300);
+    ok(await p.isVisible('#scriptEmpty'), 'empty until a step or dot is chosen');
+    await p.click('#tourStart'); await sleep(300);
+    await p.click('#dots button[data-dot="2"]'); await sleep(800);
+    eq(await p.textContent('#scriptTitle'), 'Dot 2: Rivers, farms and rules', 'title');
+    ok((await p.textContent('#txtNotice')).startsWith("You can't read this writing yet"), 'prompt text');
+    eq(await p.textContent('#tagNotice'), 'Students see this now', 'before Reveal, the prompt is what students see');
+    ok((await p.textContent('#txtMain')).includes('Think about it:'), 'Think about it is shown');
+    ok((await p.textContent('#txtMore')).includes('Law 48'), 'Tell me more text');
+    ok(!(await p.$eval('#playNotice', (b) => b.disabled)) && !(await p.$eval('#playMore', (b) => b.disabled)), 'recordings exist, so the buttons work');
+    await p.click('#tourReveal'); await sleep(300);
+    eq(await p.textContent('#tagMain'), 'Students see this now', 'after Reveal, the reading is');
+    await p.click('[data-sl="es"]'); await sleep(200);
+    ok((await p.textContent('#scriptTitle')).includes('Ríos, granjas y reglas'), 'Spanish view');
+    ok((await p.textContent('#scriptNote')).includes('Headsets are in English'), 'says the headsets are in English');
+    await p.click('#partMore summary'); await sleep(100);
+    await p.click('#playMore'); await sleep(200);
+    eq(norm(await last(p)), ['rooms/south', { narrate: 2, narrateKind: 'more', narrateAt: 'TS' }], 'Play Tell me more');
+    await p.click('#settings button[data-key="autoPlay"][data-val="true"]').catch(() => {});
     await p.close();
   });
 

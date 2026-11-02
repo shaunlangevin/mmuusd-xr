@@ -9,7 +9,7 @@
   - `freeze: "eyes"` plus the time it was sent
   - `tour: true`, `tourDot: 3` (guided tour step), `narrate: 3` (play that dot's recording), `moveWindows: false`
   - `paused: { h3: <time> }`, meaning headset **number 3** (the sticker on the device) is paused. These are device numbers, not students.
-  - Supports: `bigText`, `readAloud`, `calm` (true/false, for every headset in the room), and `access: { h3: "br" }`, meaning headset **number 3** shows Bigger text (`b`) and Read to me (`r`); `c` is Calm mode. Again, a device number, never a name. The teacher clears these at the end of class ("Clear all supports" or "Reset all to Default").
+  - Supports: `bigText`, `readAloud`, `calm`, `autoPlay` (true/false, for every headset in the room), and `access: { h3: "br" }`, meaning headset **number 3** shows Bigger text (`b`) and Read to me (`r`); `c` is Calm mode and `a` is Auto-play. Again, a device number, never a name. The teacher clears these at the end of class ("Clear all supports" or "Reset all to Default").
 - Each button press overwrites the record. No history, logs, or lists of devices or students are kept.
 
 ## What is NOT collected
@@ -29,7 +29,8 @@
   - "go to dot 1–20", guided tour step 1–20, "play narration" for dot 1–20
   - pause or unpause headset 0–19
   - whether students can move reading panels, Notice first on/off, Practice card on/off, Move button show/hide, "reveal the reading for dot 1–20"
-  - supports: Bigger text, Read to me, Calm mode, for every headset or for headset 0–19 (only the letters b, r, c)
+  - supports: Bigger text, Read to me, Calm mode, Auto-play, for every headset or for headset 0–19 (only the letters b, r, c, a)
+  - which recording to play for a dot: the prompt, the reading, or Tell me more (`narrateKind`)
   - four preset freeze messages: Eyes up, Wait for instructions, Take off headset, Time to finish
 - **No free text.** The database rules reject anything else, and the headsets also ignore any value not on their own allowed list.
 - **It can't** open websites, start the camera or microphone, or see what students see.

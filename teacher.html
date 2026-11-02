@@ -77,6 +77,19 @@
   #dots button { width: 42px; height: 42px; padding: 0; border-radius: 50%; border-color: var(--line); color: var(--dim); }
   #dots button.done { border-color: var(--gold); color: var(--ink); } #dots button.cur { background: var(--gold); border-color: var(--gold); color: #1a1612; }
   #tourEnd { margin-left: auto; border-color: var(--red); }
+  #script { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .scripthead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .scripthead b { font-size: 17px; } #scriptLang button { padding: 5px 11px; font-size: 13px; }
+  .part { background: #1f1a15; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-top: 10px; }
+  .part h4 { margin: 0 0 6px; font-size: 13px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.06em; display: inline-flex; gap: 8px; align-items: center; }
+  .part p { margin: 0 0 8px; line-height: 1.5; font-size: 15px; } .part .row { margin-top: 6px; }
+  .part dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 14px; margin: 0 0 8px; } .part dt { color: var(--gold); font-weight: 700; } .part dd { margin: 0; }
+  .stems { color: var(--dim); font-style: italic; } .think { background: rgba(212,175,106,0.12); border-left: 3px solid var(--gold); padding: 6px 10px; border-radius: 0 8px 8px 0; }
+  .plain { color: #f6e2b4; } .orig { font-family: Georgia, serif; font-style: italic; color: #e7d3a6; }
+  .tag { font-size: 11px; text-transform: none; letter-spacing: 0; color: #10200f; background: var(--green); border-radius: 999px; padding: 2px 8px; }
+  .tag:empty { display: none; }
+  details.part summary { cursor: pointer; list-style: none; } details.part summary::-webkit-details-marker { display: none; }
+  details.part summary h4::after { content: ' ▸'; } details.part[open] summary h4::after { content: ' ▾'; }
   #headsets { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
   #headsets button { border-radius: 14px; padding: 12px 0; font-size: 20px; }
   #headsets button.sel { background: var(--red); border-color: var(--red); color: #1a0e0c; }
@@ -196,7 +209,7 @@
 
   <div class="card wide" id="tourCard">
     <h2>Guided tour <button class="q" data-help aria-label="What is this?">?</button></h2>
-    <p class="help" hidden>You lead everyone through the dots. Students can't open other dots or turn the stone, so everyone's stone stays lined up; they can still Listen, Hide and move panels (if allowed). With Notice first on, each step opens with a look-closely prompt: let them talk, then Reveal reading (playing the narration reveals it too). Walking students get an arrow to the dot; seated or table-size stones turn to face them. Headsets that join late jump to the current step.</p>
+    <p class="help" hidden>The script below shows what students read and hear at the current step: the Look closely prompt, the reading, and Tell me more. Each part has its own ▶ button that plays that recording on every headset (it's greyed out if there's no recording yet). With Auto-play on, the recordings start by themselves. You lead everyone through the dots. Students can't open other dots or turn the stone, so everyone's stone stays lined up; they can still Listen, Hide and move panels (if allowed). With Notice first on, each step opens with a look-closely prompt: let them talk, then Reveal reading (playing the narration reveals it too). Walking students get an arrow to the dot; seated or table-size stones turn to face them. Headsets that join late jump to the current step.</p>
     <div id="tourOff">
       <button class="big gold" id="tourStart">Start guided tour</button>
       <p class="note">The tour is off, so students explore on their own.</p>
@@ -210,12 +223,28 @@
     </div>
     <div id="dotsTitle"></div>
     <div id="dots"></div>
-    <div class="row">
-      <button class="big gold" id="tourReveal">Reveal reading</button>
-      <button class="big" id="narrate">▶ Play narration</button>
-      <button id="tourEnd" hidden>End tour</button>
-    </div>
     <p class="note" id="tourNote"></p>
+    <p class="note" id="scriptEmpty">Start the tour or tap a dot number to see what students will read and hear.</p>
+    <div id="script" hidden>
+      <div class="scripthead"><b id="scriptTitle"></b><span class="seg" id="scriptLang" aria-label="Script language (your view only)"><button data-sl="en">English</button><button data-sl="es">Español</button></span></div>
+      <p class="note" id="scriptNote"></p>
+      <section class="part" id="partNotice">
+        <h4>1 · Look closely (prompt) <span class="tag" id="tagNotice"></span></h4>
+        <p id="txtNotice"></p><p class="stems" id="txtStems"></p>
+        <div class="row"><button class="big" id="playNotice">▶ Play prompt</button></div>
+      </section>
+      <section class="part" id="partMain">
+        <h4>2 · Reading <span class="tag" id="tagMain"></span></h4>
+        <div id="txtMain"></div>
+        <div class="row"><button class="big gold" id="tourReveal">Reveal reading</button><button class="big" id="narrate">▶ Play narration</button></div>
+      </section>
+      <details class="part" id="partMore">
+        <summary><h4>3 · Tell me more</h4></summary>
+        <div id="txtMore"></div>
+        <div class="row"><button class="big" id="playMore">▶ Play Tell me more</button></div>
+      </details>
+    </div>
+    <div class="row" style="margin-top:12px"><button id="tourEnd" hidden>End tour</button></div>
   </div>
 
   <div class="card wide">

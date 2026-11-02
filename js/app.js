@@ -28,12 +28,12 @@ const S = {
 // the student (Options / start screen / link), the teacher for the whole room, or the teacher for this headset number.
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;   // the device's own "reduce motion" setting
 const ACC = {
-  student: { big: params.get('text') === 'big', read: flag(params.get('read'), false), calm: flag(params.get('calm'), reducedMotion) },
-  room: { big: false, read: false, calm: false },
-  headset: { big: false, read: false, calm: false },
+  student: { big: params.get('text') === 'big', read: flag(params.get('read'), false), calm: flag(params.get('calm'), reducedMotion), auto: flag(params.get('autoplay'), false) },
+  room: { big: false, read: false, calm: false, auto: false },
+  headset: { big: false, read: false, calm: false, auto: false },
 };
 const acc = (k) => ACC.student[k] || ACC.room[k] || ACC.headset[k];
-const accNow = () => ({ big: acc('big'), read: acc('read'), calm: acc('calm') });
+const accNow = () => ({ big: acc('big'), read: acc('read'), calm: acc('calm'), auto: acc('auto') });
 const BIG_ZOOM = 1.3;
 const t = () => UI[S.lang];
 const tracking = () => S.hunt || S.clues;
@@ -318,12 +318,16 @@ function toggleAudio(i, kind = 'main') {
 }
 function playClip(i, kind = 'main') {
   if (!hasAudio(i, kind)) return;
+  if (playingIndex === i && playingKind === kind && audio.currentTime < 1.5) return;   // already starting (auto-play + a teacher's ▶ together)
   audio.pause(); stopSpeech();
   audio.src = exPath(`audio/${S.lang}/${clipName(i, kind)}.mp3`);
   audio.currentTime = 0;
   playingIndex = i; playingKind = kind;
   audio.play().then(() => { playing = true; refreshInfo(); }).catch((e) => { playingIndex = -1; console.warn('audio', e); });
 }
+// Auto-play (a support): the right clip starts by itself when a prompt, a reading or Tell me more appears
+const autoOn = () => acc('auto') && !frozen;
+function autoPlay(i, kind) { if (autoOn() && typeof i === 'number' && openIndex === i && !hidden) playClip(i, kind); }
 function stopAudio() { audio.pause(); playing = false; playingIndex = -1; }
 audio.addEventListener('ended', () => { playing = false; playingIndex = -1; refreshInfo(); });
 
@@ -451,6 +455,7 @@ function openInfo(i) {
   if (ruler) ruler.visible = DOTS[i].id === 'height' || DOTS[i].extra === 'height';
   options.mesh.visible = false;
   refreshInfo(true);
+  if (!(playing && playingIndex === i)) autoPlay(i, noticePhase(i) ? 'notice' : 'main');
 }
 
 // Notice first: this dot shows its look-closely prompt until the reading is revealed
@@ -459,7 +464,7 @@ function showReading(i) {
   if (typeof i !== 'number' || readingShown.has(i)) return;
   readingShown.add(i); expanded = false; if (openIndex === i) stopSpeech();
   if (playingIndex === i && playingKind === 'notice') stopAudio();   // the prompt's clip ends when the reading appears
-  if (openIndex === i) refreshInfo(false);
+  if (openIndex === i) { refreshInfo(false); autoPlay(i, 'main'); }
 }
 function infoState() {
   const st = baseInfoState();
@@ -711,6 +716,7 @@ function showFinish() {
   finishShown = true; openIndex = 'finish'; expanded = false; stopSpeech();
   if (ruler) ruler.visible = false;
   refreshInfo(true);
+  if (autoOn() && hasAudio('finish')) { playingIndex = -1; playClip('finish'); }
 }
 
 // ── desktop card (HTML) ──
@@ -780,7 +786,11 @@ $('card-prev').onclick = () => openInfo(openIndex - 1);
 $('card-next').onclick = () => openInfo(openIndex + 1);
 $('card-listen').onclick = () => toggleAudio(openIndex, panelKind());
 $('card-read').onclick = () => toggleRead();
-$('card-moreBtn').onclick = () => { expanded = !expanded; refreshInfo(); };
+$('card-moreBtn').onclick = () => toggleMore();
+function toggleMore() {
+  expanded = !expanded; refreshInfo();
+  if (expanded && !(playing && playingIndex === openIndex)) autoPlay(openIndex, 'more');
+}
 $('card-showme').onclick = () => showReading(openIndex);
 
 // ═════════════ tracker / toolbar / options ═══════════════════════
@@ -843,7 +853,7 @@ function onOptions(id) {
   if (id === 'done') { options.mesh.visible = false; return; }
   const [k, v] = id.split(':');
   if (k === 'headset') setHeadset(+v);
-  else if (k === 'acc') { ACC.student[v] = !ACC.student[v]; applyAccess(); }
+  else if (k === 'acc') { ACC.student[v] = !ACC.student[v]; applyAccess(); if (v === 'auto' && !ACC.student.auto) stopAudio(); }
   else setSetting(k, BOOL_KEYS.includes(k) ? v === 'on' : v);
   options.show(S, optionsHeadset(), accNow());
 }
@@ -870,7 +880,7 @@ function setSetting(k, v) {
 }
 
 // ── supports: apply whatever is switched on (by the student, the room, or this headset) ──
-let accApplied = { big: false, read: false, calm: false };
+let accApplied = { big: false, read: false, calm: false, auto: false };
 function applyAccess() {
   const a = accNow(), was = accApplied; accApplied = a;
   document.body.classList.toggle('big-text', a.big);
@@ -1198,7 +1208,7 @@ function onPanelButton(id) {
   else if (id === 'prev') openInfo(openIndex - 1);
   else if (id === 'listen') toggleAudio(openIndex, panelKind());
   else if (id === 'read') toggleRead();
-  else if (id === 'more') { expanded = !expanded; refreshInfo(); }
+  else if (id === 'more') toggleMore();
 }
 
 function findTarget(c, frame) {
@@ -1501,15 +1511,21 @@ function applyRemote(r) {
   applyPause();
   if (r.narrate && r.narrateAt > lastNarrateAt) {   // narration also shows the reading
     lastNarrateAt = r.narrateAt;
-    if (!frozen && r.narrate <= DOTS.length) { showReading(r.narrate - 1); playClip(r.narrate - 1); }
+    const i = r.narrate - 1, kind = r.narrateKind || 'main';
+    if (!frozen && i < DOTS.length) {
+      if (openIndex !== i && !touring) openInfo(i);
+      if (kind === 'notice') playClip(i, 'notice');          // the prompt only: the reading stays hidden
+      else if (kind === 'more') { showReading(i); if (openIndex === i) { expanded = true; refreshInfo(false); } playClip(i, 'more'); }
+      else { showReading(i); playClip(i, 'main'); }
+    }
   }
 }
 // supports from the teacher: for the whole room (bigText/readAloud/calm), or for this headset's number (access)
 function syncRemoteAccess() {
   const r = lastRemote, mine = (HEADSET != null && r.access && r.access[HEADSET]) || '';
-  const room = { big: r.bigText === true, read: r.readAloud === true, calm: r.calm === true };
-  const hs = { big: mine.includes('b'), read: mine.includes('r'), calm: mine.includes('c') };
-  const same = (a, b) => a.big === b.big && a.read === b.read && a.calm === b.calm;
+  const room = { big: r.bigText === true, read: r.readAloud === true, calm: r.calm === true, auto: r.autoPlay === true };
+  const hs = { big: mine.includes('b'), read: mine.includes('r'), calm: mine.includes('c'), auto: mine.includes('a') };
+  const same = (a, b) => ['big', 'read', 'calm', 'auto'].every((k) => a[k] === b[k]);
   if (same(room, ACC.room) && same(hs, ACC.headset)) return;
   ACC.room = room; ACC.headset = hs; applyAccess();
 }
@@ -1675,7 +1691,7 @@ function refreshStartScreen() {
   $('lbl-acc').textContent = tt.optSupports; $('acc-help').textContent = tt.supportsHelp;
   const a = accNow();
   document.querySelectorAll('[data-acc]').forEach((b) => {
-    const k = b.dataset.acc; b.textContent = { big: tt.bigText, read: tt.readAloud, calm: tt.calm }[k];
+    const k = b.dataset.acc; b.textContent = { big: tt.bigText, read: tt.readAloud, calm: tt.calm, auto: tt.autoPlay }[k];
     b.classList.toggle('sel', a[k]); b.setAttribute('aria-pressed', String(a[k]));
   });
   $('btn-text').textContent = tt.textView; $('btn-text').hidden = S.clues;   // the text version would give away Detective clues
