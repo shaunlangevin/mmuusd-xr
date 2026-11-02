@@ -13,6 +13,17 @@
       "exhibits": [
         "hammurabi"
       ]
+    },
+    {
+      "id": "g5-egypt",
+      "title": {
+        "en": "Grade 5 · Egypt",
+        "es": "5.º grado · Egipto"
+      },
+      "unit": "Grade 5 Ancient Cultures, Bend 2: Egypt: Land of Pyramids",
+      "exhibits": [
+        "rosetta-stone"
+      ]
     }
   ],
   "exhibits": [
@@ -21,6 +32,13 @@
       "title": {
         "en": "The Code of Hammurabi",
         "es": "El Código de Hammurabi"
+      }
+    },
+    {
+      "id": "rosetta-stone",
+      "title": {
+        "en": "The Rosetta Stone",
+        "es": "La piedra de Rosetta"
       }
     }
   ]

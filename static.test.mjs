@@ -57,15 +57,15 @@ export default (test) => {
         for (const k of ['title', 'text', 'think', 'notice', 'clue']) need(both(d[k]), `${n}: "${k}" needs en and es`);
         for (const lang of ['en', 'es']) if (d.text?.[lang]) need(words(d.text[lang]) <= 95, `${n}: ${lang} text is ${words(d.text[lang])} words (keep it under about 90)`);
         (d.facts || []).forEach((f, j) => need(both(f.k) && both(f.v), `${n}: fact ${j + 1} needs en and es`));
-        if (d.law) { need(both(d.law.plain), `${n}: law.plain needs en and es`); if (d.law.original) need(both(d.law.source) && both(ex.lawCredit), `${n}: a quote needs law.source and the exhibit's lawCredit`); }
+        if (d.law) { need(both(d.law.plain), `${n}: law.plain needs en and es`); if (d.law.original) need(both(d.law.original) && both(d.law.source) && both(ex.lawCredit), `${n}: a quote needs en and es wording, law.source and the exhibit's lawCredit`); }
         if (d.more) need(both(d.more), `${n}: more needs en and es`);
         if (d.extra) need(['height', 'map', 'signs'].includes(d.extra), `${n}: extra "${d.extra}" isn't built (height, map or signs)`);
       });
       for (const lang of ['en', 'es']) {
         const a = path.join(dir, 'audio', lang);
         if (!fs.existsSync(a)) continue;
-        const allowed = new Set([...dots.map((_, i) => String(i + 1).padStart(2, '0') + '.mp3'), 'finish.mp3']);
-        for (const f of fs.readdirSync(a)) if (f.endsWith('.mp3')) need(allowed.has(f), `audio/${lang}/${f}: name it 01.mp3 … ${String(dots.length).padStart(2, '0')}.mp3 or finish.mp3`);
+        const allowed = new Set([...dots.flatMap((_, i) => ['', '-notice', '-more'].map((k) => String(i + 1).padStart(2, '0') + k + '.mp3')), 'finish.mp3']);
+        for (const f of fs.readdirSync(a)) if (f.endsWith('.mp3')) need(allowed.has(f), `audio/${lang}/${f}: name it 01.mp3 … ${String(dots.length).padStart(2, '0')}.mp3, 01-notice.mp3 …, 01-more.mp3 …, or finish.mp3`);
       }
       ok(!problems.length, problems.join('\n      '));
     });

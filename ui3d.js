@@ -126,7 +126,7 @@ export class InfoPanel extends CanvasPanel {
       if (d.more) { y += 14 * s; text(L(d.more, lang), `400 ${Math.round(31 * s)}px ${FONT}`, INK); }
       if (d.law && d.law.original) {
         label(t.original);
-        text('“' + d.law.original + '”', `italic 400 ${Math.round(28 * s)}px Georgia, "Times New Roman", serif`, '#e7d3a6');
+        text('“' + L(d.law.original, lang) + '”', `italic 400 ${Math.round(28 * s)}px Georgia, "Times New Roman", serif`, '#e7d3a6');
         text(`${t.lawCreditPrefix} ${L(d.law.source, lang)}, ${L(st.lawCredit, lang)}`, `400 ${Math.round(22 * s)}px ${FONT}`, DIM);
       }
       if (st.credit) { y += 10 * s; text(st.credit, `400 ${Math.round(20 * s)}px ${FONT}`, DIM); }
@@ -175,10 +175,11 @@ export class InfoPanel extends CanvasPanel {
     const read = st.canRead ? { id: 'read', label: st.speaking ? t.stop : t.readBtn, w: 1.3 } : null;
     if (st.notice) {
       if (st.canReveal) items.push({ id: 'reveal', label: t.showMe, w: 1.6 });
-      if (read) items.push(read);
+      if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : t.listen, w: 1.1 });
+      else if (read) items.push(read);
     } else {
       if (!st.single) items.push({ id: 'prev', label: t.back, w: 1 });
-      if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : t.listen, w: 1.1 });
+      if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : st.audioKind === 'more' ? t.listenMore : t.listen, w: st.audioKind === 'more' && !st.playing ? 1.5 : 1.1 });
       else if (read) items.push(read);
       if (st.hasMore) items.push({ id: 'more', label: st.expanded ? t.less : t.more, w: 1.5 });
     }
