@@ -81,6 +81,11 @@
   #headsets button { border-radius: 14px; padding: 12px 0; font-size: 20px; }
   #headsets button.sel { background: var(--red); border-color: var(--red); color: #1a0e0c; }
   #headsets small { display: block; font-size: 11px; font-weight: 600; min-height: 1.2em; }
+  #supports { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 14px; }
+  .sup { display: flex; gap: 6px; align-items: center; background: #1f1a15; border: 1px solid var(--line); border-radius: 12px; padding: 6px 8px; }
+  .sup b { width: 28px; text-align: center; font-size: 18px; color: var(--gold); }
+  .sup button { flex: 1; padding: 7px 4px; font-size: 13px; border-color: var(--line); }
+  .sup button.sel { background: var(--green); border-color: var(--green); color: #10200f; }
 
   #toast { position: fixed; right: 16px; bottom: 16px; z-index: 5; max-width: calc(100% - 32px); background: #1f3a27; border: 1px solid var(--green); color: #cfeedd;
     padding: 10px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; transition: opacity 0.3s; }
@@ -92,6 +97,7 @@
     main { grid-template-columns: 1fr; padding: 12px 12px 80px; }
     #presets { grid-template-columns: 1fr 1fr; }
     #headsets { grid-template-columns: repeat(3, 1fr); }
+    #supports { grid-template-columns: 1fr 1fr; }
     #account { margin-left: 0; }
     .set { grid-template-columns: 1fr; }
   }
@@ -145,6 +151,7 @@
       <li><label><input type="checkbox"> Pick a Quick setup (or the settings below)</label></li>
       <li><label><input type="checkbox"> Move button: Hide, then place each stone on the X from the footprint</label></li>
       <li><label><input type="checkbox"> Practice card: On just before students start (if you're using it)</label></li>
+      <li><label><input type="checkbox"> Supports: turn on Bigger text, Read to me or Calm mode for any student who needs them (Teach tab)</label></li>
       <li><label><input type="checkbox"> After any update: run the safety check below</label></li>
     </ul>
     <p class="note">These boxes are just for you; they reset when the page reloads.</p>
@@ -215,6 +222,13 @@
     <h2>Pause one headset <button class="q" data-help aria-label="What is this?">?</button></h2>
     <p class="help" hidden>The number is the sticker on each headset. Tap to pause just that headset ("Your teacher paused this headset"); tap again to resume. Pauses end on their own after 2 hours.</p>
     <div id="headsets"></div>
+  </div>
+
+  <div class="card wide">
+    <h2>Supports for one headset <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden>Quietly turn on a support for the student using one headset, without changing anyone else's. <b>A+</b> = Bigger text, <b>🔊</b> = Read to me (a button that reads panels aloud with the headset's built-in voice), <b>Calm</b> = Calm mode (no pulsing or quick movements). Green means on. These stay on until you turn them off, so clear them at the end of class. Students can also turn supports on themselves on the start screen. Only the headset number is stored, never a name.</p>
+    <div id="supports"></div>
+    <p class="note"><button id="clearSupports">Clear all supports</button></p>
   </div>
 </main>
 

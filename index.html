@@ -12,7 +12,7 @@
   #app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   .box { background: var(--panel); border: 2px solid var(--gold); border-radius: 18px; }
   #overlay { position: fixed; left: 16px; top: 16px; width: min(430px, calc(100% - 32px)); padding: 20px 22px;
-    max-height: calc(100% - 32px); overflow: auto; }
+    max-height: calc(100% - 96px); overflow: auto; }   /* stops above the dot list at the bottom */
   .kit { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
   #overlay h1 { margin: 0 0 6px; font-size: 27px; }
   #subtitle { margin: 0 0 14px; color: var(--dim); font-size: 16px; line-height: 1.4; }
@@ -38,9 +38,34 @@
   #tracker { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; display: flex; gap: 6px; align-items: center;
     padding: 8px 14px; font-weight: 800; }
   #tracker span { margin-right: 6px; }
-  #tracker b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px;
-    border: 2px solid var(--gold); color: var(--dim); }
-  #tracker b.on { background: var(--green); border-color: var(--green); color: #10200f; }
+  #tracker button { width: 30px; height: 30px; padding: 0; border-radius: 50%; display: grid; place-items: center; font-size: 13px;
+    border: 2px solid var(--gold); color: var(--ink); background: rgba(212,175,106,0.12); }
+  #tracker button.on { background: var(--green); border-color: var(--green); color: #10200f; }
+  #tracker button.cur { outline: 3px solid #fff3d6; outline-offset: 1px; }
+  #tracker button:disabled { opacity: 0.35; border-style: dashed; }
+  button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #fff3d6; outline-offset: 2px; }
+  #acc-row .seg button { font-size: 14px; padding: 9px 6px; }
+  #btn-text { margin-top: 12px; width: 100%; font-size: 15px; padding: 9px 12px; background: none; }
+  #textview { position: fixed; inset: 0; z-index: 40; background: rgba(10,9,8,0.96); overflow: auto; padding: 24px 16px 60px; }
+  #textview .inner { max-width: 760px; margin: 0 auto; }
+  #textview header { display: flex; gap: 12px; align-items: center; justify-content: space-between; position: sticky; top: -24px; background: #0f0d0b; padding: 12px 0; }
+  #textview h1 { font-size: 24px; margin: 0; }
+  #textview article { border-top: 1px solid #4a3f33; padding: 14px 0; }
+  #textview h2 { color: var(--gold); font-size: 21px; margin: 0 0 8px; }
+  #textview p { line-height: 1.6; font-size: 18px; margin: 0 0 10px; }
+  #textview dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 17px; margin: 0 0 10px; }
+  #textview dt { font-weight: 800; color: var(--gold); } #textview dd { margin: 0; }
+  #textview .credit { font-size: 14px; color: var(--dim); }
+  /* Bigger text (Supports) */
+  body.big-text #card { width: min(600px, calc(100% - 32px)); }
+  body.big-text #card h2 { font-size: 31px; } body.big-text #card p { font-size: 22px; } body.big-text #card dl { font-size: 20px; }
+  body.big-text #card nav button { font-size: 19px; padding: 13px 14px; } body.big-text .label { font-size: 15px; }
+  body.big-text #overlay { width: min(520px, calc(100% - 32px)); font-size: 19px; } body.big-text #overlay h1 { font-size: 33px; }
+  body.big-text #subtitle { font-size: 19px; } body.big-text #clue-text { font-size: 23px; }
+  body.big-text #textview p { font-size: 23px; } body.big-text #textview h2 { font-size: 27px; } body.big-text #textview dl { font-size: 21px; }
+  body.big-text #tracker button { width: 40px; height: 40px; font-size: 17px; }
+  /* Calm mode: nothing slides or fades */
+  body.calm *, body.calm *::before, body.calm *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
   #clue { position: fixed; left: 50%; transform: translateX(-50%); bottom: 72px; width: min(560px, calc(100% - 32px));
     display: flex; gap: 14px; align-items: center; padding: 12px 16px; }
   #clue > div { flex: 1; } #clue-text { font-weight: 700; font-size: 18px; } #clue-help { font-size: 13px; color: var(--dim); margin-top: 2px; }
@@ -102,6 +127,8 @@
       <div class="row"><span id="lbl-clues"></span><div class="seg"><button data-set="clues:on"></button><button data-set="clues:off"></button></div></div>
       <div class="row"><span id="lbl-mode"></span><div class="seg"><button data-set="mode:walk"></button><button data-set="mode:seated"></button></div></div>
     </div>
+    <div class="row" id="acc-row" style="margin-top:10px"><span id="lbl-acc"></span><div class="seg"><button data-acc="big" aria-pressed="false"></button><button data-acc="read" aria-pressed="false"></button><button data-acc="calm" aria-pressed="false"></button></div><div id="acc-help" class="note"></div></div>
+    <button id="btn-text"></button>
     <div id="headset-row" class="row" hidden><span id="lbl-headset"></span><div id="headset-seg"></div><div id="headset-help" class="note"></div></div>
     <div id="status"></div>
     <div id="room-status" hidden></div>
@@ -109,7 +136,7 @@
   </section>
 
   <div id="help"></div>
-  <div id="tracker" class="box" hidden></div>
+  <nav id="tracker" class="box" hidden></nav>
   <div id="clue" class="box" hidden>
     <div><div class="label" id="clue-label"></div><div id="clue-text"></div><div id="clue-help"></div></div>
     <button id="clue-hint" class="primary"></button>
@@ -117,8 +144,8 @@
 
   <div id="freeze" hidden><div class="box"><div id="freeze-from" class="label"></div><div id="freeze-text"></div></div></div>
 
-  <aside id="card" class="box" hidden>
-    <header><div id="card-num">1</div><h2 id="card-title"></h2></header>
+  <aside id="card" class="box" hidden role="dialog" aria-labelledby="card-title">
+    <header><div id="card-num" aria-hidden="true">1</div><h2 id="card-title" tabindex="-1"></h2></header>
     <p id="card-body"></p>
     <dl id="card-facts" hidden></dl>
     <div id="card-law" hidden><div class="label" id="card-plain-label"></div><p id="card-plain"></p></div>
@@ -131,10 +158,15 @@
     <div class="label" id="card-think-label"></div>
     <p id="card-think"></p>
     <nav>
-      <button id="card-prev"></button><button id="card-listen" class="primary" hidden></button>
+      <button id="card-prev"></button><button id="card-listen" class="primary" hidden></button><button id="card-read" class="primary" hidden></button>
       <button id="card-showme" class="primary" hidden></button><button id="card-moreBtn"></button><button id="card-close" class="primary"></button><button id="card-next"></button>
     </nav>
   </aside>
+
+  <div id="textview" hidden role="dialog" aria-modal="true" aria-labelledby="tv-title"><div class="inner">
+    <header><h1 id="tv-title"></h1><div><button id="tv-read" class="primary" hidden></button> <button id="tv-close" class="primary"></button></div></header>
+    <div id="tv-body"></div>
+  </div></div>
 
   <script type="module" src="js/app.js"></script>
 </body>

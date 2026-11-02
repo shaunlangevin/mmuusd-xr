@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { UI, L } from './i18n.js';
 import { drawMap, drawSigns, loadCuneiformFont } from './extras.js';
-import { InfoPanel, ExtraPanel, Toolbar, Tracker, ClueCard, OptionsPanel, HintPanel, FreezePanel, HandleBar, ShowTab, markerTexture, labelPlane, arrowTexture } from './ui3d.js';
+import { InfoPanel, ExtraPanel, Toolbar, Tracker, ClueCard, OptionsPanel, HintPanel, FreezePanel, HandleBar, ShowTab, PracticeCard, markerTexture, labelPlane, arrowTexture } from './ui3d.js';
 import * as CFG from './firebase-config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -20,10 +20,24 @@ const S = {
   mode: params.get('mode') === 'seated' ? 'seated' : 'walk',
   size: params.get('size') === 'table' ? 'table' : 'life',
   lock: flag(params.get('lock'), false),
+  notice: flag(params.get('notice'), true),     // "Notice first": a look-closely prompt before each reading
+  practice: flag(params.get('practice'), false), // offer the "Practice" card (off unless the teacher turns it on)
+  moveStone: flag(params.get('move'), true),      // show the Move button (re-place the stone)
 };
+// Supports (UDL): Bigger text, Read to me, Calm mode. Any of three sources can turn one on:
+// the student (Options / start screen / link), the teacher for the whole room, or the teacher for this headset number.
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;   // the device's own "reduce motion" setting
+const ACC = {
+  student: { big: params.get('text') === 'big', read: flag(params.get('read'), false), calm: flag(params.get('calm'), reducedMotion) },
+  room: { big: false, read: false, calm: false },
+  headset: { big: false, read: false, calm: false },
+};
+const acc = (k) => ACC.student[k] || ACC.room[k] || ACC.headset[k];
+const accNow = () => ({ big: acc('big'), read: acc('read'), calm: acc('calm') });
+const BIG_ZOOM = 1.3;
 const t = () => UI[S.lang];
 const tracking = () => S.hunt || S.clues;
-const BOOL_KEYS = ['hunt', 'clues'];
+const BOOL_KEYS = ['hunt', 'clues', 'notice', 'practice'];
 
 // ═════════════ renderer / scene ═════════════════════════════════
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -100,6 +114,9 @@ const tourRing = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.78, 48),
   new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false }));
 tourRing.renderOrder = 6; tourRing.visible = false; scene.add(tourRing);
 const guide = new THREE.Group(); guide.visible = false; scene.add(guide);
+const practiceCard = new PracticeCard();   // "Practice" + a pinching hand; waits low and to the left of the student's view
+scene.add(practiceCard.mesh); practiceCard.mesh.renderOrder = 31;
+let practiceGoal = null;
 const guideArrow = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.16),
   new THREE.MeshBasicMaterial({ map: arrowTexture(), transparent: true, depthTest: false, depthWrite: false }));
 guideArrow.renderOrder = 40; guide.add(guideArrow);
@@ -119,6 +136,8 @@ let mode = 'desktop';             // 'desktop' | 'ar' | 'vr'
 let placing = false, needsLayout = false, xrFrames = 0, activeCtrl = null;
 let openIndex = -1, expanded = false;
 let hidden = false;            // reading panel collapsed to a small tab
+const readingShown = new Set();   // dots whose reading has been revealed (Notice first)
+let practice = null, practiceDone = false;   // practice run: {stage: hide|show|close}; nothing starts until the card is pinched
 let grab = null;               // a student is dragging the panel by its grab bar
 let placePref = null;          // where this student likes panels (set by dragging one; this visit only)
 let rigAng = -0.65;            // which side the open panel went to (negative = right of the dot)
@@ -137,8 +156,9 @@ const exPath = (f) => `exhibits/${EX.id}/${f}`;
 const clipName = (i) => (i === 'finish' ? 'finish' : String(i + 1).padStart(2, '0'));
 
 // ═════════════ exhibit loading ══════════════════════════════════
+// no-cache = always ask GitHub whether the file changed (cheap), so a new kit or edited text shows up right after an upload
 async function loadExhibit() {
-  const index = await (await fetch('exhibits/index.json')).json();
+  const index = await (await fetch('exhibits/index.json', { cache: 'no-cache' })).json();
   const known = (id) => (index.exhibits || []).some((e) => e.id === id);
   const kits = (index.kits || []).filter((k) => Array.isArray(k.exhibits) && k.exhibits.some(known));
   // kit: ?kit= link > default kit; artifact: ?exhibit= link > the kit's first artifact
@@ -148,7 +168,7 @@ async function loadExhibit() {
   if (!KIT && id) KIT = kits.find((k) => k.exhibits.includes(id)) || null;
   if (!KIT) KIT = kits.find((k) => k.id === index.defaultKit) || kits[0] || null;
   if (!id) id = (KIT && KIT.exhibits.find(known)) || index.default;
-  EX = await (await fetch(`exhibits/${id}/exhibit.json`)).json();
+  EX = await (await fetch(`exhibits/${id}/exhibit.json`, { cache: 'no-cache' })).json();
   EX.id = id; EX.index = index;
   DOTS = EX.dots;
   hasCuneiformFont = await loadCuneiformFont();
@@ -205,8 +225,10 @@ function computeAnchors() {
   for (const d of DOTS) {
     const a = THREE.MathUtils.degToRad(d.angle || 0), y = (d.h ?? 0.5) * H;
     const dir = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
-    raycaster.set(dir.clone().multiplyScalar(4).setY(y), dir.clone().negate()); raycaster.far = 5;
+    const side = new THREE.Vector3(dir.z, 0, -dir.x).multiplyScalar(d.x || 0);   // optional sideways shift (metres, + = right as you face the dot) for wide, flat faces
+    raycaster.set(dir.clone().multiplyScalar(4).add(side).setY(y), dir.clone().negate()); raycaster.far = 5;
     const hit = raycaster.intersectObject(model, true)[0];
+    d._hit = !!hit;
     if (hit) {
       d._p = hit.point.clone();
       d._n = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : dir.clone();
@@ -259,7 +281,8 @@ function buildRuler() {
 function setRulerLabels() {
   if (!ruler) return;
   ruler.userData.labels.forEach((l) => ruler.remove(l));
-  const a = labelPlane(t().stoneH, 0.42), b = labelPlane(t().you, 0.42);
+  const hm = +(model.userData.height || 0).toFixed(2);
+  const a = labelPlane(t().stoneH(hm), 0.42), b = labelPlane(t().you, 0.42);
   a.position.set(ruler.userData.x, model.userData.height + 0.08, ruler.userData.z);
   b.position.set(ruler.userData.x - 0.12, 1.4 + 0.08, ruler.userData.z + 0.12);
   ruler.add(a, b); ruler.userData.labels = [a, b];
@@ -289,7 +312,7 @@ function toggleAudio(i) {
 }
 function playClip(i) {
   if (!hasAudio(i)) return;
-  audio.pause();
+  audio.pause(); stopSpeech();
   audio.src = exPath(`audio/${S.lang}/${clipName(i)}.mp3`);
   audio.currentTime = 0;
   playingIndex = i;
@@ -297,6 +320,51 @@ function playClip(i) {
 }
 function stopAudio() { audio.pause(); playing = false; playingIndex = -1; }
 audio.addEventListener('ended', () => { playing = false; playingIndex = -1; refreshInfo(); });
+
+// ── Read to me: the device's own built-in voice reads the open panel (for text with no recording) ──
+// Nothing is recorded or sent by this app. On-device voices are preferred; some Chromebook voices are online
+// voices, which means the panel's text (exhibit text only, never anything about a student) goes to the voice service.
+const speech = typeof window.speechSynthesis !== 'undefined' ? window.speechSynthesis : null;
+let voices = [], speaking = false, speakGen = 0;
+function loadVoices() {
+  try { voices = speech ? speech.getVoices() : []; } catch { voices = []; }
+  const n = (l) => voices.filter((v) => (v.lang || '').toLowerCase().startsWith(l)).length;
+  dbg.speech = speech ? `${voices.length} voices (en ${n('en')}, es ${n('es')})` : 'not supported';
+  if (DEBUG) { const d = $('debug'); d.textContent = d.textContent.replace(/\nspeech:.*$/, '') + '\nspeech: ' + dbg.speech; }
+  if (openIndex !== -1) refreshInfo();
+}
+function voiceFor(lang) {
+  const m = voices.filter((v) => (v.lang || '').toLowerCase().startsWith(lang));
+  return m.find((v) => v.localService && /us|mx|419|es-es/i.test(v.lang)) || m.find((v) => v.localService) || m[0] || null;
+}
+const canSpeak = () => !!speech && !!voiceFor(S.lang);
+function speak(text) {
+  if (!canSpeak() || !text) return;
+  stopAudio(); stopSpeech();
+  const gen = ++speakGen, v = voiceFor(S.lang);
+  // one sentence at a time: some browsers stop long utterances part-way
+  const parts = String(text).match(/[^.!?¿¡…]+[.!?…]*["”»)]*\s*/g) || [text];
+  parts.forEach((p, i) => {
+    const u = new SpeechSynthesisUtterance(p.trim()); u.voice = v; u.lang = v.lang; u.rate = 0.95;
+    if (i === parts.length - 1) u.onend = u.onerror = () => { if (gen === speakGen) { speaking = false; refreshInfo(); syncTvRead(); } };
+    speech.speak(u);
+  });
+  speaking = true; refreshInfo();
+}
+function stopSpeech() { if (!speaking) return; speakGen++; speaking = false; try { speech.cancel(); } catch { /* fine */ } syncTvRead(); }
+function syncTvRead() { const b = $('tv-read'); if (b) b.textContent = speaking ? t().stop : t().readBtn; }
+// what "Read to me" says for the open panel
+function readText(st) {
+  const tt = t(), d = st.dot, Lg = (o) => L(o, S.lang), out = [];
+  if (st.notice) { out.push(tt.lookClosely + '.', Lg(d.notice), tt.stems.join(' ')); if (st.wait) out.push(tt.waitReveal); return out.join(' '); }
+  out.push(Lg(d.title) + '.', Lg(d.text));
+  (d.facts || []).forEach((f) => out.push(`${Lg(f.k)} ${Lg(f.v)}.`));
+  if (d.law) out.push(Lg(d.law.plain));
+  if (st.expanded && d.more) out.push(Lg(d.more));
+  if (d.think) out.push(`${tt.think.charAt(0)}${tt.think.slice(1).toLowerCase()}: ${Lg(d.think)}`);
+  return out.join(' ');
+}
+function toggleRead() { if (speaking) { stopSpeech(); refreshInfo(); } else speak(readText(infoState())); }
 
 // ═════════════ markers per frame ═════════════════════════════════
 function updateMarkers(time) {
@@ -311,16 +379,16 @@ function updateMarkers(time) {
     m.visible = show && (!clueOn() || revealed.has(i) || found.has(i));
     if (!m.visible) return;
     m.quaternion.copy(camera.quaternion);
-    const pop = m.userData.popAt ? Math.max(0, 1 - (time - m.userData.popAt) / 600) : 0;   // little bounce when revealed
+    const pop = m.userData.popAt && !calm() ? Math.max(0, 1 - (time - m.userData.popAt) / 600) : 0;   // little bounce when revealed (not in Calm mode)
     m.scale.setScalar(base * (m.userData.hover ? 1.25 : 1) * (openIndex === i ? 1.2 : 1) * (1 + 0.8 * Math.sin(pop * Math.PI)));
-    m.userData.halo.material.opacity = 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(time * 0.004 + i));
+    m.userData.halo.material.opacity = calm() ? 0.35 : 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(time * 0.004 + i));
   });
   if (ruler && ruler.visible) ruler.userData.labels.forEach((l) => l.quaternion.copy(camera.quaternion));
   // tour: pulsing ring around the current dot
   const tm = touring && markers[tourStep];
   tourRing.visible = !!(tm && tm.visible);
   if (tourRing.visible) {
-    const pulse = 0.5 + 0.5 * Math.sin(time * 0.006);
+    const pulse = calm() ? 0.5 : 0.5 + 0.5 * Math.sin(time * 0.006);   // Calm mode: a steady ring
     tourRing.position.copy(tm.position); tourRing.quaternion.copy(camera.quaternion);
     tourRing.scale.setScalar(tm.scale.x * (1.15 + 0.35 * pulse));
     tourRing.material.opacity = 0.45 + 0.5 * (1 - pulse);
@@ -335,6 +403,7 @@ function currentClue() { if (!clueOn()) return -1; for (let i = 0; i < DOTS.leng
 function reveal(i) {
   if (revealed.has(i)) return;
   revealed.add(i); markers[i].userData.popAt = performance.now();
+  if (mode === 'desktop') refreshTracker();
 }
 // is this ray pointing close to the current clue's spot (on the side facing the student)?
 function rayNearClue(ray) {
@@ -364,8 +433,9 @@ $('clue-hint').onclick = useHint;
 function openInfo(i) {
   const n = DOTS.length;
   if (pendingFinish && !touring) { pendingFinish = false; return showFinish(); }
+  if (openIndex === 'practice') closeInfo();
   i = ((i % n) + n) % n;
-  if (openIndex !== i) { if (playingIndex !== i) stopAudio(); expanded = false; }
+  if (openIndex !== i) { if (playingIndex !== i) stopAudio(); stopSpeech(); expanded = false; }
   openIndex = i; hidden = false;
   if (tracking() && !found.has(i)) {
     found.add(i); revealed.add(i); refreshMarkerLooks(); refreshTracker(); refreshClue();
@@ -376,7 +446,29 @@ function openInfo(i) {
   refreshInfo(true);
 }
 
+// Notice first: this dot shows its look-closely prompt until the reading is revealed
+const noticePhase = (i) => typeof i === 'number' && S.notice && !!DOTS[i]?.notice && !readingShown.has(i);
+function showReading(i) {
+  if (typeof i !== 'number' || readingShown.has(i)) return;
+  readingShown.add(i); expanded = false; if (openIndex === i) stopSpeech();
+  if (openIndex === i) refreshInfo(false);
+}
 function infoState() {
+  const st = baseInfoState();
+  st.speaking = speaking;
+  st.canRead = acc('read') && canSpeak() && openIndex !== 'practice' && (st.notice || !st.hasAudio);
+  return st;
+}
+function baseInfoState() {
+  if (openIndex === 'practice') {
+    const tt = t();
+    return { dot: { title: tt.practiceTitle, text: tt.practiceText }, lang: S.lang, badge: '\u2713', single: true,
+      noClose: !practice || practice.stage !== 'close', hasAudio: false, hasMore: false, expanded: false };
+  }
+  if (noticePhase(openIndex)) {
+    return { dot: DOTS[openIndex], index: openIndex, lang: S.lang, notice: true, single: true,
+      canReveal: !touring, wait: touring, noClose: touring && mode !== 'desktop', found: tracking() && found.has(openIndex) };
+  }
   if (openIndex === 'finish') {
     const f = EX.finish;
     return { dot: { title: f.title, text: f.text, think: f.think }, lang: S.lang, badge: '★', single: true, noClose: touring && mode !== 'desktop',
@@ -387,7 +479,7 @@ function infoState() {
     dot: d, index: openIndex, lang: S.lang, expanded, playing, found: tracking() && found.has(openIndex),
     single: clueOn() || touring, noClose: touring && mode !== 'desktop',   // in a tour, students use Hide instead of Close
     hasAudio: hasAudio(openIndex), hasMore: !!(d.more || (d.law && d.law.original)),
-    lawCredit: EX.lawCredit, credit: d.id === 'height' ? L(EX.model.credit, S.lang) : '',
+    lawCredit: EX.lawCredit, credit: (d.id === 'height' || d.extra === 'height') ? L(EX.model.credit, S.lang) : '',
   };
 }
 
@@ -411,6 +503,10 @@ function refreshInfo(reposition = false) {
 function setHidden(h) {
   if (openIndex === -1 || hidden === h) return;
   hidden = h; if (h && grab) endGrab();
+  if (practice && openIndex === 'practice') {
+    if (h && practice.stage === 'hide') { practice.stage = 'show'; hint.setText(t().practiceShow); }
+    else if (!h && practice.stage === 'show') { practice.stage = 'close'; hint.setText(t().practiceDone); }
+  }
   refreshInfo(false);
 }
 const rigOpen = () => openIndex !== -1 && mode !== 'desktop';
@@ -430,7 +526,7 @@ function extraCanvas(kind) {
 // The reading panel opens OFF TO THE SIDE of the dot (about 30–40°), so the stone stays in view.
 // Students can grab the bar above it and put it anywhere; later panels then open where they put
 // that one. The picture (map, signs) sits on the outer side, and the toolbar tucks underneath.
-const sizeOf = (p) => ({ w: p.mW, h: p.mW * p.usedH / p.canvas.width });
+const sizeOf = (p) => { const w = p.mW * (p.zoom || 1); return { w, h: w * p.usedH / p.canvas.width }; };
 const HANDLE_GAP = 0.025;
 function layoutRigChildren() {
   const ps = sizeOf(panel), outer = rigAng < 0 ? 1 : -1;   // +1: picture on the right
@@ -543,7 +639,7 @@ function followRig(dt) {
   rigAway = (dist > Math.max(1.8, (placePref?.dist || 0) + 0.6) || off) && !rigGoal ? rigAway + dt : 0;
   if (rigAway > 1.5) placeRig(openIndex !== 'finish' && markers[openIndex] ? markers[openIndex].position : null, false);
   if (rigGoal) {
-    rig.position.lerp(rigGoal, 1 - Math.exp(-dt * 5));
+    rig.position.lerp(rigGoal, 1 - Math.exp(-dt * (calm() ? 2.5 : 5)));
     rig.lookAt(C.x, rig.position.y, C.z);
     toolbarGoal = tuckGoal();
     if (rig.position.distanceTo(rigGoal) < 0.01) rigGoal = null;
@@ -589,17 +685,21 @@ function endGrab() {
 }
 
 function closeInfo() {
-  stopAudio();
+  if (openIndex === 'practice') { practice = null; hint.mesh.visible = false; }
+  stopAudio(); stopSpeech();
   openIndex = -1; expanded = false; hidden = false;
   if (grab) endGrab();
   panel.hide(); extra.mesh.visible = false; handle.mesh.visible = false; tab.mesh.visible = false;
+  const hadCard = !$('card').hidden;
   $('card').hidden = true; rigGoal = null;
+  if (hadCard && focusBack != null) { const i = focusBack; focusBack = null; setTimeout(() => document.querySelector(`#tracker button[data-dot="${i}"]`)?.focus(), 0); }
+  if (mode === 'desktop' && DOTS.length) refreshTracker();
   if (DOTS.length) refreshClue();
   if (ruler) ruler.visible = false;
   if (pendingFinish && !touring) { pendingFinish = false; showFinish(); }
 }
 function showFinish() {
-  finishShown = true; openIndex = 'finish'; expanded = false;
+  finishShown = true; openIndex = 'finish'; expanded = false; stopSpeech();
   if (ruler) ruler.visible = false;
   refreshInfo(true);
 }
@@ -608,6 +708,20 @@ function showFinish() {
 function showCard() {
   const st = infoState(), d = st.dot, tt = t();
   const card = $('card'); card.hidden = false;
+  $('card-showme').textContent = tt.showMe; $('card-showme').hidden = true;
+  if (st.notice) {   // Notice first: the prompt, then "Show me" (or wait for the teacher during a tour)
+    $('card-num').textContent = st.index + 1; $('card-num').classList.toggle('found', !!st.found);
+    $('card-title').textContent = tt.lookClosely;
+    $('card-body').textContent = L(d.notice, S.lang);
+    ['card-facts', 'card-law', 'card-extra', 'card-more', 'card-credit', 'card-listen', 'card-moreBtn', 'card-prev', 'card-next'].forEach((id) => { $(id).hidden = true; });
+    $('card-think-label').textContent = '';
+    $('card-think').textContent = tt.stems.join('  ') + (st.wait ? '  ' + tt.waitReveal : '');
+    $('card-showme').hidden = !st.canReveal;
+    $('card-read').hidden = !st.canRead; $('card-read').textContent = speaking ? tt.stop : tt.readBtn;
+    $('card-close').hidden = !!st.noClose; $('card-close').textContent = tt.close;
+    afterCard();
+    return;
+  }
   $('card-num').textContent = st.badge ?? st.index + 1;
   $('card-num').classList.toggle('found', !!st.found);
   $('card-title').textContent = L(d.title, S.lang);
@@ -633,34 +747,63 @@ function showCard() {
   $('card-think-label').textContent = tt.think;
   $('card-think').textContent = L(d.think, S.lang);
   $('card-listen').hidden = !st.hasAudio; $('card-listen').textContent = playing ? tt.stop : tt.listen;
+  $('card-read').hidden = !st.canRead || st.hasAudio; $('card-read').textContent = speaking ? tt.stop : tt.readBtn;
   $('card-moreBtn').hidden = !st.hasMore; $('card-moreBtn').textContent = st.expanded ? tt.less : tt.more;
   $('card-prev').hidden = $('card-next').hidden = !!st.single;
   $('card-close').hidden = !!st.noClose;
   $('card-prev').textContent = tt.back; $('card-next').textContent = tt.next; $('card-close').textContent = tt.close;
+  afterCard();
+}
+// keyboard / screen-reader users: move focus into the card when they opened it, and keep the dot list current
+let focusCard = false, focusBack = null;
+function afterCard() {
+  if (focusCard) { focusCard = false; $('card-title').focus(); }
+  refreshTracker();
+}
+function openFromKeyboard(i) {
+  if (!markers[i] || !selectable(i) || (clueOn() && !revealed.has(i) && !found.has(i))) return;
+  if (touring) tourPending = false;
+  focusCard = true; focusBack = i; openInfo(i);
 }
 $('card-close').onclick = closeInfo;
 $('card-prev').onclick = () => openInfo(openIndex - 1);
 $('card-next').onclick = () => openInfo(openIndex + 1);
 $('card-listen').onclick = () => toggleAudio(openIndex);
+$('card-read').onclick = () => toggleRead();
 $('card-moreBtn').onclick = () => { expanded = !expanded; refreshInfo(); };
+$('card-showme').onclick = () => showReading(openIndex);
 
 // ═════════════ tracker / toolbar / options ═══════════════════════
 function refreshTracker() {
   const n = DOTS.length;
   tracker.set(found, n, S.lang);
   tracker.mesh.visible = tracking();
-  const el = $('tracker');
-  el.hidden = !tracking() || mode !== 'desktop';
-  $('help').hidden = mode !== 'desktop' || !el.hidden;   // the tracker takes the help line's spot
+  // 2D page: the numbered dots double as an accessible list (keyboard, screen readers, switch access)
+  const el = $('tracker'), tt = t();
+  const hadFocus = el.contains(document.activeElement) ? document.activeElement.dataset.dot : null;
+  el.hidden = mode !== 'desktop' || !n;
+  el.setAttribute('aria-label', tt.dotsNav);
+  $('help').hidden = mode !== 'desktop' || !el.hidden;   // the dot list takes the help line's spot
   el.innerHTML = '';
-  const label = document.createElement('span'); label.textContent = t().found(found.size, n); el.append(label);
-  for (let i = 0; i < n; i++) { const b = document.createElement('b'); b.textContent = found.has(i) ? '✓' : i + 1; if (found.has(i)) b.className = 'on'; el.append(b); }
+  const label = document.createElement('span'); label.textContent = tracking() ? tt.found(found.size, n) : tt.dotsNav; el.append(label);
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement('button'), done = tracking() && found.has(i);
+    const hiddenDot = clueOn() && !revealed.has(i) && !found.has(i);
+    b.textContent = done ? '✓' : i + 1; b.dataset.dot = i;
+    if (done) b.classList.add('on');
+    if (openIndex === i) { b.classList.add('cur'); b.setAttribute('aria-current', 'true'); }
+    b.setAttribute('aria-label', hiddenDot ? tt.dotHidden(i + 1) : tt.dotName(i + 1, L(DOTS[i].title, S.lang)) + (done ? ' ✓' : ''));
+    b.disabled = hiddenDot || !selectable(i);
+    b.onclick = () => openFromKeyboard(i);
+    el.append(b);
+    if (hadFocus === String(i)) b.focus();
+  }
 }
 function refreshToolbar() {
   const items = ['left', 'right'];
-  if (touring) { /* teacher is leading: just turning */ }
-  else if (!S.lock) { items.push('move', 'options', 'exit'); }
-  else if (S.mode === 'walk' && S.size === 'life') items.push('move');
+  if (touring) { items.length = 0; }   // teacher is leading: no turning, so everyone's stone stays lined up
+  else if (!S.lock) { if (S.moveStone) items.push('move'); items.push('options', 'exit'); }
+  else if (S.moveStone && S.mode === 'walk' && S.size === 'life') items.push('move');
   toolbar.set(items, S.lang, classroomOn() && HEADSET != null ? String(HEADSET) : '');
 }
 
@@ -677,7 +820,7 @@ const optionsHeadset = () => (classroomOn() ? { n: HEADSET, groups: GROUPS.map((
 function openOptions() {
   if (touring) return;
   closeInfo();
-  options.show(S, optionsHeadset());
+  options.show(S, optionsHeadset(), accNow());
   const os = sizeOf(options);
   const spot = centerSpot(os.w / 2), k = spot.d / spot.pref, p = spot.p;
   options.mesh.scale.setScalar(k);
@@ -690,8 +833,9 @@ function onOptions(id) {
   if (id === 'done') { options.mesh.visible = false; return; }
   const [k, v] = id.split(':');
   if (k === 'headset') setHeadset(+v);
+  else if (k === 'acc') { ACC.student[v] = !ACC.student[v]; applyAccess(); }
   else setSetting(k, BOOL_KEYS.includes(k) ? v === 'on' : v);
-  options.show(S, optionsHeadset());
+  options.show(S, optionsHeadset(), accNow());
 }
 
 // One place where every setting change goes (Options menu, start screen, or later the teacher console)
@@ -699,7 +843,7 @@ function setSetting(k, v) {
   if (S[k] === v) return;
   S[k] = v;
   if (k === 'lang') {
-    stopAudio(); setRulerLabels(); refreshStartScreen(); refreshInfo(); if (placing) startPlacing(true);
+    stopAudio(); stopSpeech(); setRulerLabels(); refreshStartScreen(); refreshInfo(); if (placing) startPlacing(true);
   }
   if (k === 'hunt' || k === 'clues') { refreshMarkerLooks(); if (k === 'clues' && !touring) closeInfo(); }
   if (k === 'size') {
@@ -710,8 +854,27 @@ function setSetting(k, v) {
     if (S.mode === 'seated') placeSeated(); else if (mode === 'ar') placeOrRestore(); else layoutToolbar();
   }
   if (k === 'lock') refreshStartScreen();
+  if (k === 'notice' && openIndex !== -1) refreshInfo(false);
+  if (k === 'practice') { if (v) practiceDone = false; else if (practice) closeInfo(); }   // turning it on again offers it to the next student
   refreshToolbar(); refreshTracker(); refreshClue(); refreshStartScreen();
 }
+
+// ── supports: apply whatever is switched on (by the student, the room, or this headset) ──
+let accApplied = { big: false, read: false, calm: false };
+function applyAccess() {
+  const a = accNow(), was = accApplied; accApplied = a;
+  document.body.classList.toggle('big-text', a.big);
+  document.body.classList.toggle('calm', a.calm);
+  if (a.big !== was.big) {
+    const z = a.big ? BIG_ZOOM : 1;
+    for (const p of [panel, extra, handle, tab, options, hint, freezePanel]) p.setZoom(z);
+  }
+  if (!a.read && was.read) stopSpeech();
+  if (options.mesh.visible) options.show(S, optionsHeadset(), a);
+  if (openIndex !== -1) refreshInfo(a.big !== was.big);   // a bigger panel needs a new spot
+  refreshStartScreen();
+}
+const calm = () => acc('calm');
 
 // ═════════════ placement ════════════════════════════════════════
 function faceUser() {
@@ -783,7 +946,7 @@ function followToolbar(dt) {
     toolbar.mesh.scale.setScalar(1);
   }
   if (toolbarGoal) {
-    toolbar.mesh.position.lerp(toolbarGoal, 1 - Math.exp(-dt * 5));
+    toolbar.mesh.position.lerp(toolbarGoal, 1 - Math.exp(-dt * (calm() ? 2.5 : 5)));
     toolbar.mesh.lookAt(C);
     if (toolbar.mesh.position.distanceTo(toolbarGoal) < 0.01) toolbarGoal = null;
   }
@@ -795,48 +958,104 @@ function followToolbar(dt) {
 // Walking mode also remembers the spot (per exhibit and size), so next time the stone appears there.
 // Only a random reference code is kept in this browser; the headset itself stores the spot.
 let anchor = null, anchorLast = null, anchorWait = null, wantAnchor = null, anchorGen = 0;
+let anchorHandle = null, anchorLostAt = 0;   // saved-spot code for the current anchor; when it stopped being tracked
+// ── diagnostics (only with ?debug=1): what the headset is doing with anchors and recentring ──
+const DEBUG = params.get('debug') === '1';
+const dbg = { features: '?', anchor: 'none', tracked: '-', persist: '-', restore: '-', resets: 0, jumps: 0, shifts: 0, vis: '-', events: [] };
+function dlog(msg) {
+  if (!DEBUG) return;
+  dbg.events.push(`${(performance.now() / 1000).toFixed(0)}s ${msg}`); if (dbg.events.length > 7) dbg.events.shift();
+  console.log('[xr]', msg);
+  const pre = document.getElementById('debug'); if (pre) pre.textContent = debugLines().join('\n');
+}
+const debugLines = () => [
+  `mode ${mode} · features: ${dbg.features}`,
+  `anchor: ${dbg.anchor} · tracked: ${dbg.tracked}`,
+  `saved spot: ${dbg.persist} · restore: ${dbg.restore}`,
+  `resets ${dbg.resets} · jumps ${dbg.jumps} · shifts ${dbg.shifts} · visibility ${dbg.vis}`,
+  `speech: ${dbg.speech || '?'} · supports: ${Object.entries(accNow()).filter(([, v]) => v).map(([k]) => k).join(', ') || 'none'}`,
+  ...dbg.events,
+];
+let debugPanel = null, debugAt = 0;
+function updateDebugPanel(now) {
+  if (!DEBUG) return;
+  if (!debugPanel) {
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 440;
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    debugPanel = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5 * 440 / 1024), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+    debugPanel.renderOrder = 50; debugPanel.userData = { c, tex }; scene.add(debugPanel);
+  }
+  debugPanel.visible = renderer.xr.isPresenting;
+  if (!debugPanel.visible) return;
+  const C = camera.position, fwd = headForward(), right = new THREE.Vector3().crossVectors(fwd, UP).normalize();
+  debugPanel.position.copy(C).addScaledVector(fwd, 0.9).addScaledVector(right, 0.32).setY(C.y - 0.28);
+  debugPanel.lookAt(C);
+  if (now - debugAt < 400) return; debugAt = now;
+  const { c, tex } = debugPanel.userData, g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height); g.fillStyle = 'rgba(10,10,10,0.82)'; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = '#9ff59f'; g.font = '600 30px monospace'; g.textBaseline = 'top';
+  debugLines().forEach((l, i) => g.fillText(l.slice(0, 60), 18, 14 + i * 38));
+  tex.needsUpdate = true;
+}
 const spotKey = () => (EX ? `xr-spot:${EX.id}:${S.size}` : null);
 const readSpot = () => { try { return localStorage.getItem(spotKey()); } catch { return null; } };
 function yawOf(o) { return new THREE.Euler().setFromQuaternion(new THREE.Quaternion(o.x, o.y, o.z, o.w), 'YXZ').y; }
 function dropAnchor() {
   anchorGen++; wantAnchor = null;
   if (anchor) { try { anchor.delete(); } catch { /* already gone */ } }
-  anchor = null; anchorLast = null;
+  anchor = null; anchorLast = null; anchorHandle = null; anchorLostAt = 0;
 }
 async function makeAnchor(frame, opts) {
   wantAnchor = null;
   const ref = renderer.xr.getReferenceSpace();
-  if (mode !== 'ar' || !frame?.createAnchor || !ref || typeof XRRigidTransform === 'undefined') return;
+  if (mode !== 'ar' || !frame?.createAnchor || !ref || typeof XRRigidTransform === 'undefined') {
+    if (mode === 'ar') { dbg.anchor = 'NOT SUPPORTED'; dlog('createAnchor not available'); }
+    return;
+  }
   dropAnchor();
+  dbg.anchor = 'creating…';
   const gen = anchorGen, q = new THREE.Quaternion().setFromAxisAngle(UP, root.rotation.y), P = root.position;
   try {
     const a = await frame.createAnchor(new XRRigidTransform({ x: P.x, y: P.y, z: P.z }, { x: q.x, y: q.y, z: q.z, w: q.w }), ref);
     if (gen !== anchorGen) { a.delete(); return; }
-    anchor = a; anchorLast = null;
+    anchor = a; anchorLast = null; dbg.anchor = 'OK'; dlog('anchor created');
     if (opts.persist && a.requestPersistentHandle) {
       const key = spotKey(), old = readSpot();
-      const h = await a.requestPersistentHandle();
-      try { localStorage.setItem(key, h); } catch { /* fine: just not remembered */ }
-      if (old && old !== h) renderer.xr.getSession()?.deletePersistentAnchor?.(old).catch(() => {});
-    }
-  } catch (e) { console.warn('anchor not available', e); }
+      try {
+        const h = await a.requestPersistentHandle();
+        try { localStorage.setItem(key, h); } catch { /* fine: just not remembered */ }
+        if (gen === anchorGen) anchorHandle = h;
+        if (old && old !== h) renderer.xr.getSession()?.deletePersistentAnchor?.(old).catch(() => {});
+        dbg.persist = 'saved'; dlog('spot saved');
+      } catch (e) { dbg.persist = 'FAILED ' + (e.name || e); dlog('save failed: ' + (e.message || e)); }
+    } else if (opts.persist) { dbg.persist = 'not supported'; }
+  } catch (e) { dbg.anchor = 'FAILED ' + (e.name || e); dlog('anchor failed: ' + (e.message || e)); console.warn('anchor not available', e); }
 }
 // AR walking mode: put the stone back on this headset's saved spot, or ask the student to place it
 function placeOrRestore() {
   const h = readSpot(), session = renderer.xr.getSession();
+  if (mode === 'ar' && !session?.restorePersistentAnchor) dbg.restore = 'not supported';
+  else if (mode === 'ar' && !h) dbg.restore = 'nothing saved yet';
   if (mode !== 'ar' || S.mode !== 'walk' || !h || !session?.restorePersistentAnchor) return startPlacing();
+  restoreFrom(h, 0);
+}
+// bring the stone back from a saved spot (new visit, or the headset lost its anchor after sleeping)
+function restoreFrom(h, turnOffset, recovering = false) {
+  const session = renderer.xr.getSession();
   closeInfo(); options.mesh.visible = false; placing = false; reticle.visible = false;
-  dropAnchor();
+  if (recovering) { anchorGen++; anchor = null; anchorLast = null; anchorHandle = null; anchorLostAt = 0; }   // leave the lost anchor alone
+  else dropAnchor();
   root.visible = false;
   hint.setText(t().findingSpot); hint.mesh.visible = true;
   const gen = anchorGen;
-  anchorWait = { at: performance.now() };
+  anchorWait = { at: performance.now(), turnOffset }; dbg.restore = 'looking…'; dlog('restoring saved spot');
   session.restorePersistentAnchor(h).then((a) => {
     if (gen !== anchorGen) { a.delete(); return; }
-    anchor = a; anchorLast = null;
+    anchor = a; anchorLast = null; anchorHandle = h; dbg.anchor = 'OK (restored)';
   }).catch((e) => {
+    dbg.restore = 'FAILED ' + (e.name || e); dlog('restore failed: ' + (e.message || e));
     console.warn('saved spot could not be restored', e);
-    try { localStorage.removeItem(spotKey()); } catch { /* fine */ }
+    if (!recovering) { try { localStorage.removeItem(spotKey()); } catch { /* fine */ } }
     if (gen === anchorGen) { cancelRestore(); startPlacing(); }
   });
 }
@@ -844,13 +1063,16 @@ function cancelRestore() { if (anchorWait) { anchorWait = null; hint.mesh.visibl
 function followAnchor(frame) {
   if (!anchor || placing || !frame) return;
   const ref = renderer.xr.getReferenceSpace();
-  if (frame.trackedAnchors && !frame.trackedAnchors.has(anchor)) return;   // not tracked right now
-  const pose = ref && frame.getPose(anchor.anchorSpace, ref); if (!pose) return;
+  const lost = (why) => { dbg.tracked = why; if (!anchorLostAt) anchorLostAt = performance.now(); };
+  if (frame.trackedAnchors && !frame.trackedAnchors.has(anchor)) return lost('no');   // not tracked right now
+  const pose = ref && frame.getPose(anchor.anchorSpace, ref); if (!pose) return lost('no pose');
+  dbg.tracked = 'yes'; anchorLostAt = 0;
   const tp = pose.transform.position;
   const now = { p: new THREE.Vector3(tp.x, tp.y, tp.z), yaw: yawOf(pose.transform.orientation) };
   if (anchorWait) {   // restored spot found: the stone appears there, facing the way it was placed
-    anchorWait = null; hint.mesh.visible = false;
-    root.position.copy(now.p); root.rotation.set(0, now.yaw, 0); root.visible = true;
+    const turnOffset = anchorWait.turnOffset;
+    anchorWait = null; hint.mesh.visible = false; dbg.restore = 'found'; dlog('saved spot found');
+    root.position.copy(now.p); root.rotation.set(0, now.yaw + (turnOffset || 0), 0); root.visible = true;
     syncPool(); layoutToolbar(); refreshClue(); runPendingDot();
   } else if (anchorLast) {
     const dy = wrapAngle(now.yaw - anchorLast.yaw);
@@ -860,6 +1082,8 @@ function followAnchor(frame) {
 }
 // the room "moved" (headset recentred): move the stone and its floating panels with it
 function shiftWorld(a, b, dy) {
+  const moved = a.p.distanceTo(b.p);
+  if (moved > 0.02 || Math.abs(dy) > 0.02) { dbg.shifts++; dlog(`anchor moved ${moved.toFixed(2)} m, ${(dy * 57.3).toFixed(0)}°`); }
   const qy = new THREE.Quaternion().setFromAxisAngle(UP, dy);
   for (const o of [root, rig, toolbar.mesh, options.mesh]) {
     const rel = o.position.clone().sub(a.p).applyAxisAngle(UP, dy);
@@ -868,6 +1092,24 @@ function shiftWorld(a, b, dy) {
   }
   rigGoal = null; toolbarGoal = null; tourTurn = null;
   syncPool();
+}
+
+// ═════════════ practice (offered, never automatic) ═════════════════
+// When the teacher turns Practice on, a "Practice" card with a pinching hand waits beside the
+// toolbar. Pinching it is the first lesson; then the student hides and brings back a practice
+// panel. Nothing starts by itself, so a headset can be set up and handed over mid-session.
+const practiceOffered = () => S.practice && !practiceDone && !practice && !touring && !placing && !anchorWait && root.visible && toolbar.mesh.visible;
+function openPractice() {
+  if (practice) return;
+  practice = { stage: 'hide' };
+  if (openIndex !== -1) closeInfo();
+  openIndex = 'practice'; hidden = false; expanded = false;
+  hint.setText(t().practiceHide); hint.mesh.visible = true;
+  refreshInfo(true);
+}
+function finishPractice() {
+  practiceDone = true;
+  closeInfo();
 }
 
 // ═════════════ controllers & hands ═══════════════════════════════
@@ -908,6 +1150,7 @@ function setRayFrom(c) {
 function uiTargets() {
   const out = [];
   for (const p of [options, panel, handle, tab, toolbar]) if (p.mesh.visible) out.push(p.mesh);
+  if (practiceCard.mesh.visible) out.push(practiceCard.mesh);
   if (toolbar.mesh.visible && clueCard.mesh.visible && !options.mesh.visible) out.push(clueCard.mesh);
   if (!options.mesh.visible) markers.forEach((m, i) => { if (m.visible && selectable(i)) out.push(m); });
   return out;
@@ -924,6 +1167,7 @@ function onSelect(c) {
     if (o === panel.mesh) return onPanelButton(panel.buttonAt(hit.uv));
     if (o === handle.mesh) { if (handle.buttonAt(hit.uv) === 'hide') setHidden(true); return; }
     if (o === tab.mesh) return setHidden(false);
+    if (o === practiceCard.mesh) return openPractice();
     if (o === clueCard.mesh) { if (clueCard.buttonAt(hit.uv) === 'hint') useHint(); return; }
     if (o.userData.index !== undefined) {
       const i = o.userData.index;
@@ -936,10 +1180,13 @@ function onSelect(c) {
   if (clueOn() && openIndex === -1) { setRayFrom(c); const i = rayNearClue(raycaster.ray); if (i >= 0) { reveal(i); openInfo(i); } }
 }
 function onPanelButton(id) {
+  if (id === 'close' && openIndex === 'practice') return finishPractice();
+  if (id === 'reveal') return showReading(openIndex);
   if (id === 'close') closeInfo();
   else if (id === 'next') openInfo(openIndex + 1);
   else if (id === 'prev') openInfo(openIndex - 1);
   else if (id === 'listen') toggleAudio(openIndex);
+  else if (id === 'read') toggleRead();
   else if (id === 'more') { expanded = !expanded; refreshInfo(); }
 }
 
@@ -966,7 +1213,23 @@ function xrUpdate(frame, dt) {
     else if (mode === 'vr') { root.position.copy(camera.position).setY(0).addScaledVector(headForward(), 2.0); faceUser(); syncPool(); layoutToolbar(); }
     else { placeOrRestore(); layoutToolbar(); }
   }
-  if (anchorWait && performance.now() - anchorWait.at > 6000) { console.warn('saved spot not found'); cancelRestore(); startPlacing(); }
+  const offer = practiceOffered();
+  if (offer) {
+    practiceCard.set(S.lang, calm() ? 1 : Math.floor(performance.now() / 650) % 2);   // two-frame pinch (a still picture in Calm mode)
+    // lazy follow: glides back to the lower left of the view only when it drifts out of sight
+    const C = camera.position, fwd = headForward(), left = new THREE.Vector3().crossVectors(UP, fwd).normalize();
+    const want = () => C.clone().addScaledVector(fwd, 0.95).addScaledVector(left, 0.3).setY(C.y - 0.3);
+    if (!practiceCard.mesh.visible) { practiceCard.mesh.position.copy(want()); practiceGoal = null; }
+    const to = practiceCard.mesh.position.clone().sub(C).setY(0), d = to.length();
+    if (!practiceGoal && (d > 1.6 || d < 0.4 || fwd.dot(to.normalize()) < Math.cos(0.75))) practiceGoal = want();
+    if (practiceGoal) { practiceCard.mesh.position.lerp(practiceGoal, 1 - Math.exp(-dt * 4)); if (practiceCard.mesh.position.distanceTo(practiceGoal) < 0.01) practiceGoal = null; }
+    practiceCard.mesh.lookAt(C);
+  }
+  practiceCard.mesh.visible = offer;
+  if (anchorWait && performance.now() - anchorWait.at > 6000) { console.warn('saved spot not found'); dbg.restore = 'TIMED OUT'; dlog('saved spot not found in 6 s'); cancelRestore(); startPlacing(); }
+  if (anchor && anchorLostAt && !anchorWait && !placing && performance.now() - anchorLostAt > 2000) recoverAnchor();
+  checkHeadJump();
+  updateDebugPanel(performance.now());
   if (wantAnchor) makeAnchor(frame, wantAnchor);
   followAnchor(frame);
   for (const c of controllers) {
@@ -979,7 +1242,7 @@ function xrUpdate(frame, dt) {
   if (clueOn() && !placing) for (const c of controllers) { if (!c.userData.src) continue; setRayFrom(c); const i = rayNearClue(raycaster.ray); if (i >= 0) reveal(i); }
   const hits = controllers.map((c) => c.userData.uiHit).filter(Boolean);
   for (const m of markers) m.userData.hover = hits.some((h) => h.object === m);
-  for (const p of [toolbar, panel, options, handle, tab]) {
+  for (const p of [toolbar, panel, options, handle, tab, practiceCard]) {
     if (!p.mesh.visible) continue;
     const h = hits.find((x) => x.object === p.mesh);
     p.setHover(h ? p.buttonAt(h.uv) : null);
@@ -998,7 +1261,7 @@ function xrUpdate(frame, dt) {
       if (grab && grab.c === c) continue;   // that thumbstick is pushing/pulling the panel
       const gp = c.userData.src?.gamepad;
       const x = gp && gp.axes.length >= 4 ? gp.axes[2] : 0;
-      if (Math.abs(x) > 0.25) { root.rotation.y -= x * dt * 1.4; tourTurn = null; }
+      if (Math.abs(x) > 0.25 && !touring) { root.rotation.y -= x * dt * 1.4; }
     }
   }
   if (hint.mesh.visible) {
@@ -1042,6 +1305,30 @@ function pickMarker(e) {
   return hit ? hit.object : null;
 }
 
+// Safety net: if the headset recentres (a sudden jump of the head pose, or a reset event) and no
+// anchor is holding the stone, ask to place it again rather than leaving it in the wrong spot.
+let lastHead = null;
+function checkHeadJump() {
+  const C = camera.position;
+  if (lastHead && xrFrames > 10 && C.distanceTo(lastHead) > 0.35) { dbg.jumps++; dlog(`head jumped ${C.distanceTo(lastHead).toFixed(2)} m`); replaceIfUnpinned('jump'); }
+  lastHead = (lastHead || new THREE.Vector3()).copy(C);
+}
+// The headset can lose an anchor after it sleeps (taken off) and never find it again. After 2 s
+// without tracking, reload the same spot from its saved copy; if there isn't one, ask to place again.
+function recoverAnchor() {
+  const h = anchorHandle, session = renderer.xr.getSession();
+  const turnOffset = anchorLast ? root.rotation.y - anchorLast.yaw : 0;   // keep any turning the student did
+  dlog('anchor lost for 2 s');
+  if (h && session?.restorePersistentAnchor) return restoreFrom(h, turnOffset, true);
+  dropAnchor();
+  replaceIfUnpinned('anchor lost');
+}
+function replaceIfUnpinned(why) {
+  if (mode !== 'ar' || anchor || anchorWait || placing || needsLayout || !root.visible) return;
+  dlog('no anchor holding the stone → place again (' + why + ')');
+  if (S.mode === 'seated') placeSeated(); else startPlacing();
+}
+
 // ═════════════ sessions ═════════════════════════════════════════
 async function enterXR(type) {
   if (renderer.xr.isPresenting) return;
@@ -1077,9 +1364,14 @@ function onSessionStart() {
   anchor = null; anchorLast = null; anchorWait = null; wantAnchor = null; anchorGen++;
   // if the headset recentres and the stone isn't pinned with an anchor, ask to place it again
   renderer.xr.getReferenceSpace()?.addEventListener?.('reset', () => {
-    if (mode !== 'ar' || anchor || anchorWait || placing || needsLayout) return;
-    if (S.mode === 'seated') placeSeated(); else startPlacing();
+    dbg.resets++; dlog('reference space reset');
+    replaceIfUnpinned('reset');
   });
+  const session = renderer.xr.getSession();
+  dbg.features = session?.enabledFeatures ? session.enabledFeatures.join(',') : 'unknown';
+  dbg.anchor = 'none'; dbg.persist = '-'; dbg.restore = '-'; lastHead = null;
+  session?.addEventListener?.('visibilitychange', () => { dbg.vis = session.visibilityState; dlog('visibility ' + session.visibilityState); lastHead = null; });
+  dlog(`session start (${mode})`);
   if (touring) tourPending = true;   // opens once the stone is in place
 }
 function onSessionEnd() {
@@ -1089,6 +1381,7 @@ function onSessionEnd() {
   root.position.set(0, 0, 0); root.rotation.set(0, 0, 0); root.scale.setScalar(1); root.visible = true; syncPool();
   toolbar.mesh.visible = false; hint.mesh.visible = false; reticle.visible = false; options.mesh.visible = false;
   guide.visible = false; tourTurn = null; if (grab) endGrab();
+  practice = null; practiceCard.mesh.visible = false;
   closeInfo();
   if (touring) { tourPending = true; runTourStep(); }   // reopen the tour's dot on the 2D page
   controls.enabled = true;
@@ -1131,7 +1424,7 @@ function setHeadset(n) {
   try { localStorage.setItem(HEADSET_KEY, String(n)); } catch { /* still works for this visit */ }
   refreshToolbar(); refreshStartScreen();
   if (roomFor() !== ROOM) switchRoom(roomFor());   // e.g. 3 → South End, 8 → North End
-  else applyPause();
+  else { applyPause(); syncRemoteAccess(); }
 }
 
 // ── listening to the room ──
@@ -1150,6 +1443,7 @@ function switchRoom(r) {
   roomSub?.stop(); roomSub = null;
   ROOM = r;
   lastRemote = {}; lastTourAt = 0; lastNarrateAt = 0;   // the new room's settings apply fresh
+  syncRemoteAccess();
   refreshStartScreen();
   startListening();
 }
@@ -1176,7 +1470,11 @@ function applyRemote(r) {
   if (changed('mode')) setSetting('mode', r.mode);
   if (changed('size')) setSetting('size', r.size);
   if (changed('lock')) { setSetting('lock', r.lock); if (r.lock) options.mesh.visible = false; }
+  if (changed('notice')) setSetting('notice', r.notice);
+  if (changed('practice')) setSetting('practice', r.practice);
+  if (changed('moveStone')) setSetting('moveStone', r.moveStone);
   lastRemote = { ...r };
+  syncRemoteAccess();
   // can students drag panels? (on unless the teacher turns it off)
   const mv = r.moveWindows !== false;
   if (mv !== moveOK) { moveOK = mv; if (!mv && grab) endGrab(); if (openIndex !== -1) refreshInfo(false); }
@@ -1185,10 +1483,24 @@ function applyRemote(r) {
     const step = r.tourDot - 1;
     if (!touring || step !== tourStep || r.tourAt > lastTourAt) { lastTourAt = r.tourAt; setTour(true, step); }
   } else if (touring) setTour(false);
+  // teacher pressed "Reveal reading" for this tour step (only counts if pressed after the step began)
+  if (touring && r.reveal === tourStep + 1 && r.revealAt >= (r.tourAt || 0)) showReading(tourStep);
   if (!touring && r.dot && r.dotAt > lastDotAt) { lastDotAt = r.dotAt; pendingDot = r.dot - 1; runPendingDot(); }
   else if (r.dotAt > lastDotAt) lastDotAt = r.dotAt;
   applyPause();
-  if (r.narrate && r.narrateAt > lastNarrateAt) { lastNarrateAt = r.narrateAt; if (!frozen && r.narrate <= DOTS.length) playClip(r.narrate - 1); }
+  if (r.narrate && r.narrateAt > lastNarrateAt) {   // narration also shows the reading
+    lastNarrateAt = r.narrateAt;
+    if (!frozen && r.narrate <= DOTS.length) { showReading(r.narrate - 1); playClip(r.narrate - 1); }
+  }
+}
+// supports from the teacher: for the whole room (bigText/readAloud/calm), or for this headset's number (access)
+function syncRemoteAccess() {
+  const r = lastRemote, mine = (HEADSET != null && r.access && r.access[HEADSET]) || '';
+  const room = { big: r.bigText === true, read: r.readAloud === true, calm: r.calm === true };
+  const hs = { big: mine.includes('b'), read: mine.includes('r'), calm: mine.includes('c') };
+  const same = (a, b) => a.big === b.big && a.read === b.read && a.calm === b.calm;
+  if (same(room, ACC.room) && same(hs, ACC.headset)) return;
+  ACC.room = room; ACC.headset = hs; applyAccess();
 }
 // a class-wide freeze wins; otherwise a pause aimed at this headset's number
 function applyPause() {
@@ -1208,7 +1520,7 @@ function setFrozen(kind) {
   if (kind === frozen) return;
   frozen = kind;
   if (kind) {
-    stopAudio(); if (grab) endGrab();
+    stopAudio(); stopSpeech(); if (grab) endGrab();
     const tt = t();
     freezePanel.set(tt.freezeFrom, tt.freeze[kind]);
     $('freeze-from').textContent = tt.freezeFrom; $('freeze-text').textContent = tt.freeze[kind];
@@ -1228,12 +1540,13 @@ function setTour(on, step) {
     if (step < 0 || step >= DOTS.length) { touring = was; return; }
     options.mesh.visible = false; pendingDot = -1;
     tourStep = step; tourTurn = null;
+    readingShown.delete(step);   // Notice first: everyone looks and talks before the teacher reveals the reading
     if (openIndex !== step || hidden) closeInfo();
     tourPending = openIndex !== step;
   } else {
     tourStep = -1; tourPending = false; tourTurn = null; guide.visible = false;
   }
-  refreshMarkerLooks(); refreshToolbar(); refreshClue();
+  refreshMarkerLooks(); refreshToolbar(); refreshClue(); refreshTracker();
   if (openIndex !== -1) refreshInfo(false);   // Back/Next/Close come back (or go away)
   runTourStep();
 }
@@ -1264,7 +1577,7 @@ function startTurn(i) {
 function updateTour(dt) {
   if (!touring) { guide.visible = false; return; }
   if (tourTurn && !frozen) {
-    tourTurn.t = Math.min(1, tourTurn.t + dt / 0.9);
+    tourTurn.t = Math.min(1, tourTurn.t + dt / (calm() ? 2.2 : 0.9));   // Calm mode: a slower, gentler turn
     const e = tourTurn.t * tourTurn.t * (3 - 2 * tourTurn.t);
     root.rotation.y = tourTurn.from + (tourTurn.to - tourTurn.from) * e;
     if (tourTurn.t >= 1) { tourTurn = null; if (tourPending) { tourPending = false; openInfo(tourStep); } }
@@ -1306,7 +1619,7 @@ function updateGuide(dt) {
   guideArrow.rotation.z = Math.atan2(dy, dx);
   guideArrow.position.set(dx * 0.02, dy * 0.02, 0);
   guideLabel.position.set(-dx * 0.2, -dy * 0.1 - (Math.abs(dy) < 0.5 ? 0.1 : 0), 0);
-  guideArrow.scale.setScalar(1 + 0.12 * Math.sin(performance.now() * 0.008));
+  guideArrow.scale.setScalar(calm() ? 1 : 1 + 0.12 * Math.sin(performance.now() * 0.008));
   guide.visible = true;
 }
 // Chromebook / iPad: swing the camera round to face the tour's dot
@@ -1319,7 +1632,7 @@ function aimDeskCamera(i) {
 }
 function updateDeskTurn(dt) {
   if (!deskTurn) return;
-  deskTurn.t = Math.min(1, deskTurn.t + dt / 0.9);
+  deskTurn.t = Math.min(1, deskTurn.t + dt / (calm() ? 2.2 : 0.9));
   const e = deskTurn.t * deskTurn.t * (3 - 2 * deskTurn.t);
   const off = camera.position.clone().sub(controls.target), sph = new THREE.Spherical().setFromVector3(off);
   sph.theta = deskTurn.from + (deskTurn.to - deskTurn.from) * e;
@@ -1347,6 +1660,15 @@ function refreshStartScreen() {
     b.textContent = { 'lang:en': 'English', 'lang:es': 'Español', 'hunt:on': tt.on, 'hunt:off': tt.off, 'clues:on': tt.on, 'clues:off': tt.off,
       'mode:walk': tt.walk, 'mode:seated': tt.seated }[b.dataset.set];
   });
+  // supports: always offered, even when locked (they only change how things look and sound for this student)
+  $('lbl-acc').textContent = tt.optSupports; $('acc-help').textContent = tt.supportsHelp;
+  const a = accNow();
+  document.querySelectorAll('[data-acc]').forEach((b) => {
+    const k = b.dataset.acc; b.textContent = { big: tt.bigText, read: tt.readAloud, calm: tt.calm }[k];
+    b.classList.toggle('sel', a[k]); b.setAttribute('aria-pressed', String(a[k]));
+  });
+  $('btn-text').textContent = tt.textView; $('btn-text').hidden = S.clues;   // the text version would give away Detective clues
+  if (!$('textview').hidden) buildTextView();
   $('lbl-lang').textContent = tt.optLang; $('lbl-hunt').textContent = tt.optHunt; $('lbl-clues').textContent = tt.optClues; $('lbl-mode').textContent = tt.optMode;
   // artifact picker: only this unit kit's artifacts (and only if there is more than one)
   $('kit-label').textContent = KIT ? L(KIT.title, S.lang) : '';
@@ -1396,6 +1718,49 @@ function refreshStartScreen() {
 document.querySelectorAll('[data-set]').forEach((b) => {
   b.onclick = () => { const [k, v] = b.dataset.set.split(':'); setSetting(k, BOOL_KEYS.includes(k) ? v === 'on' : v); };
 });
+document.querySelectorAll('[data-acc]').forEach((b) => {
+  b.onclick = () => { const k = b.dataset.acc; ACC.student[k] = !ACC.student[k]; applyAccess(); };
+});
+
+// ── "Read it all as text": every dot on one plain page (screen readers, printing, students who prefer text) ──
+function buildTextView() {
+  const tt = t(), Lg = (o) => L(o, S.lang), body = $('tv-body');
+  const el = (tag, text, cls) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; };
+  const labelled = (label, text) => { const p = el('p'); const b = el('b', label + ': '); p.append(b, text); return p; };
+  $('tv-title').textContent = Lg(EX.title); $('tv-close').textContent = tt.close;
+  $('tv-read').hidden = !(acc('read') && canSpeak()); $('tv-read').textContent = speaking ? tt.stop : tt.readBtn;
+  body.innerHTML = '';
+  body.append(el('p', Lg(EX.subtitle)));
+  DOTS.forEach((d, i) => {
+    const a = el('article');
+    a.append(el('h2', `${i + 1}. ${Lg(d.title)}`));
+    if (d.notice && S.notice) a.append(labelled(cap(tt.lookFirst), Lg(d.notice)));
+    a.append(el('p', Lg(d.text)));
+    if (d.facts) { const dl = el('dl'); d.facts.forEach((f) => dl.append(el('dt', Lg(f.k)), el('dd', Lg(f.v)))); a.append(dl); }
+    if (d.law) a.append(labelled(cap(tt.plain), Lg(d.law.plain)));
+    if (d.more) a.append(el('p', Lg(d.more)));
+    if (d.think) a.append(labelled(cap(tt.think), Lg(d.think)));
+    body.append(a);
+  });
+  if (EX.finish) { const a = el('article'); a.append(el('h2', cap(tt.bigQuestion)), el('p', Lg(EX.finish.think))); body.append(a); }
+  body.append(el('p', Lg(EX.model?.credit), 'credit'));
+}
+const cap = (x) => x.charAt(0) + x.slice(1).toLowerCase();
+function openTextView() { closeInfo(); buildTextView(); $('textview').hidden = false; $('tv-close').focus(); }
+function closeTextView() { stopSpeech(); $('textview').hidden = true; $('btn-text').focus(); }
+$('btn-text').onclick = openTextView;
+$('tv-close').onclick = closeTextView;
+$('tv-read').onclick = () => { if (speaking) stopSpeech(); else speak($('tv-body').innerText); syncTvRead(); };
+// keyboard: 1–9 open a dot, Esc closes the card or the text page
+document.addEventListener('keydown', (e) => {
+  if (mode !== 'desktop' || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (e.key === 'Escape') {
+    if (!$('textview').hidden) closeTextView();
+    else if (!$('card').hidden && !$('card-close').hidden) closeInfo();
+    return;
+  }
+  if (/^[1-9]$/.test(e.key) && $('textview').hidden && !frozen && +e.key <= DOTS.length) openFromKeyboard(+e.key - 1);
+});
 
 // ═════════════ boot ═════════════════════════════════════════════
 function onResize() {
@@ -1439,14 +1804,21 @@ renderer.setAnimationLoop((time, frame) => {
     $('btn-vr').hidden = !xrSupport.vr;
     document.querySelector('[data-set="mode:walk"]').closest('.row').hidden = true;   // not used on iPad
   }
+  if (speech) { loadVoices(); speech.addEventListener?.('voiceschanged', loadVoices); setTimeout(loadVoices, 1500); }
+  else dbg.speech = 'not supported';
+  applyAccess();
   refreshStartScreen();
   startListening();
+  if (DEBUG) { $('debug').hidden = false; $('debug').textContent = 'Diagnostics on. Enter passthrough, place the stone, then take the headset off and on.\nspeech: ' + (dbg.speech || '?'); }
   window.__steleReady = true;
   // hooks for automated testing (harmless in normal use)
   window.__dbg = {
     THREE, camera, controls, root, markers, clueCard, applyRemote, rig, handle, tab, guide, tourRing, setHidden, setHeadset,
-    renderer, anchorObj: () => anchor, anchorState: () => ({ anchor: !!anchor, waiting: !!anchorWait, saved: readSpot() }),
+    debugLines, renderer, anchorObj: () => anchor, anchorState: () => ({ anchor: !!anchor, waiting: !!anchorWait, saved: readSpot() }),
     kitState: () => ({ kit: KIT && KIT.id, exhibit: EX.id, picker: $('exhibit-pick').hidden ? null : [...$('exhibit-pick').options].map((o) => o.value) }),
+    practiceState: () => ({ stage: practice && practice.stage, done: practiceDone, card: practiceCard.mesh.visible, hint: hint.mesh.visible && hint.text }),
+    noticeState: () => ({ notice: S.notice, phase: noticePhase(openIndex), shown: [...readingShown] }),
+    showReading, practiceCard, dotsInfo: () => DOTS.map((d) => ({ id: d.id, hit: d._hit })), ACC, applyAccess, accState: () => ({ ...accNow(), zoom: panel.zoom, speaking, canSpeak: canSpeak(), voices: voices.length }), readText: () => readText(infoState()), toggleRead, syncRemoteAccess,
     grabState: () => ({ grab: !!grab, placePref, rigAng, hidden }), tourState: () => ({ touring, tourStep, tourPending, turning: !!tourTurn, guide: guide.visible, guideText: guideLabelText, moveOK, headset: HEADSET, room: ROOM, frozen }), freezePanel, isFrozen: () => frozen, rigState: () => ({ rigGoal: rigGoal && rigGoal.toArray(), rigAway, xrFrames }), currentClue, useHint, revealed, toolbar, panel, options, extra, tracker, S, setSetting, openInfo, closeInfo,
     state: () => ({ mode, placing, S: { ...S }, openIndex, expanded, found: [...found], finishShown, clue: currentClue(), revealed: [...revealed],
       panel: panel.mesh.visible, extra: extra.mesh.visible, options: options.mesh.visible, toolbarItems: toolbar.items,
