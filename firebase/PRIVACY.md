@@ -9,6 +9,7 @@
   - `freeze: "eyes"` plus the time it was sent
   - `tour: true`, `tourDot: 3` (guided tour step), `narrate: 3` (play that dot's recording), `moveWindows: false`
   - `paused: { h3: <time> }`, meaning headset **number 3** (the sticker on the device) is paused. These are device numbers, not students.
+  - Supports: `bigText`, `readAloud`, `calm` (true/false, for every headset in the room), and `access: { h3: "br" }`, meaning headset **number 3** shows Bigger text (`b`) and Read to me (`r`); `c` is Calm mode. Again, a device number, never a name. The teacher clears these at the end of class ("Clear all supports" or "Reset all to Default").
 - Each button press overwrites the record. No history, logs, or lists of devices or students are kept.
 
 ## What is NOT collected
@@ -28,6 +29,7 @@
   - "go to dot 1–20", guided tour step 1–20, "play narration" for dot 1–20
   - pause or unpause headset 0–19
   - whether students can move reading panels, Notice first on/off, Practice card on/off, Move button show/hide, "reveal the reading for dot 1–20"
+  - supports: Bigger text, Read to me, Calm mode, for every headset or for headset 0–19 (only the letters b, r, c)
   - four preset freeze messages: Eyes up, Wait for instructions, Take off headset, Time to finish
 - **No free text.** The database rules reject anything else, and the headsets also ignore any value not on their own allowed list.
 - **It can't** open websites, start the camera or microphone, or see what students see.
@@ -41,4 +43,6 @@
 - **Network address:** like any website, Google's servers see each headset's network (IP) address when it connects. That's ordinary traffic from a district device with no student login.
 - **On the headset itself, the Firebase library keeps two small non-personal items in browser storage:** a connection note (which server address or connection type worked last), and a usage note with the library version and the date. Google may receive that usage note with requests. Neither contains anything about the student.
 - **The page's own browser storage:** `xr-headset`, holding the headset's number (for example `3`), and, in passthrough, `xr-spot:<exhibit>:<size>`, holding a random reference code for the spot where the stone was last placed. The headset's own system remembers that spot (a WebXR "anchor") so the stone reappears in the same place and stays put if the headset recentres. Nothing else is stored by the exhibit itself, and none of it is sent anywhere. The app does not use the headset cameras.
-- **Live check:** a "Run safety check" button on the teacher page tests the rules against the live database. It confirms that a signed-out connection can't write or pause headsets, that the whole database can't be read or listed, and that free text, unknown values, custom messages, out-of-range steps and anything other than a headset number in a pause are rejected.
+- **Read to me:** uses the browser's built-in text-to-speech (the Web Speech API) to read the exhibit's own panel text aloud. The app prefers voices that run on the device. On some Chromebooks a voice may be an online voice, which means the panel's text (exhibit content only, never anything a student typed or anything about a student) is sent to that voice service, the same as any website using Chrome's speech. Nothing is recorded; the microphone is never used.
+- **Supports chosen by a student** (on the start screen or in Options) last only until the page is closed and are never stored or sent.
+- **Live check:** a "Run safety check" button on the teacher page tests the rules against the live database. It confirms that a signed-out connection can't write or pause headsets, that the whole database can't be read or listed, and that free text, unknown values, custom messages, out-of-range steps and anything other than a headset number in a pause or a support are rejected, and that supports accept only the three support letters.

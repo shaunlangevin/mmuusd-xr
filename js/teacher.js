@@ -30,7 +30,13 @@ const SETTINGS = [
   { key: 'moveWindows', label: 'Students can move windows', desc: 'The grab bar above reading panels', opts: ONOFF, def: true, noDefault: true },
   { key: 'practice', label: 'Practice card', desc: 'A pinch-to-practice card for first-timers', opts: ONOFF, def: false },
   { key: 'lock', label: 'Classroom lock', desc: 'Hides Options and Exit', opts: ONOFF, def: false },
+  { group: 'Supports for every headset (for one student, use Teach → Supports for one headset)' },
+  { key: 'bigText', label: 'Bigger text', desc: 'Reading panels and menus about 30% larger', opts: ONOFF, def: false },
+  { key: 'readAloud', label: 'Read to me', desc: 'Adds a Read to me button that reads panels aloud with the headset’s built-in voice (for text that has no recording)', opts: ONOFF, def: false },
+  { key: 'calm', label: 'Calm mode', desc: 'No pulsing, bouncing or quick movements; slower turns', opts: ONOFF, def: false },
 ];
+// per-headset supports: stored as letters, e.g. access/h3 = "br" (b = bigger text, r = read to me, c = calm)
+const SUPPORTS = [['b', 'A+', 'Bigger text'], ['r', '🔊', 'Read to me'], ['c', 'Calm', 'Calm mode']];
 const SET_BY_KEY = Object.fromEntries(SETTINGS.filter((s) => s.key).map((s) => [s.key, s]));
 // one tap sets several options (each preset only touches the keys it lists)
 const PRESETS = [
@@ -250,16 +256,37 @@ async function start() {
       b.dataset.room = g.room; seg.append(b);
     }
   }
-  // pause tiles for the headsets that follow this room (all of them for a custom ?room= code)
+  // pause tiles (and support toggles) for the headsets that follow this room (all of them for a custom ?room= code)
+  const headsetNums = () => { const g = groupFor(room), list = g ? [g] : GROUPS; const out = [];
+    for (let i = Math.min(...list.map((x) => x.first)); i <= Math.max(...list.map((x) => x.last)); i++) out.push(i); return out; };
   function buildHeadsets() {
     const box = $('headsets'); box.innerHTML = '';
-    const g = groupFor(room), list = g ? [g] : GROUPS;
-    for (let i = Math.min(...list.map((x) => x.first)); i <= Math.max(...list.map((x) => x.last)); i++) {
+    for (const i of headsetNums()) {
       const b = el('button', { onclick: () => send({ ['paused/h' + i]: pausedNow(i) ? null : fb.serverTimestamp() }, `${pausedNow(i) ? 'Resumed' : 'Paused'} headset ${i}`) },
         String(i), el('small'));
       b.dataset.hs = i; box.append(b);
     }
+    const sup = $('supports'); sup.innerHTML = '';
+    for (const i of headsetNums()) {
+      const row = el('div', { className: 'sup' }, el('b', { textContent: String(i) }));
+      for (const [l, short, name] of SUPPORTS) {
+        const b = el('button', { textContent: short, title: name, onclick: () => toggleSupport(i, l, name) });
+        b.dataset.hs = i; b.dataset.sup = l; b.setAttribute('aria-label', `${name} for headset ${i}`); row.append(b);
+      }
+      sup.append(row);
+    }
   }
+  const accessMap = () => { const a = current.access && typeof current.access === 'object' ? current.access : {};
+    return Object.fromEntries(Object.entries(a).filter(([k, v]) => /^h1?[0-9]$/.test(k) && typeof v === 'string' && /^[brc]{1,3}$/.test(v))); };
+  function toggleSupport(i, letter, name) {
+    const cur = accessMap()['h' + i] || '', on = cur.includes(letter);
+    const next = SUPPORTS.map(([l]) => l).filter((l) => (l === letter ? !on : cur.includes(l))).join('');
+    send({ ['access/h' + i]: next || null }, `${name} ${on ? 'off' : 'on'} for headset ${i}`);
+  }
+  $('clearSupports').onclick = () => {
+    const patch = Object.fromEntries(Object.keys(accessMap()).map((k) => ['access/' + k, null]));
+    if (Object.keys(patch).length) send(patch, 'Supports cleared for every headset');
+  };
 
   // ── draw everything from the room record ──
   function render() {
@@ -279,6 +306,10 @@ async function start() {
       if (noticeOn) revealedNow() ? pill('Reading shown') : pill('Reading hidden: students are noticing', 'warn');
     } else pill('Tour off: exploring freely');
     if (pausedList.length) pill(`Paused: headset${pausedList.length > 1 ? 's' : ''} ${pausedList.join(', ')}`, 'warn');
+    const roomSup = SUPPORTS.filter(([l]) => eff({ b: 'bigText', r: 'readAloud', c: 'calm' }[l]) === true).map(([, , name]) => name);
+    if (roomSup.length) pill(`Supports for everyone: ${roomSup.join(', ')}`);
+    const hsSup = Object.entries(accessMap()).map(([h, v]) => `${h.slice(1)} (${SUPPORTS.filter(([l]) => v.includes(l)).map(([, short]) => short).join(' ')})`);
+    if (hsSup.length) pill(`Supports: headset ${hsSup.join(', ')}`);
 
     // everyone
     document.querySelectorAll('[data-freeze]').forEach((b) => b.classList.toggle('sel', frozen === b.dataset.freeze));
@@ -301,6 +332,13 @@ async function start() {
     $('tourNote').textContent = !on ? 'Tap a number to open that dot on every headset.'
       : noticeOn && !revealedNow() ? `Students are looking at dot ${step} and talking. Reveal the reading when they’re ready.`
         : step < n ? 'The reading is showing. Press ▶ for the next dot.' : 'Last dot. End the tour when you’re ready.';
+
+    // per-headset supports
+    document.querySelectorAll('#supports [data-sup]').forEach((b) => {
+      const on = (accessMap()['h' + b.dataset.hs] || '').includes(b.dataset.sup);
+      b.classList.toggle('sel', on); b.setAttribute('aria-pressed', String(on));
+    });
+    $('clearSupports').disabled = !Object.keys(accessMap()).length;
 
     // pause tiles
     document.querySelectorAll('#headsets button').forEach((b) => {
@@ -346,6 +384,8 @@ async function start() {
     line(await expectFail(fb.update(me, { tourDot: 0, tourAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Out-of-range tour steps are rejected');
     line(await expectFail(fb.update(me, { 'paused/student-name': fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Only headset numbers can be paused (no names)');
     line(await expectFail(fb.update(me, { 'paused/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Pauses can’t carry text');
+    line(await expectFail(fb.update(me, { 'access/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Supports only accept the three support letters (no text)');
+    line(await expectFail(fb.update(me, { 'access/student-name': 'b', updatedAt: fb.serverTimestamp() })), 'Supports are only for headset numbers (no names)');
     line(await expectOk(fb.update(me, { updatedAt: fb.serverTimestamp() })), 'Your account can send normal commands');
   };
 

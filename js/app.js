@@ -24,6 +24,17 @@ const S = {
   practice: flag(params.get('practice'), false), // offer the "Practice" card (off unless the teacher turns it on)
   moveStone: flag(params.get('move'), true),      // show the Move button (re-place the stone)
 };
+// Supports (UDL): Bigger text, Read to me, Calm mode. Any of three sources can turn one on:
+// the student (Options / start screen / link), the teacher for the whole room, or the teacher for this headset number.
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;   // the device's own "reduce motion" setting
+const ACC = {
+  student: { big: params.get('text') === 'big', read: flag(params.get('read'), false), calm: flag(params.get('calm'), reducedMotion) },
+  room: { big: false, read: false, calm: false },
+  headset: { big: false, read: false, calm: false },
+};
+const acc = (k) => ACC.student[k] || ACC.room[k] || ACC.headset[k];
+const accNow = () => ({ big: acc('big'), read: acc('read'), calm: acc('calm') });
+const BIG_ZOOM = 1.3;
 const t = () => UI[S.lang];
 const tracking = () => S.hunt || S.clues;
 const BOOL_KEYS = ['hunt', 'clues', 'notice', 'practice'];
@@ -217,6 +228,7 @@ function computeAnchors() {
     const side = new THREE.Vector3(dir.z, 0, -dir.x).multiplyScalar(d.x || 0);   // optional sideways shift (metres, + = right as you face the dot) for wide, flat faces
     raycaster.set(dir.clone().multiplyScalar(4).add(side).setY(y), dir.clone().negate()); raycaster.far = 5;
     const hit = raycaster.intersectObject(model, true)[0];
+    d._hit = !!hit;
     if (hit) {
       d._p = hit.point.clone();
       d._n = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : dir.clone();
@@ -269,7 +281,8 @@ function buildRuler() {
 function setRulerLabels() {
   if (!ruler) return;
   ruler.userData.labels.forEach((l) => ruler.remove(l));
-  const a = labelPlane(t().stoneH, 0.42), b = labelPlane(t().you, 0.42);
+  const hm = +(model.userData.height || 0).toFixed(2);
+  const a = labelPlane(t().stoneH(hm), 0.42), b = labelPlane(t().you, 0.42);
   a.position.set(ruler.userData.x, model.userData.height + 0.08, ruler.userData.z);
   b.position.set(ruler.userData.x - 0.12, 1.4 + 0.08, ruler.userData.z + 0.12);
   ruler.add(a, b); ruler.userData.labels = [a, b];
@@ -299,7 +312,7 @@ function toggleAudio(i) {
 }
 function playClip(i) {
   if (!hasAudio(i)) return;
-  audio.pause();
+  audio.pause(); stopSpeech();
   audio.src = exPath(`audio/${S.lang}/${clipName(i)}.mp3`);
   audio.currentTime = 0;
   playingIndex = i;
@@ -307,6 +320,51 @@ function playClip(i) {
 }
 function stopAudio() { audio.pause(); playing = false; playingIndex = -1; }
 audio.addEventListener('ended', () => { playing = false; playingIndex = -1; refreshInfo(); });
+
+// ── Read to me: the device's own built-in voice reads the open panel (for text with no recording) ──
+// Nothing is recorded or sent by this app. On-device voices are preferred; some Chromebook voices are online
+// voices, which means the panel's text (exhibit text only, never anything about a student) goes to the voice service.
+const speech = typeof window.speechSynthesis !== 'undefined' ? window.speechSynthesis : null;
+let voices = [], speaking = false, speakGen = 0;
+function loadVoices() {
+  try { voices = speech ? speech.getVoices() : []; } catch { voices = []; }
+  const n = (l) => voices.filter((v) => (v.lang || '').toLowerCase().startsWith(l)).length;
+  dbg.speech = speech ? `${voices.length} voices (en ${n('en')}, es ${n('es')})` : 'not supported';
+  if (DEBUG) { const d = $('debug'); d.textContent = d.textContent.replace(/\nspeech:.*$/, '') + '\nspeech: ' + dbg.speech; }
+  if (openIndex !== -1) refreshInfo();
+}
+function voiceFor(lang) {
+  const m = voices.filter((v) => (v.lang || '').toLowerCase().startsWith(lang));
+  return m.find((v) => v.localService && /us|mx|419|es-es/i.test(v.lang)) || m.find((v) => v.localService) || m[0] || null;
+}
+const canSpeak = () => !!speech && !!voiceFor(S.lang);
+function speak(text) {
+  if (!canSpeak() || !text) return;
+  stopAudio(); stopSpeech();
+  const gen = ++speakGen, v = voiceFor(S.lang);
+  // one sentence at a time: some browsers stop long utterances part-way
+  const parts = String(text).match(/[^.!?¿¡…]+[.!?…]*["”»)]*\s*/g) || [text];
+  parts.forEach((p, i) => {
+    const u = new SpeechSynthesisUtterance(p.trim()); u.voice = v; u.lang = v.lang; u.rate = 0.95;
+    if (i === parts.length - 1) u.onend = u.onerror = () => { if (gen === speakGen) { speaking = false; refreshInfo(); syncTvRead(); } };
+    speech.speak(u);
+  });
+  speaking = true; refreshInfo();
+}
+function stopSpeech() { if (!speaking) return; speakGen++; speaking = false; try { speech.cancel(); } catch { /* fine */ } syncTvRead(); }
+function syncTvRead() { const b = $('tv-read'); if (b) b.textContent = speaking ? t().stop : t().readBtn; }
+// what "Read to me" says for the open panel
+function readText(st) {
+  const tt = t(), d = st.dot, Lg = (o) => L(o, S.lang), out = [];
+  if (st.notice) { out.push(tt.lookClosely + '.', Lg(d.notice), tt.stems.join(' ')); if (st.wait) out.push(tt.waitReveal); return out.join(' '); }
+  out.push(Lg(d.title) + '.', Lg(d.text));
+  (d.facts || []).forEach((f) => out.push(`${Lg(f.k)} ${Lg(f.v)}.`));
+  if (d.law) out.push(Lg(d.law.plain));
+  if (st.expanded && d.more) out.push(Lg(d.more));
+  if (d.think) out.push(`${tt.think.charAt(0)}${tt.think.slice(1).toLowerCase()}: ${Lg(d.think)}`);
+  return out.join(' ');
+}
+function toggleRead() { if (speaking) { stopSpeech(); refreshInfo(); } else speak(readText(infoState())); }
 
 // ═════════════ markers per frame ═════════════════════════════════
 function updateMarkers(time) {
@@ -321,16 +379,16 @@ function updateMarkers(time) {
     m.visible = show && (!clueOn() || revealed.has(i) || found.has(i));
     if (!m.visible) return;
     m.quaternion.copy(camera.quaternion);
-    const pop = m.userData.popAt ? Math.max(0, 1 - (time - m.userData.popAt) / 600) : 0;   // little bounce when revealed
+    const pop = m.userData.popAt && !calm() ? Math.max(0, 1 - (time - m.userData.popAt) / 600) : 0;   // little bounce when revealed (not in Calm mode)
     m.scale.setScalar(base * (m.userData.hover ? 1.25 : 1) * (openIndex === i ? 1.2 : 1) * (1 + 0.8 * Math.sin(pop * Math.PI)));
-    m.userData.halo.material.opacity = 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(time * 0.004 + i));
+    m.userData.halo.material.opacity = calm() ? 0.35 : 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(time * 0.004 + i));
   });
   if (ruler && ruler.visible) ruler.userData.labels.forEach((l) => l.quaternion.copy(camera.quaternion));
   // tour: pulsing ring around the current dot
   const tm = touring && markers[tourStep];
   tourRing.visible = !!(tm && tm.visible);
   if (tourRing.visible) {
-    const pulse = 0.5 + 0.5 * Math.sin(time * 0.006);
+    const pulse = calm() ? 0.5 : 0.5 + 0.5 * Math.sin(time * 0.006);   // Calm mode: a steady ring
     tourRing.position.copy(tm.position); tourRing.quaternion.copy(camera.quaternion);
     tourRing.scale.setScalar(tm.scale.x * (1.15 + 0.35 * pulse));
     tourRing.material.opacity = 0.45 + 0.5 * (1 - pulse);
@@ -345,6 +403,7 @@ function currentClue() { if (!clueOn()) return -1; for (let i = 0; i < DOTS.leng
 function reveal(i) {
   if (revealed.has(i)) return;
   revealed.add(i); markers[i].userData.popAt = performance.now();
+  if (mode === 'desktop') refreshTracker();
 }
 // is this ray pointing close to the current clue's spot (on the side facing the student)?
 function rayNearClue(ray) {
@@ -376,7 +435,7 @@ function openInfo(i) {
   if (pendingFinish && !touring) { pendingFinish = false; return showFinish(); }
   if (openIndex === 'practice') closeInfo();
   i = ((i % n) + n) % n;
-  if (openIndex !== i) { if (playingIndex !== i) stopAudio(); expanded = false; }
+  if (openIndex !== i) { if (playingIndex !== i) stopAudio(); stopSpeech(); expanded = false; }
   openIndex = i; hidden = false;
   if (tracking() && !found.has(i)) {
     found.add(i); revealed.add(i); refreshMarkerLooks(); refreshTracker(); refreshClue();
@@ -391,10 +450,16 @@ function openInfo(i) {
 const noticePhase = (i) => typeof i === 'number' && S.notice && !!DOTS[i]?.notice && !readingShown.has(i);
 function showReading(i) {
   if (typeof i !== 'number' || readingShown.has(i)) return;
-  readingShown.add(i); expanded = false;
+  readingShown.add(i); expanded = false; if (openIndex === i) stopSpeech();
   if (openIndex === i) refreshInfo(false);
 }
 function infoState() {
+  const st = baseInfoState();
+  st.speaking = speaking;
+  st.canRead = acc('read') && canSpeak() && openIndex !== 'practice' && (st.notice || !st.hasAudio);
+  return st;
+}
+function baseInfoState() {
   if (openIndex === 'practice') {
     const tt = t();
     return { dot: { title: tt.practiceTitle, text: tt.practiceText }, lang: S.lang, badge: '\u2713', single: true,
@@ -461,7 +526,7 @@ function extraCanvas(kind) {
 // The reading panel opens OFF TO THE SIDE of the dot (about 30–40°), so the stone stays in view.
 // Students can grab the bar above it and put it anywhere; later panels then open where they put
 // that one. The picture (map, signs) sits on the outer side, and the toolbar tucks underneath.
-const sizeOf = (p) => ({ w: p.mW, h: p.mW * p.usedH / p.canvas.width });
+const sizeOf = (p) => { const w = p.mW * (p.zoom || 1); return { w, h: w * p.usedH / p.canvas.width }; };
 const HANDLE_GAP = 0.025;
 function layoutRigChildren() {
   const ps = sizeOf(panel), outer = rigAng < 0 ? 1 : -1;   // +1: picture on the right
@@ -574,7 +639,7 @@ function followRig(dt) {
   rigAway = (dist > Math.max(1.8, (placePref?.dist || 0) + 0.6) || off) && !rigGoal ? rigAway + dt : 0;
   if (rigAway > 1.5) placeRig(openIndex !== 'finish' && markers[openIndex] ? markers[openIndex].position : null, false);
   if (rigGoal) {
-    rig.position.lerp(rigGoal, 1 - Math.exp(-dt * 5));
+    rig.position.lerp(rigGoal, 1 - Math.exp(-dt * (calm() ? 2.5 : 5)));
     rig.lookAt(C.x, rig.position.y, C.z);
     toolbarGoal = tuckGoal();
     if (rig.position.distanceTo(rigGoal) < 0.01) rigGoal = null;
@@ -621,17 +686,20 @@ function endGrab() {
 
 function closeInfo() {
   if (openIndex === 'practice') { practice = null; hint.mesh.visible = false; }
-  stopAudio();
+  stopAudio(); stopSpeech();
   openIndex = -1; expanded = false; hidden = false;
   if (grab) endGrab();
   panel.hide(); extra.mesh.visible = false; handle.mesh.visible = false; tab.mesh.visible = false;
+  const hadCard = !$('card').hidden;
   $('card').hidden = true; rigGoal = null;
+  if (hadCard && focusBack != null) { const i = focusBack; focusBack = null; setTimeout(() => document.querySelector(`#tracker button[data-dot="${i}"]`)?.focus(), 0); }
+  if (mode === 'desktop' && DOTS.length) refreshTracker();
   if (DOTS.length) refreshClue();
   if (ruler) ruler.visible = false;
   if (pendingFinish && !touring) { pendingFinish = false; showFinish(); }
 }
 function showFinish() {
-  finishShown = true; openIndex = 'finish'; expanded = false;
+  finishShown = true; openIndex = 'finish'; expanded = false; stopSpeech();
   if (ruler) ruler.visible = false;
   refreshInfo(true);
 }
@@ -649,7 +717,9 @@ function showCard() {
     $('card-think-label').textContent = '';
     $('card-think').textContent = tt.stems.join('  ') + (st.wait ? '  ' + tt.waitReveal : '');
     $('card-showme').hidden = !st.canReveal;
+    $('card-read').hidden = !st.canRead; $('card-read').textContent = speaking ? tt.stop : tt.readBtn;
     $('card-close').hidden = !!st.noClose; $('card-close').textContent = tt.close;
+    afterCard();
     return;
   }
   $('card-num').textContent = st.badge ?? st.index + 1;
@@ -677,15 +747,29 @@ function showCard() {
   $('card-think-label').textContent = tt.think;
   $('card-think').textContent = L(d.think, S.lang);
   $('card-listen').hidden = !st.hasAudio; $('card-listen').textContent = playing ? tt.stop : tt.listen;
+  $('card-read').hidden = !st.canRead || st.hasAudio; $('card-read').textContent = speaking ? tt.stop : tt.readBtn;
   $('card-moreBtn').hidden = !st.hasMore; $('card-moreBtn').textContent = st.expanded ? tt.less : tt.more;
   $('card-prev').hidden = $('card-next').hidden = !!st.single;
   $('card-close').hidden = !!st.noClose;
   $('card-prev').textContent = tt.back; $('card-next').textContent = tt.next; $('card-close').textContent = tt.close;
+  afterCard();
+}
+// keyboard / screen-reader users: move focus into the card when they opened it, and keep the dot list current
+let focusCard = false, focusBack = null;
+function afterCard() {
+  if (focusCard) { focusCard = false; $('card-title').focus(); }
+  refreshTracker();
+}
+function openFromKeyboard(i) {
+  if (!markers[i] || !selectable(i) || (clueOn() && !revealed.has(i) && !found.has(i))) return;
+  if (touring) tourPending = false;
+  focusCard = true; focusBack = i; openInfo(i);
 }
 $('card-close').onclick = closeInfo;
 $('card-prev').onclick = () => openInfo(openIndex - 1);
 $('card-next').onclick = () => openInfo(openIndex + 1);
 $('card-listen').onclick = () => toggleAudio(openIndex);
+$('card-read').onclick = () => toggleRead();
 $('card-moreBtn').onclick = () => { expanded = !expanded; refreshInfo(); };
 $('card-showme').onclick = () => showReading(openIndex);
 
@@ -694,12 +778,26 @@ function refreshTracker() {
   const n = DOTS.length;
   tracker.set(found, n, S.lang);
   tracker.mesh.visible = tracking();
-  const el = $('tracker');
-  el.hidden = !tracking() || mode !== 'desktop';
-  $('help').hidden = mode !== 'desktop' || !el.hidden;   // the tracker takes the help line's spot
+  // 2D page: the numbered dots double as an accessible list (keyboard, screen readers, switch access)
+  const el = $('tracker'), tt = t();
+  const hadFocus = el.contains(document.activeElement) ? document.activeElement.dataset.dot : null;
+  el.hidden = mode !== 'desktop' || !n;
+  el.setAttribute('aria-label', tt.dotsNav);
+  $('help').hidden = mode !== 'desktop' || !el.hidden;   // the dot list takes the help line's spot
   el.innerHTML = '';
-  const label = document.createElement('span'); label.textContent = t().found(found.size, n); el.append(label);
-  for (let i = 0; i < n; i++) { const b = document.createElement('b'); b.textContent = found.has(i) ? '✓' : i + 1; if (found.has(i)) b.className = 'on'; el.append(b); }
+  const label = document.createElement('span'); label.textContent = tracking() ? tt.found(found.size, n) : tt.dotsNav; el.append(label);
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement('button'), done = tracking() && found.has(i);
+    const hiddenDot = clueOn() && !revealed.has(i) && !found.has(i);
+    b.textContent = done ? '✓' : i + 1; b.dataset.dot = i;
+    if (done) b.classList.add('on');
+    if (openIndex === i) { b.classList.add('cur'); b.setAttribute('aria-current', 'true'); }
+    b.setAttribute('aria-label', hiddenDot ? tt.dotHidden(i + 1) : tt.dotName(i + 1, L(DOTS[i].title, S.lang)) + (done ? ' ✓' : ''));
+    b.disabled = hiddenDot || !selectable(i);
+    b.onclick = () => openFromKeyboard(i);
+    el.append(b);
+    if (hadFocus === String(i)) b.focus();
+  }
 }
 function refreshToolbar() {
   const items = ['left', 'right'];
@@ -722,7 +820,7 @@ const optionsHeadset = () => (classroomOn() ? { n: HEADSET, groups: GROUPS.map((
 function openOptions() {
   if (touring) return;
   closeInfo();
-  options.show(S, optionsHeadset());
+  options.show(S, optionsHeadset(), accNow());
   const os = sizeOf(options);
   const spot = centerSpot(os.w / 2), k = spot.d / spot.pref, p = spot.p;
   options.mesh.scale.setScalar(k);
@@ -735,8 +833,9 @@ function onOptions(id) {
   if (id === 'done') { options.mesh.visible = false; return; }
   const [k, v] = id.split(':');
   if (k === 'headset') setHeadset(+v);
+  else if (k === 'acc') { ACC.student[v] = !ACC.student[v]; applyAccess(); }
   else setSetting(k, BOOL_KEYS.includes(k) ? v === 'on' : v);
-  options.show(S, optionsHeadset());
+  options.show(S, optionsHeadset(), accNow());
 }
 
 // One place where every setting change goes (Options menu, start screen, or later the teacher console)
@@ -744,7 +843,7 @@ function setSetting(k, v) {
   if (S[k] === v) return;
   S[k] = v;
   if (k === 'lang') {
-    stopAudio(); setRulerLabels(); refreshStartScreen(); refreshInfo(); if (placing) startPlacing(true);
+    stopAudio(); stopSpeech(); setRulerLabels(); refreshStartScreen(); refreshInfo(); if (placing) startPlacing(true);
   }
   if (k === 'hunt' || k === 'clues') { refreshMarkerLooks(); if (k === 'clues' && !touring) closeInfo(); }
   if (k === 'size') {
@@ -759,6 +858,23 @@ function setSetting(k, v) {
   if (k === 'practice') { if (v) practiceDone = false; else if (practice) closeInfo(); }   // turning it on again offers it to the next student
   refreshToolbar(); refreshTracker(); refreshClue(); refreshStartScreen();
 }
+
+// ── supports: apply whatever is switched on (by the student, the room, or this headset) ──
+let accApplied = { big: false, read: false, calm: false };
+function applyAccess() {
+  const a = accNow(), was = accApplied; accApplied = a;
+  document.body.classList.toggle('big-text', a.big);
+  document.body.classList.toggle('calm', a.calm);
+  if (a.big !== was.big) {
+    const z = a.big ? BIG_ZOOM : 1;
+    for (const p of [panel, extra, handle, tab, options, hint, freezePanel]) p.setZoom(z);
+  }
+  if (!a.read && was.read) stopSpeech();
+  if (options.mesh.visible) options.show(S, optionsHeadset(), a);
+  if (openIndex !== -1) refreshInfo(a.big !== was.big);   // a bigger panel needs a new spot
+  refreshStartScreen();
+}
+const calm = () => acc('calm');
 
 // ═════════════ placement ════════════════════════════════════════
 function faceUser() {
@@ -830,7 +946,7 @@ function followToolbar(dt) {
     toolbar.mesh.scale.setScalar(1);
   }
   if (toolbarGoal) {
-    toolbar.mesh.position.lerp(toolbarGoal, 1 - Math.exp(-dt * 5));
+    toolbar.mesh.position.lerp(toolbarGoal, 1 - Math.exp(-dt * (calm() ? 2.5 : 5)));
     toolbar.mesh.lookAt(C);
     if (toolbar.mesh.position.distanceTo(toolbarGoal) < 0.01) toolbarGoal = null;
   }
@@ -857,6 +973,7 @@ const debugLines = () => [
   `anchor: ${dbg.anchor} · tracked: ${dbg.tracked}`,
   `saved spot: ${dbg.persist} · restore: ${dbg.restore}`,
   `resets ${dbg.resets} · jumps ${dbg.jumps} · shifts ${dbg.shifts} · visibility ${dbg.vis}`,
+  `speech: ${dbg.speech || '?'} · supports: ${Object.entries(accNow()).filter(([, v]) => v).map(([k]) => k).join(', ') || 'none'}`,
   ...dbg.events,
 ];
 let debugPanel = null, debugAt = 0;
@@ -1069,6 +1186,7 @@ function onPanelButton(id) {
   else if (id === 'next') openInfo(openIndex + 1);
   else if (id === 'prev') openInfo(openIndex - 1);
   else if (id === 'listen') toggleAudio(openIndex);
+  else if (id === 'read') toggleRead();
   else if (id === 'more') { expanded = !expanded; refreshInfo(); }
 }
 
@@ -1097,7 +1215,7 @@ function xrUpdate(frame, dt) {
   }
   const offer = practiceOffered();
   if (offer) {
-    practiceCard.set(S.lang, Math.floor(performance.now() / 650) % 2);   // two-frame pinch
+    practiceCard.set(S.lang, calm() ? 1 : Math.floor(performance.now() / 650) % 2);   // two-frame pinch (a still picture in Calm mode)
     // lazy follow: glides back to the lower left of the view only when it drifts out of sight
     const C = camera.position, fwd = headForward(), left = new THREE.Vector3().crossVectors(UP, fwd).normalize();
     const want = () => C.clone().addScaledVector(fwd, 0.95).addScaledVector(left, 0.3).setY(C.y - 0.3);
@@ -1306,7 +1424,7 @@ function setHeadset(n) {
   try { localStorage.setItem(HEADSET_KEY, String(n)); } catch { /* still works for this visit */ }
   refreshToolbar(); refreshStartScreen();
   if (roomFor() !== ROOM) switchRoom(roomFor());   // e.g. 3 → South End, 8 → North End
-  else applyPause();
+  else { applyPause(); syncRemoteAccess(); }
 }
 
 // ── listening to the room ──
@@ -1325,6 +1443,7 @@ function switchRoom(r) {
   roomSub?.stop(); roomSub = null;
   ROOM = r;
   lastRemote = {}; lastTourAt = 0; lastNarrateAt = 0;   // the new room's settings apply fresh
+  syncRemoteAccess();
   refreshStartScreen();
   startListening();
 }
@@ -1355,6 +1474,7 @@ function applyRemote(r) {
   if (changed('practice')) setSetting('practice', r.practice);
   if (changed('moveStone')) setSetting('moveStone', r.moveStone);
   lastRemote = { ...r };
+  syncRemoteAccess();
   // can students drag panels? (on unless the teacher turns it off)
   const mv = r.moveWindows !== false;
   if (mv !== moveOK) { moveOK = mv; if (!mv && grab) endGrab(); if (openIndex !== -1) refreshInfo(false); }
@@ -1372,6 +1492,15 @@ function applyRemote(r) {
     lastNarrateAt = r.narrateAt;
     if (!frozen && r.narrate <= DOTS.length) { showReading(r.narrate - 1); playClip(r.narrate - 1); }
   }
+}
+// supports from the teacher: for the whole room (bigText/readAloud/calm), or for this headset's number (access)
+function syncRemoteAccess() {
+  const r = lastRemote, mine = (HEADSET != null && r.access && r.access[HEADSET]) || '';
+  const room = { big: r.bigText === true, read: r.readAloud === true, calm: r.calm === true };
+  const hs = { big: mine.includes('b'), read: mine.includes('r'), calm: mine.includes('c') };
+  const same = (a, b) => a.big === b.big && a.read === b.read && a.calm === b.calm;
+  if (same(room, ACC.room) && same(hs, ACC.headset)) return;
+  ACC.room = room; ACC.headset = hs; applyAccess();
 }
 // a class-wide freeze wins; otherwise a pause aimed at this headset's number
 function applyPause() {
@@ -1391,7 +1520,7 @@ function setFrozen(kind) {
   if (kind === frozen) return;
   frozen = kind;
   if (kind) {
-    stopAudio(); if (grab) endGrab();
+    stopAudio(); stopSpeech(); if (grab) endGrab();
     const tt = t();
     freezePanel.set(tt.freezeFrom, tt.freeze[kind]);
     $('freeze-from').textContent = tt.freezeFrom; $('freeze-text').textContent = tt.freeze[kind];
@@ -1417,7 +1546,7 @@ function setTour(on, step) {
   } else {
     tourStep = -1; tourPending = false; tourTurn = null; guide.visible = false;
   }
-  refreshMarkerLooks(); refreshToolbar(); refreshClue();
+  refreshMarkerLooks(); refreshToolbar(); refreshClue(); refreshTracker();
   if (openIndex !== -1) refreshInfo(false);   // Back/Next/Close come back (or go away)
   runTourStep();
 }
@@ -1448,7 +1577,7 @@ function startTurn(i) {
 function updateTour(dt) {
   if (!touring) { guide.visible = false; return; }
   if (tourTurn && !frozen) {
-    tourTurn.t = Math.min(1, tourTurn.t + dt / 0.9);
+    tourTurn.t = Math.min(1, tourTurn.t + dt / (calm() ? 2.2 : 0.9));   // Calm mode: a slower, gentler turn
     const e = tourTurn.t * tourTurn.t * (3 - 2 * tourTurn.t);
     root.rotation.y = tourTurn.from + (tourTurn.to - tourTurn.from) * e;
     if (tourTurn.t >= 1) { tourTurn = null; if (tourPending) { tourPending = false; openInfo(tourStep); } }
@@ -1490,7 +1619,7 @@ function updateGuide(dt) {
   guideArrow.rotation.z = Math.atan2(dy, dx);
   guideArrow.position.set(dx * 0.02, dy * 0.02, 0);
   guideLabel.position.set(-dx * 0.2, -dy * 0.1 - (Math.abs(dy) < 0.5 ? 0.1 : 0), 0);
-  guideArrow.scale.setScalar(1 + 0.12 * Math.sin(performance.now() * 0.008));
+  guideArrow.scale.setScalar(calm() ? 1 : 1 + 0.12 * Math.sin(performance.now() * 0.008));
   guide.visible = true;
 }
 // Chromebook / iPad: swing the camera round to face the tour's dot
@@ -1503,7 +1632,7 @@ function aimDeskCamera(i) {
 }
 function updateDeskTurn(dt) {
   if (!deskTurn) return;
-  deskTurn.t = Math.min(1, deskTurn.t + dt / 0.9);
+  deskTurn.t = Math.min(1, deskTurn.t + dt / (calm() ? 2.2 : 0.9));
   const e = deskTurn.t * deskTurn.t * (3 - 2 * deskTurn.t);
   const off = camera.position.clone().sub(controls.target), sph = new THREE.Spherical().setFromVector3(off);
   sph.theta = deskTurn.from + (deskTurn.to - deskTurn.from) * e;
@@ -1531,6 +1660,15 @@ function refreshStartScreen() {
     b.textContent = { 'lang:en': 'English', 'lang:es': 'Español', 'hunt:on': tt.on, 'hunt:off': tt.off, 'clues:on': tt.on, 'clues:off': tt.off,
       'mode:walk': tt.walk, 'mode:seated': tt.seated }[b.dataset.set];
   });
+  // supports: always offered, even when locked (they only change how things look and sound for this student)
+  $('lbl-acc').textContent = tt.optSupports; $('acc-help').textContent = tt.supportsHelp;
+  const a = accNow();
+  document.querySelectorAll('[data-acc]').forEach((b) => {
+    const k = b.dataset.acc; b.textContent = { big: tt.bigText, read: tt.readAloud, calm: tt.calm }[k];
+    b.classList.toggle('sel', a[k]); b.setAttribute('aria-pressed', String(a[k]));
+  });
+  $('btn-text').textContent = tt.textView; $('btn-text').hidden = S.clues;   // the text version would give away Detective clues
+  if (!$('textview').hidden) buildTextView();
   $('lbl-lang').textContent = tt.optLang; $('lbl-hunt').textContent = tt.optHunt; $('lbl-clues').textContent = tt.optClues; $('lbl-mode').textContent = tt.optMode;
   // artifact picker: only this unit kit's artifacts (and only if there is more than one)
   $('kit-label').textContent = KIT ? L(KIT.title, S.lang) : '';
@@ -1580,6 +1718,49 @@ function refreshStartScreen() {
 document.querySelectorAll('[data-set]').forEach((b) => {
   b.onclick = () => { const [k, v] = b.dataset.set.split(':'); setSetting(k, BOOL_KEYS.includes(k) ? v === 'on' : v); };
 });
+document.querySelectorAll('[data-acc]').forEach((b) => {
+  b.onclick = () => { const k = b.dataset.acc; ACC.student[k] = !ACC.student[k]; applyAccess(); };
+});
+
+// ── "Read it all as text": every dot on one plain page (screen readers, printing, students who prefer text) ──
+function buildTextView() {
+  const tt = t(), Lg = (o) => L(o, S.lang), body = $('tv-body');
+  const el = (tag, text, cls) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; };
+  const labelled = (label, text) => { const p = el('p'); const b = el('b', label + ': '); p.append(b, text); return p; };
+  $('tv-title').textContent = Lg(EX.title); $('tv-close').textContent = tt.close;
+  $('tv-read').hidden = !(acc('read') && canSpeak()); $('tv-read').textContent = speaking ? tt.stop : tt.readBtn;
+  body.innerHTML = '';
+  body.append(el('p', Lg(EX.subtitle)));
+  DOTS.forEach((d, i) => {
+    const a = el('article');
+    a.append(el('h2', `${i + 1}. ${Lg(d.title)}`));
+    if (d.notice && S.notice) a.append(labelled(cap(tt.lookFirst), Lg(d.notice)));
+    a.append(el('p', Lg(d.text)));
+    if (d.facts) { const dl = el('dl'); d.facts.forEach((f) => dl.append(el('dt', Lg(f.k)), el('dd', Lg(f.v)))); a.append(dl); }
+    if (d.law) a.append(labelled(cap(tt.plain), Lg(d.law.plain)));
+    if (d.more) a.append(el('p', Lg(d.more)));
+    if (d.think) a.append(labelled(cap(tt.think), Lg(d.think)));
+    body.append(a);
+  });
+  if (EX.finish) { const a = el('article'); a.append(el('h2', cap(tt.bigQuestion)), el('p', Lg(EX.finish.think))); body.append(a); }
+  body.append(el('p', Lg(EX.model?.credit), 'credit'));
+}
+const cap = (x) => x.charAt(0) + x.slice(1).toLowerCase();
+function openTextView() { closeInfo(); buildTextView(); $('textview').hidden = false; $('tv-close').focus(); }
+function closeTextView() { stopSpeech(); $('textview').hidden = true; $('btn-text').focus(); }
+$('btn-text').onclick = openTextView;
+$('tv-close').onclick = closeTextView;
+$('tv-read').onclick = () => { if (speaking) stopSpeech(); else speak($('tv-body').innerText); syncTvRead(); };
+// keyboard: 1–9 open a dot, Esc closes the card or the text page
+document.addEventListener('keydown', (e) => {
+  if (mode !== 'desktop' || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (e.key === 'Escape') {
+    if (!$('textview').hidden) closeTextView();
+    else if (!$('card').hidden && !$('card-close').hidden) closeInfo();
+    return;
+  }
+  if (/^[1-9]$/.test(e.key) && $('textview').hidden && !frozen && +e.key <= DOTS.length) openFromKeyboard(+e.key - 1);
+});
 
 // ═════════════ boot ═════════════════════════════════════════════
 function onResize() {
@@ -1623,9 +1804,12 @@ renderer.setAnimationLoop((time, frame) => {
     $('btn-vr').hidden = !xrSupport.vr;
     document.querySelector('[data-set="mode:walk"]').closest('.row').hidden = true;   // not used on iPad
   }
+  if (speech) { loadVoices(); speech.addEventListener?.('voiceschanged', loadVoices); setTimeout(loadVoices, 1500); }
+  else dbg.speech = 'not supported';
+  applyAccess();
   refreshStartScreen();
   startListening();
-  if (DEBUG) { $('debug').hidden = false; $('debug').textContent = 'Diagnostics on. Enter passthrough, place the stone, then take the headset off and on.'; }
+  if (DEBUG) { $('debug').hidden = false; $('debug').textContent = 'Diagnostics on. Enter passthrough, place the stone, then take the headset off and on.\nspeech: ' + (dbg.speech || '?'); }
   window.__steleReady = true;
   // hooks for automated testing (harmless in normal use)
   window.__dbg = {
@@ -1634,7 +1818,7 @@ renderer.setAnimationLoop((time, frame) => {
     kitState: () => ({ kit: KIT && KIT.id, exhibit: EX.id, picker: $('exhibit-pick').hidden ? null : [...$('exhibit-pick').options].map((o) => o.value) }),
     practiceState: () => ({ stage: practice && practice.stage, done: practiceDone, card: practiceCard.mesh.visible, hint: hint.mesh.visible && hint.text }),
     noticeState: () => ({ notice: S.notice, phase: noticePhase(openIndex), shown: [...readingShown] }),
-    showReading, practiceCard,
+    showReading, practiceCard, dotsInfo: () => DOTS.map((d) => ({ id: d.id, hit: d._hit })), ACC, applyAccess, accState: () => ({ ...accNow(), zoom: panel.zoom, speaking, canSpeak: canSpeak(), voices: voices.length }), readText: () => readText(infoState()), toggleRead, syncRemoteAccess,
     grabState: () => ({ grab: !!grab, placePref, rigAng, hidden }), tourState: () => ({ touring, tourStep, tourPending, turning: !!tourTurn, guide: guide.visible, guideText: guideLabelText, moveOK, headset: HEADSET, room: ROOM, frozen }), freezePanel, isFrozen: () => frozen, rigState: () => ({ rigGoal: rigGoal && rigGoal.toArray(), rigAway, xrFrames }), currentClue, useHint, revealed, toolbar, panel, options, extra, tracker, S, setSetting, openInfo, closeInfo,
     state: () => ({ mode, placing, S: { ...S }, openIndex, expanded, found: [...found], finishShown, clue: currentClue(), revealed: [...revealed],
       panel: panel.mesh.visible, extra: extra.mesh.visible, options: options.mesh.visible, toolbarItems: toolbar.items,

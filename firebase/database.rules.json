@@ -31,6 +31,13 @@
         "moveStone":   { ".validate": "newData.isBoolean()" },
         "reveal":      { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
         "revealAt":    { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "bigText":     { ".validate": "newData.isBoolean()" },
+        "readAloud":   { ".validate": "newData.isBoolean()" },
+        "calm":        { ".validate": "newData.isBoolean()" },
+        "access": {
+          ".validate": "newData.hasChildren()",
+          "$h":        { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isString() && newData.val().matches(/^[brc]{1,3}$/)" }
+        },
         "paused": {
           ".validate": "newData.hasChildren()",
           "$h":        { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isNumber() && newData.val() <= now" }

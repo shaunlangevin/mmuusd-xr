@@ -39,12 +39,14 @@ class CanvasPanel {
     this.buttons = [];
     this.hover = null;
     this.usedH = pxH;
+    this.zoom = 1;   // "Bigger text" makes the whole panel bigger (text, buttons and all)
   }
+  setZoom(z) { if (z === this.zoom) return; this.zoom = z; this.mesh.scale.x = z; this.setUsedHeight(this.usedH); }
   // show only the top `h` pixels of the canvas (panel shrinks to fit its content)
   setUsedHeight(h) {
     const H = this.canvas.height; h = Math.min(H, Math.max(60, Math.round(h)));
     this.usedH = h;
-    this.mesh.scale.y = h / H;
+    this.mesh.scale.y = (this.zoom || 1) * h / H;
     this.tex.repeat.set(1, h / H); this.tex.offset.set(0, 1 - h / H);
   }
   buttonAt(uv) {
@@ -170,17 +172,20 @@ export class InfoPanel extends CanvasPanel {
       ctx.font = op.f; ctx.fillStyle = op.c; ctx.fillText(op.t, op.x, op.y);
     }
     const items = [];
+    const read = st.canRead ? { id: 'read', label: st.speaking ? t.stop : t.readBtn, w: 1.3 } : null;
     if (st.notice) {
       if (st.canReveal) items.push({ id: 'reveal', label: t.showMe, w: 1.6 });
+      if (read) items.push(read);
     } else {
       if (!st.single) items.push({ id: 'prev', label: t.back, w: 1 });
       if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : t.listen, w: 1.1 });
+      else if (read) items.push(read);
       if (st.hasMore) items.push({ id: 'more', label: st.expanded ? t.less : t.more, w: 1.5 });
     }
     if (!st.noClose) items.push({ id: 'close', label: t.close, w: 1 });
     if (!st.single && !st.notice) items.push({ id: 'next', label: t.next, w: 1 });
     this.buttons = items.length ? this.layoutRow(items, used - footer + 22, 88, 14, 40) : [];
-    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' || b.id === 'reveal' }));
+    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' || b.id === 'reveal' || b.id === 'read' }));
     this.tex.needsUpdate = true;
   }
 }
@@ -364,7 +369,7 @@ export class ClueCard extends CanvasPanel {
 export class OptionsPanel extends CanvasPanel {
   constructor() { super(1024, 1600, 0.62); this.mesh.visible = false; this.S = null; this.headset = null; }
   // headset: null (not in a classroom) or { n: current number or null, count }
-  show(S, headset = null) { this.S = S; this.headset = headset; this.draw(); this.mesh.visible = true; }
+  show(S, headset = null, acc = null) { this.S = S; this.headset = headset; this.acc = acc; this.draw(); this.mesh.visible = true; }
   draw() {
     if (!this.S) return;
     const S = this.S, t = UI[S.lang], ctx = this.ctx;
@@ -375,6 +380,10 @@ export class OptionsPanel extends CanvasPanel {
       [t.optMode, [['mode:walk', t.walk, S.mode === 'walk'], ['mode:seated', t.seated, S.mode === 'seated']]],
       [t.optSize, [['size:life', t.life, S.size === 'life'], ['size:table', t.table, S.size === 'table']]],
     ];
+    if (this.acc) {   // supports: each one toggles on its own (Bigger text, Read to me, Calm mode)
+      const a = this.acc;
+      rows.push([t.optSupports, [['acc:big', t.bigText, a.big], ['acc:read', t.readAloud, a.read], ['acc:calm', t.calm, a.calm]]]);
+    }
     if (this.headset) {   // one row per headset group (e.g. South End 0–5, North End 6–11)
       const hs = this.headset;
       for (const g of hs.groups) {
