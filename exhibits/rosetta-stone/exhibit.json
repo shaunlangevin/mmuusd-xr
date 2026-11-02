@@ -21,7 +21,7 @@
   "usdz": "model.usdz",
   "lawCredit": {
     "en": "translated by Carol Andrews, British Museum",
-    "es": "traducción al inglés de Carol Andrews, Museo Británico"
+    "es": "traducido al español de la versión en inglés de Carol Andrews, Museo Británico"
   },
   "finish": {
     "title": {
@@ -251,7 +251,10 @@
           "en": "He got rid of some taxes and made other taxes smaller.",
           "es": "Quitó algunos impuestos y bajó otros."
         },
-        "original": "Of the revenues and taxes levied in Egypt some he has wholly remitted and others he has lightened.",
+        "original": {
+          "en": "Of the revenues and taxes levied in Egypt some he has wholly remitted and others he has lightened.",
+          "es": "De las rentas y los impuestos que se cobraban en Egipto, a algunos los perdonó por completo y a otros los hizo más ligeros."
+        },
         "source": {
           "en": "the Greek text",
           "es": "el texto en griego"

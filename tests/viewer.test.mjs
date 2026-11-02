@@ -56,6 +56,41 @@ export default (test) => {
     await p.close();
   });
 
+  test('recorded notice prompts: Listen on the prompt, stops when the reading appears', async () => {
+    const p = await page();
+    // pretend Hammurabi's prompt clips exist by serving dot 1's reading clip for any NN-notice.mp3
+    await p.route(/audio\/(en|es)\/\d\d-notice\.mp3/, (r) => r.fulfill({ path: new URL('../exhibits/hammurabi/audio/en/01.mp3', import.meta.url).pathname, contentType: 'audio/mpeg' }));
+    await ready(p, '?room=off&exhibit=hammurabi&practice=off');
+    await p.waitForFunction(() => window.__dbg.state().noticeAudio.en.filter(Boolean).length === 9, null, { timeout: 20000 });
+    await p.evaluate(() => window.__dbg.openInfo(2));
+    eq(await p.textContent('#card-title'), 'Look closely', 'prompt');
+    ok(await p.isVisible('#card-listen'), 'Listen appears on the prompt');
+    await p.click('#card-listen'); await sleep(600);
+    eq(await p.evaluate(() => [window.__dbg.state().playing, window.__dbg.state().playingKind]), [true, 'notice'], 'plays the prompt clip');
+    eq(await p.textContent('#card-listen'), 'Stop', 'button turns into Stop');
+    await p.click('#card-showme'); await sleep(200);
+    eq(await p.evaluate(() => window.__dbg.state().playing), false, 'the prompt clip stops when the reading appears');
+    ok(await p.isVisible('#card-listen'), 'the reading has its own Listen');
+    await p.close();
+  });
+
+  test('recorded Tell me more: Listen switches to the extra part once it is opened', async () => {
+    const p = await page();
+    await p.route(/audio\/(en|es)\/\d\d-more\.mp3/, (r) => r.fulfill({ path: new URL('../exhibits/hammurabi/audio/en/01.mp3', import.meta.url).pathname, contentType: 'audio/mpeg' }));
+    await ready(p, '?room=off&exhibit=hammurabi&practice=off&notice=off');
+    await p.waitForFunction(() => window.__dbg.state().audio.en.length === 9, null, { timeout: 20000 });
+    await p.evaluate(() => window.__dbg.openInfo(5)); await sleep(800);
+    eq(await p.textContent('#card-listen'), 'Listen', 'collapsed: Listen plays the reading');
+    await p.click('#card-moreBtn'); await sleep(200);
+    eq(await p.textContent('#card-listen'), 'Listen to more', 'opened: Listen to more');
+    await p.click('#card-listen'); await sleep(600);
+    eq(await p.evaluate(() => [window.__dbg.state().playing, window.__dbg.state().playingKind]), [true, 'more'], 'plays the Tell me more clip');
+    await p.evaluate(() => window.__dbg.setSetting('lang', 'es')); await sleep(200);
+    ok((await p.textContent('#card-orig-text')).startsWith('“Si un hombre le saca el ojo'), 'Spanish panel shows the Spanish quote');
+    ok((await p.textContent('#card-orig-src')).includes('traducido al español'), 'and says it was translated');
+    await p.close();
+  });
+
   test('keyboard and screen readers: dot list, 1–9 keys, Esc, focus', async () => {
     const p = await page();
     await ready(p, '?room=off&exhibit=rosetta-stone&practice=off');

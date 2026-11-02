@@ -145,15 +145,17 @@ let rigAng = -0.65;            // which side the open panel went to (negative = 
 let touring = false, tourStep = -1, tourPending = false, tourTurn = null;
 let moveOK = true;             // teacher can switch off panel dragging
 const audioOK = { en: [], es: [] };
+const noticeOK = { en: [], es: [] };   // recorded "Look closely" prompts: audio/<lang>/01-notice.mp3 …
+const moreOK = { en: [], es: [] };     // recorded "Tell me more" parts: audio/<lang>/01-more.mp3 …
 let audioFinish = { en: false, es: false };
-const audio = new Audio(); let playing = false, playingIndex = -1;
+const audio = new Audio(); let playing = false, playingIndex = -1, playingKind = 'main';
 const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
 let hasCuneiformFont = false;
 const kitList = () => (EX?.index.kits || []).filter((k) => Array.isArray(k.exhibits));
 const sizeScale = () => (S.size === 'table' ? TABLE_SCALE : 1);
 const exPath = (f) => `exhibits/${EX.id}/${f}`;
-const clipName = (i) => (i === 'finish' ? 'finish' : String(i + 1).padStart(2, '0'));
+const clipName = (i, kind = 'main') => (i === 'finish' ? 'finish' : String(i + 1).padStart(2, '0') + (kind === 'main' ? '' : '-' + kind));
 
 // ═════════════ exhibit loading ══════════════════════════════════
 // no-cache = always ask GitHub whether the file changed (cheap), so a new kit or edited text shows up right after an upload
@@ -301,21 +303,25 @@ async function checkAudio() {
   const head = async (u) => { try { const r = await fetch(u, { method: 'HEAD', cache: 'no-store' }); return r.ok; } catch { return false; } };
   for (const lang of ['en', 'es']) {
     audioOK[lang] = await Promise.all(DOTS.map((_, i) => head(exPath(`audio/${lang}/${clipName(i)}.mp3`))));
+    noticeOK[lang] = await Promise.all(DOTS.map((d, i) => (d.notice ? head(exPath(`audio/${lang}/${clipName(i, 'notice')}.mp3`)) : false)));
+    moreOK[lang] = await Promise.all(DOTS.map((d, i) => (d.more || d.law?.original ? head(exPath(`audio/${lang}/${clipName(i, 'more')}.mp3`)) : false)));
     audioFinish[lang] = await head(exPath(`audio/${lang}/finish.mp3`));
   }
   if (openIndex >= 0) refreshInfo();
 }
-function hasAudio(i) { return i === 'finish' ? audioFinish[S.lang] : !!audioOK[S.lang][i]; }
-function toggleAudio(i) {
+function hasAudio(i, kind = 'main') { return i === 'finish' ? audioFinish[S.lang] : !!({ notice: noticeOK, more: moreOK, main: audioOK }[kind][S.lang][i]); }
+// which clip the open panel's Listen plays: the prompt, the "Tell me more" part (once opened), or the reading
+const panelKind = () => (noticePhase(openIndex) ? 'notice' : expanded && typeof openIndex === 'number' && hasAudio(openIndex, 'more') ? 'more' : 'main');
+function toggleAudio(i, kind = 'main') {
   if (playing) { stopAudio(); refreshInfo(); return; }
-  playClip(i);
+  playClip(i, kind);
 }
-function playClip(i) {
-  if (!hasAudio(i)) return;
+function playClip(i, kind = 'main') {
+  if (!hasAudio(i, kind)) return;
   audio.pause(); stopSpeech();
-  audio.src = exPath(`audio/${S.lang}/${clipName(i)}.mp3`);
+  audio.src = exPath(`audio/${S.lang}/${clipName(i, kind)}.mp3`);
   audio.currentTime = 0;
-  playingIndex = i;
+  playingIndex = i; playingKind = kind;
   audio.play().then(() => { playing = true; refreshInfo(); }).catch((e) => { playingIndex = -1; console.warn('audio', e); });
 }
 function stopAudio() { audio.pause(); playing = false; playingIndex = -1; }
@@ -361,6 +367,7 @@ function readText(st) {
   (d.facts || []).forEach((f) => out.push(`${Lg(f.k)} ${Lg(f.v)}.`));
   if (d.law) out.push(Lg(d.law.plain));
   if (st.expanded && d.more) out.push(Lg(d.more));
+  if (st.expanded && d.law?.original) out.push(Lg(d.law.original));
   if (d.think) out.push(`${tt.think.charAt(0)}${tt.think.slice(1).toLowerCase()}: ${Lg(d.think)}`);
   return out.join(' ');
 }
@@ -451,12 +458,13 @@ const noticePhase = (i) => typeof i === 'number' && S.notice && !!DOTS[i]?.notic
 function showReading(i) {
   if (typeof i !== 'number' || readingShown.has(i)) return;
   readingShown.add(i); expanded = false; if (openIndex === i) stopSpeech();
+  if (playingIndex === i && playingKind === 'notice') stopAudio();   // the prompt's clip ends when the reading appears
   if (openIndex === i) refreshInfo(false);
 }
 function infoState() {
   const st = baseInfoState();
   st.speaking = speaking;
-  st.canRead = acc('read') && canSpeak() && openIndex !== 'practice' && (st.notice || !st.hasAudio);
+  st.canRead = acc('read') && canSpeak() && openIndex !== 'practice' && !st.hasAudio;   // a recording, when there is one, wins
   return st;
 }
 function baseInfoState() {
@@ -467,6 +475,7 @@ function baseInfoState() {
   }
   if (noticePhase(openIndex)) {
     return { dot: DOTS[openIndex], index: openIndex, lang: S.lang, notice: true, single: true,
+      hasAudio: hasAudio(openIndex, 'notice'), playing: playing && playingKind === 'notice' && playingIndex === openIndex,
       canReveal: !touring, wait: touring, noClose: touring && mode !== 'desktop', found: tracking() && found.has(openIndex) };
   }
   if (openIndex === 'finish') {
@@ -476,9 +485,9 @@ function baseInfoState() {
   }
   const d = DOTS[openIndex];
   return {
-    dot: d, index: openIndex, lang: S.lang, expanded, playing, found: tracking() && found.has(openIndex),
+    dot: d, index: openIndex, lang: S.lang, expanded, playing: playing && playingIndex === openIndex, audioKind: panelKind(), found: tracking() && found.has(openIndex),
     single: clueOn() || touring, noClose: touring && mode !== 'desktop',   // in a tour, students use Hide instead of Close
-    hasAudio: hasAudio(openIndex), hasMore: !!(d.more || (d.law && d.law.original)),
+    hasAudio: hasAudio(openIndex, panelKind()), hasMore: !!(d.more || (d.law && d.law.original)),
     lawCredit: EX.lawCredit, credit: (d.id === 'height' || d.extra === 'height') ? L(EX.model.credit, S.lang) : '',
   };
 }
@@ -717,6 +726,7 @@ function showCard() {
     $('card-think-label').textContent = '';
     $('card-think').textContent = tt.stems.join('  ') + (st.wait ? '  ' + tt.waitReveal : '');
     $('card-showme').hidden = !st.canReveal;
+    $('card-listen').hidden = !st.hasAudio; $('card-listen').textContent = st.playing ? tt.stop : tt.listen;
     $('card-read').hidden = !st.canRead; $('card-read').textContent = speaking ? tt.stop : tt.readBtn;
     $('card-close').hidden = !!st.noClose; $('card-close').textContent = tt.close;
     afterCard();
@@ -740,13 +750,13 @@ function showCard() {
   $('card-orig').hidden = !(d.law && d.law.original);
   if (d.law && d.law.original) {
     $('card-orig-label').textContent = tt.original;
-    $('card-orig-text').textContent = '“' + d.law.original + '”';
+    $('card-orig-text').textContent = '“' + L(d.law.original, S.lang) + '”';
     $('card-orig-src').textContent = `— ${L(d.law.source, S.lang)}, ${L(EX.lawCredit, S.lang)}`;
   }
   $('card-credit').textContent = st.credit || ''; $('card-credit').hidden = !st.credit;
   $('card-think-label').textContent = tt.think;
   $('card-think').textContent = L(d.think, S.lang);
-  $('card-listen').hidden = !st.hasAudio; $('card-listen').textContent = playing ? tt.stop : tt.listen;
+  $('card-listen').hidden = !st.hasAudio; $('card-listen').textContent = st.playing ? tt.stop : st.audioKind === 'more' ? tt.listenMore : tt.listen;
   $('card-read').hidden = !st.canRead || st.hasAudio; $('card-read').textContent = speaking ? tt.stop : tt.readBtn;
   $('card-moreBtn').hidden = !st.hasMore; $('card-moreBtn').textContent = st.expanded ? tt.less : tt.more;
   $('card-prev').hidden = $('card-next').hidden = !!st.single;
@@ -768,7 +778,7 @@ function openFromKeyboard(i) {
 $('card-close').onclick = closeInfo;
 $('card-prev').onclick = () => openInfo(openIndex - 1);
 $('card-next').onclick = () => openInfo(openIndex + 1);
-$('card-listen').onclick = () => toggleAudio(openIndex);
+$('card-listen').onclick = () => toggleAudio(openIndex, panelKind());
 $('card-read').onclick = () => toggleRead();
 $('card-moreBtn').onclick = () => { expanded = !expanded; refreshInfo(); };
 $('card-showme').onclick = () => showReading(openIndex);
@@ -973,6 +983,7 @@ const debugLines = () => [
   `anchor: ${dbg.anchor} · tracked: ${dbg.tracked}`,
   `saved spot: ${dbg.persist} · restore: ${dbg.restore}`,
   `resets ${dbg.resets} · jumps ${dbg.jumps} · shifts ${dbg.shifts} · visibility ${dbg.vis}`,
+  `site: ${dbg.site || '?'}`,
   `speech: ${dbg.speech || '?'} · supports: ${Object.entries(accNow()).filter(([, v]) => v).map(([k]) => k).join(', ') || 'none'}`,
   ...dbg.events,
 ];
@@ -1185,7 +1196,7 @@ function onPanelButton(id) {
   if (id === 'close') closeInfo();
   else if (id === 'next') openInfo(openIndex + 1);
   else if (id === 'prev') openInfo(openIndex - 1);
-  else if (id === 'listen') toggleAudio(openIndex);
+  else if (id === 'listen') toggleAudio(openIndex, panelKind());
   else if (id === 'read') toggleRead();
   else if (id === 'more') { expanded = !expanded; refreshInfo(); }
 }
@@ -1809,7 +1820,11 @@ renderer.setAnimationLoop((time, frame) => {
   applyAccess();
   refreshStartScreen();
   startListening();
-  if (DEBUG) { $('debug').hidden = false; $('debug').textContent = 'Diagnostics on. Enter passthrough, place the stone, then take the headset off and on.\nspeech: ' + (dbg.speech || '?'); }
+  if (DEBUG) {
+    $('debug').hidden = false; $('debug').textContent = 'Diagnostics on. Enter passthrough, place the stone, then take the headset off and on.\nspeech: ' + (dbg.speech || '?');
+    // which site update is live (version.json is stamped into every update zip)
+    fetch('version.json', { cache: 'no-store' }).then((r) => r.json()).then((v) => { dbg.site = `${v.version} ${v.label || ''}`.trim(); $('debug').textContent += '\nsite: ' + dbg.site; }).catch(() => { dbg.site = 'unknown'; });
+  }
   window.__steleReady = true;
   // hooks for automated testing (harmless in normal use)
   window.__dbg = {
@@ -1823,6 +1838,6 @@ renderer.setAnimationLoop((time, frame) => {
     state: () => ({ mode, placing, S: { ...S }, openIndex, expanded, found: [...found], finishShown, clue: currentClue(), revealed: [...revealed],
       panel: panel.mesh.visible, extra: extra.mesh.visible, options: options.mesh.visible, toolbarItems: toolbar.items,
       ruler: !!ruler?.visible, root: root.position.toArray().map((v) => +v.toFixed(2)), scale: +root.scale.x.toFixed(2),
-      rotY: +root.rotation.y.toFixed(2), audio: { ...audioOK }, playing }),
+      rotY: +root.rotation.y.toFixed(2), audio: { ...audioOK }, noticeAudio: { ...noticeOK }, playing, playingKind }),
   };
 })();

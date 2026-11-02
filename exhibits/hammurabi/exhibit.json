@@ -21,7 +21,7 @@
   "usdz": "model.usdz",
   "lawCredit": {
     "en": "translated by L. W. King, 1915",
-    "es": "traducción al inglés de L. W. King, 1915"
+    "es": "traducido al español de la versión en inglés de L. W. King (1915)"
   },
   "finish": {
     "title": {
@@ -141,7 +141,10 @@
           "en": "If you did not take care of your dam, and it broke and flooded your neighbors' fields, you had to pay for their ruined grain. If you could not pay, you could be sold, and the money went to the farmers.",
           "es": "Si no cuidabas tu dique, y se rompía e inundaba los campos de tus vecinos, tenías que pagar el grano que se echó a perder. Si no podías pagar, te podían vender, y el dinero era para los agricultores."
         },
-        "original": "If any one be too lazy to keep his dam in proper condition, and does not so keep it; if then the dam break and all the fields be flooded, then shall he in whose dam the break occurred be sold for money, and the money shall replace the corn which he has caused to be ruined.",
+        "original": {
+          "en": "If any one be too lazy to keep his dam in proper condition, and does not so keep it; if then the dam break and all the fields be flooded, then shall he in whose dam the break occurred be sold for money, and the money shall replace the corn which he has caused to be ruined.",
+          "es": "Si alguien es demasiado perezoso para mantener su dique en buen estado, y no lo mantiene así; si entonces el dique se rompe y todos los campos se inundan, aquel en cuyo dique ocurrió la rotura será vendido por dinero, y el dinero repondrá el grano que hizo que se perdiera."
+        },
         "source": {
           "en": "Law 53",
           "es": "Ley 53"
@@ -262,7 +265,10 @@
           "en": "If you hurt the eye of an important man, your eye was hurt too. If you hurt the eye of a poor man, you paid money. If you hurt the eye of an enslaved person, you paid their owner half of what the person was “worth.”",
           "es": "Si lastimabas el ojo de un hombre importante, te lastimaban el ojo a ti también. Si lastimabas el ojo de un hombre pobre, pagabas dinero. Si lastimabas el ojo de una persona esclavizada, le pagabas a su dueño la mitad de lo que esa persona “valía”."
         },
-        "original": "If a man put out the eye of another man, his eye shall be put out. … If he put out the eye of a freed man… he shall pay one gold mina. If he put out the eye of a man's slave… he shall pay one-half of its value.",
+        "original": {
+          "en": "If a man put out the eye of another man, his eye shall be put out. … If he put out the eye of a freed man… he shall pay one gold mina. If he put out the eye of a man's slave… he shall pay one-half of its value.",
+          "es": "Si un hombre le saca el ojo a otro hombre, que le saquen el ojo a él. … Si le saca el ojo a un hombre liberto… pagará una mina de oro. Si le saca el ojo al esclavo de un hombre… pagará la mitad de su valor."
+        },
         "source": {
           "en": "Laws 196, 198, 199",
           "es": "Leyes 196, 198 y 199"
@@ -298,7 +304,10 @@
           "en": "If a builder built a house badly, and it fell down and killed the owner, the builder was put to death. If the walls started to fall before the house was finished, the builder had to fix them with his own money.",
           "es": "Si un constructor hacía mal una casa, y se caía y mataba al dueño, el constructor era condenado a muerte. Si las paredes empezaban a caerse antes de terminar la casa, el constructor tenía que arreglarlas con su propio dinero."
         },
-        "original": "If a builder build a house for some one, and does not construct it properly, and the house which he built fall in and kill its owner, then that builder shall be put to death.",
+        "original": {
+          "en": "If a builder build a house for some one, and does not construct it properly, and the house which he built fall in and kill its owner, then that builder shall be put to death.",
+          "es": "Si un constructor construye una casa para alguien, y no la construye como es debido, y la casa que construyó se derrumba y mata a su dueño, entonces ese constructor será condenado a muerte."
+        },
         "source": {
           "en": "Laws 229 and 233",
           "es": "Leyes 229 y 233"
@@ -334,7 +343,10 @@
           "en": "Anyone who has a problem with the law should come and stand in front of this stone and listen to the writing. It will explain their case, and they will know what is fair.",
           "es": "Cualquier persona que tenga un problema con la ley debe venir, pararse frente a esta piedra y escuchar lo que dice. Le explicará su caso, y sabrá qué es lo justo."
         },
-        "original": "Let the oppressed, who has a case at law, come and stand before this my image as king of righteousness; let him read the inscription, and understand my precious words: the inscription will explain his case to him.",
+        "original": {
+          "en": "Let the oppressed, who has a case at law, come and stand before this my image as king of righteousness; let him read the inscription, and understand my precious words: the inscription will explain his case to him.",
+          "es": "Que el oprimido que tenga un caso ante la ley venga y se pare frente a esta imagen mía, como rey de la justicia; que lea la inscripción y comprenda mis preciosas palabras: la inscripción le explicará su caso."
+        },
         "source": {
           "en": "The ending (epilogue)",
           "es": "El final (epílogo)"
