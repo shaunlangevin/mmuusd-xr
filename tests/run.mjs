@@ -1,5 +1,5 @@
-// Automated checks for the MMUUSD WebXR exhibits.  Run from the repo folder:
-//   node tests/run.mjs              (everything, about 5–8 minutes)
+// Automated checks for MMUUSD Labs.  Run from the repo folder:
+//   node tests/run.mjs              (everything, about 10–15 minutes)
 //   node tests/run.mjs static rules (only test files whose name matches)
 //   node tests/run.mjs --grep tour  (only tests whose title contains "tour")
 // Needs Node 18+ and Playwright with Chromium (npm i -g playwright && npx playwright install chromium).

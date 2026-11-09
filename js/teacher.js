@@ -1,59 +1,43 @@
-// Teacher console. Signed-in teachers write a tiny settings record for one room;
-// headsets read it. Nothing is ever read from the headsets.
-// Two tabs: Set up (before class) and Teach (during the lesson).
+// Teacher console for the labs. Signed-in teachers write a tiny settings record for one room; headsets read it.
+// Nothing is ever read from the headsets, and nothing about students is written: only lab settings and headset sticker numbers.
 import * as CFG from './firebase-config.js';
 const { FIREBASE_CONFIG, TEACHERS } = CFG;
 const DEFAULT_ROOM = CFG.DEFAULT_ROOM || 'mmuusd';
-// headset groups: a headset's number decides which room it follows (see js/firebase-config.js)
-const GROUPS = (Array.isArray(CFG.GROUPS) && CFG.GROUPS.length ? CFG.GROUPS : [{ name: '', room: DEFAULT_ROOM, first: 0, last: (CFG.HEADSETS || 6) - 1 }])
+const GROUPS = (Array.isArray(CFG.GROUPS) ? CFG.GROUPS : [])
   .filter((g) => /^[a-z0-9-]{1,24}$/.test(g.room) && Number.isInteger(g.first) && Number.isInteger(g.last) && g.first <= g.last && g.last <= 19);
 const groupFor = (room) => GROUPS.find((g) => g.room === room) || null;
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
 const ROOM_RE = /^[a-z0-9-]{1,24}$/;
-const PAGES = ['signedOut', 'notConfigured', 'setup', 'teach'];
+const PAGES = ['signedOut', 'notConfigured', 'console'];
 const show = (id) => PAGES.forEach((x) => ($(x).hidden = x !== id));
 
 // ── settings: what each one is, and what headsets do when it's left on Default ──
 const ONOFF = [[true, 'On'], [false, 'Off']];
-const SETTINGS = [
-  { group: 'What students see' },
-  { key: 'lang', label: 'Language', opts: [['en', 'English'], ['es', 'Español']], def: 'en' },
-  { key: 'notice', label: 'Notice first', desc: 'A look-closely prompt before each reading', opts: ONOFF, def: true },
-  { key: 'progress', label: 'Track progress', desc: 'Explored dots turn green; a big question at the end', opts: ONOFF, def: true },
-  { key: 'detective', label: 'Detective mode', desc: 'Dots start hidden behind clues', opts: ONOFF, def: false },
-  { group: 'How students use it' },
-  { key: 'mode', label: 'Students are', opts: [['walk', 'Walking'], ['seated', 'Seated']], def: 'walk' },
-  { key: 'size', label: 'Size', opts: [['life', 'Life size'], ['table', 'Table size']], def: 'life' },
-  { key: 'moveStone', label: 'Move button', desc: 'Lets students re-place the stone', opts: [[true, 'Show'], [false, 'Hide']], def: true },
-  { key: 'moveWindows', label: 'Students can move windows', desc: 'The grab bar above reading panels', opts: ONOFF, def: true, noDefault: true },
-  { key: 'practice', label: 'Practice card', desc: 'A pinch-to-practice card for first-timers', opts: ONOFF, def: false },
-  { key: 'lock', label: 'Classroom lock', desc: 'Hides Options and Exit', opts: ONOFF, def: false },
-  { group: 'Supports for every headset (for one student, use Teach → Supports for one headset)' },
-  { key: 'bigText', label: 'Bigger text', desc: 'Reading panels and menus about 30% larger', opts: ONOFF, def: false },
-  { key: 'readAloud', label: 'Read to me', desc: 'Adds a Read to me button that reads panels aloud with the headset’s built-in voice (for text that has no recording)', opts: ONOFF, def: false },
-  { key: 'calm', label: 'Calm mode', desc: 'No pulsing, bouncing or quick movements; slower turns', opts: ONOFF, def: false },
-  { key: 'autoPlay', label: 'Auto-play', desc: 'Recordings start by themselves: the prompt when a dot opens, the reading when it appears, Tell me more when it opens', opts: ONOFF, def: false },
+const LAB = [
+  { key: 'path', label: 'Path', opts: [['guided', 'Guided'], ['full', 'Full investigation']], def: 'guided' },
+  { key: 'start', label: 'Full investigation starts at', desc: 'Plan skips Try it and the 3rd-law question (for day 2)', opts: [['try', 'Try it'], ['plan', 'Plan']], def: 'try', onlyFull: true },
+  { key: 'variable', label: 'Variable', desc: 'Default: cannon weight (Guided) or students choose (Full)', opts: [['ball', 'Ball'], ['cannon', 'Cannon weight'], ['powder', 'Powder'], ['wheels', 'Wheels']], def: null },
+  { key: 'sizes', label: 'Sizes students can pick', desc: 'Students start at the smallest one', sizes: true },
+  { key: 'lang', label: 'Language', desc: 'Students can still switch in Options', opts: [['en', 'English'], ['es', 'Español']], def: 'en' },
 ];
-// per-headset supports: stored as letters, e.g. access/h3 = "br" (b = bigger text, r = read to me, c = calm, a = auto-play)
-const SUPPORTS = [['b', 'A+', 'Bigger text'], ['r', '🔊', 'Read to me'], ['c', 'Calm', 'Calm mode'], ['a', 'Auto', 'Auto-play']];
-const SUPPORT_KEYS = { b: 'bigText', r: 'readAloud', c: 'calm', a: 'autoPlay' };
-const SET_BY_KEY = Object.fromEntries(SETTINGS.filter((s) => s.key).map((s) => [s.key, s]));
-// one tap sets several options (each preset only touches the keys it lists)
-const PRESETS = [
-  { name: 'First-time class', desc: 'Practice card on · Notice first · Move hidden · lock on', set: { practice: true, notice: true, moveStone: false, lock: true, detective: false } },
-  { name: 'Guided tour', desc: 'Notice first · Move hidden · lock on (start the tour on Teach)', set: { notice: true, moveStone: false, lock: true, practice: false, detective: false } },
-  { name: 'Free explore', desc: 'Progress on · Notice first · Move shown · lock off', set: { progress: true, notice: true, moveStone: true, lock: false, detective: false } },
-  { name: 'Detective challenge', desc: 'Detective on · Notice first off · progress on', set: { detective: true, notice: false, progress: true, lock: false } },
+const SUPPORT_SETTINGS = [
+  { key: 'bigText', label: 'Bigger text', desc: 'The panel about 30% larger', opts: ONOFF, def: false },
+  { key: 'calm', label: 'Calm mode', desc: 'Quieter boom, no smoke, no pulsing glow', opts: ONOFF, def: false },
+  { key: 'num', label: 'Show numbers', desc: 'Centimetre readings on the ruler and in the table', opts: ONOFF, def: false },
+  { key: 'fireButton', label: 'Fire button', desc: 'A Fire button instead of pulling the cord', opts: ONOFF, def: false },
 ];
+const SETTINGS = [...LAB, ...SUPPORT_SETTINGS];
+const SET_BY_KEY = Object.fromEntries(SETTINGS.map((s) => [s.key, s]));
+const SIZE_NAMES = [['desk', 'Desk'], ['half', 'Half'], ['life', 'Life size']];
+// per-headset supports: letters, e.g. access/h3 = "bn"
+const SUPPORTS = [['b', 'A+', 'Bigger text'], ['c', 'Calm', 'Calm mode'], ['n', '123', 'Show numbers'], ['f', 'Btn', 'Fire button'], ['s', 'ES', 'Spanish']];
 const FREEZE_NAMES = { eyes: 'Eyes up', wait: 'Wait', done: 'Time to finish', remove: 'Take off headset' };
+const RESTARTS = ['path', 'start', 'variable'];   // headsets start over when these change
 
-if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.databaseURL) {
-  show('notConfigured');
-} else {
-  start();
-}
+if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.databaseURL) show('notConfigured');
+else start();
 
 async function start() {
   const fb = await import('../vendor/firebase/fb-db.js');
@@ -65,64 +49,18 @@ async function start() {
 
   const provider = new fa.GoogleAuthProvider();
   provider.setCustomParameters({ hd: 'mmuusd.org', prompt: 'select_account' });
-  $('signIn').onclick = () => fa.signInWithPopup(auth, provider).catch((e) => alert('Sign-in failed: ' + e.message));
+  $('signIn').onclick = () => fa.signInWithPopup(auth, provider).catch((e) => toast('Sign-in failed: ' + e.message, true));
 
-  // "?" buttons open a short explanation under the card title
   document.querySelectorAll('[data-help]').forEach((b) => {
     const p = b.closest('.card').querySelector('.help');
     b.setAttribute('aria-expanded', 'false');
     b.onclick = () => { p.hidden = !p.hidden; b.setAttribute('aria-expanded', String(!p.hidden)); };
   });
 
-  // ── tabs: Set up first; #teach in the address keeps the Teach tab on reload ──
-  let tab = location.hash === '#teach' ? 'teach' : 'setup', signedIn = false;
-  function setTab(t) {
-    tab = t;
-    $('tabSetup').setAttribute('aria-selected', String(t === 'setup'));
-    $('tabTeach').setAttribute('aria-selected', String(t === 'teach'));
-    if (signedIn) show(t);
-    history.replaceState(null, '', t === 'teach' ? '#teach' : location.pathname + location.search);
-  }
-  $('tabSetup').onclick = () => setTab('setup');
-  $('tabTeach').onclick = () => setTab('teach');
-
-  // exhibits (for the dot buttons)
-  const index = await (await fetch('exhibits/index.json', { cache: 'no-cache' })).json();
-  let exhibit = null, loadingEx = null;
-  async function loadExhibit(id) {
-    loadingEx = id;
-    const ex = await (await fetch(`exhibits/${id}/exhibit.json`, { cache: 'no-cache' })).json(); ex.id = id;
-    if (loadingEx !== id) return;
-    exhibit = ex; buildDots(); render();
-  }
-
-  // ── unit kits: students only see the current kit's artifacts ──
-  const known = (id) => (index.exhibits || []).some((e) => e.id === id);
-  const kits = (index.kits || []).filter((k) => Array.isArray(k.exhibits) && k.exhibits.some(known));
-  const exTitle = (id) => ((index.exhibits || []).find((e) => e.id === id)?.title?.en) || id;
-  const curKit = () => kits.find((k) => k.id === current.kit) || kits.find((k) => k.id === index.defaultKit) || kits[0] || null;
-  const curExhibit = () => { const k = curKit(); return current.exhibit && known(current.exhibit) && (!k || k.exhibits.includes(current.exhibit)) ? current.exhibit : (k ? k.exhibits.find(known) : index.default); };
-  function renderKits() {
-    const k = curKit(), ex = curExhibit();
-    const kitSeg = $('kitSeg'); kitSeg.innerHTML = '';
-    for (const x of kits) {
-      const b = el('button', { textContent: x.title.en, title: x.unit || '' }); b.classList.toggle('sel', x === k);
-      b.onclick = () => { if (x !== k) send({ kit: x.id, exhibit: null, tour: false, tourAt: fb.serverTimestamp() }, `Kit: ${x.title.en}`); };
-      kitSeg.append(b);
-    }
-    const artSeg = $('artSeg'); artSeg.innerHTML = '';
-    for (const id of (k ? k.exhibits.filter(known) : (index.exhibits || []).map((e) => e.id))) {
-      const b = el('button', { textContent: exTitle(id) }); b.classList.toggle('sel', id === ex);
-      b.onclick = () => { if (id !== ex) send({ exhibit: id, tour: false, tourAt: fb.serverTimestamp() }, `Artifact: ${exTitle(id)}`); };
-      artSeg.append(b);
-    }
-    if (ex && (!exhibit || exhibit.id !== ex) && loadingEx !== ex) loadExhibit(ex);   // dots and tour follow the artifact
-  }
-
   let room = '', current = {}, unsub = null;
 
-  fa.onAuthStateChanged(auth, async (user) => {
-    if (!user) { signedIn = false; $('account').textContent = ''; $('tabs').hidden = true; $('strip').hidden = true; $('groupSeg').hidden = true; show('signedOut'); return; }
+  fa.onAuthStateChanged(auth, (user) => {
+    if (!user) { $('account').textContent = ''; $('strip').hidden = true; $('groupSeg').hidden = true; show('signedOut'); return; }
     const email = (user.email || '').toLowerCase();
     $('account').innerHTML = '';
     $('account').append(el('span', { textContent: email }), el('button', { textContent: 'Sign out', onclick: () => fa.signOut(auth) }));
@@ -131,13 +69,11 @@ async function start() {
       $('signedOut').querySelector('p').textContent = `${email} isn't on the teacher list for this console. Ask Shaun to add you (js/firebase-config.js and the database rules).`;
       return;
     }
-    signedIn = true;
-    $('tabs').hidden = false; $('strip').hidden = false; $('groupSeg').hidden = GROUPS.length < 2;
-    buildPresets(); buildSettings(); buildGroups();
-    setTab(tab);
-    // opens to your own group (South End for Shaun, North End for Mike); teacher.html?room=<code> opens another room
+    show('console'); $('strip').hidden = false; $('groupSeg').hidden = GROUPS.length < 2;
+    buildSettings(); buildGroups();
+    // opens to your own group; teacher.html?room=<code> opens another room
     const mine = GROUPS.find((g) => (g.teacher || '').toLowerCase() === email) || GROUPS[0];
-    setRoom(new URLSearchParams(location.search).get('room') || mine.room);
+    setRoom(new URLSearchParams(location.search).get('room') || mine?.room || DEFAULT_ROOM);
   });
 
   // ── room ──
@@ -177,130 +113,65 @@ async function start() {
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add('gone'), err ? 6000 : 2200);
   }
 
+  // ── everyone ──
   document.querySelectorAll('[data-freeze]').forEach((b) => {
     b.onclick = () => send({ freeze: b.dataset.freeze, freezeAt: fb.serverTimestamp() }, FREEZE_NAMES[b.dataset.freeze]);
   });
   $('unfreeze').onclick = () => send({ freeze: 'none', freezeAt: fb.serverTimestamp() }, 'Resume');
+  let restartSure = null;   // two taps: a stray click shouldn't wipe a class's work
+  $('restartAll').onclick = () => {
+    if (!restartSure) {
+      $('restartAll').classList.add('sure'); $('restartAll').textContent = 'Tap again to start over';
+      restartSure = setTimeout(resetRestart, 4000); return;
+    }
+    resetRestart();
+    send({ restartAt: fb.serverTimestamp() }, 'Every headset started over');
+  };
+  function resetRestart() { clearTimeout(restartSure); restartSure = null; $('restartAll').classList.remove('sure'); $('restartAll').textContent = '⟲ Start over on every headset'; }
   $('clear').onclick = async () => {
-    if (!confirm('Reset every setting for these headsets to Default? This also ends any tour, freeze or pause.')) return;
+    if (!confirm('Reset every setting for these headsets to Default? This also ends any freeze or pause.')) return;
     try { await fb.set(fb.ref(db, `rooms/${room}`), { updatedAt: fb.serverTimestamp() }); toast('Reset to Default'); }
     catch (e) { toast(`Not reset (${e.code || e.message}).`, true); }
   };
 
-  // ── quick setup ──
-  const eff = (k) => (current[k] === undefined ? SET_BY_KEY[k].def : current[k]);   // what headsets are doing
-  function buildPresets() {
-    const box = $('presets'); box.innerHTML = '';
-    PRESETS.forEach((p, i) => {
-      const b = el('button', { onclick: () => send(p.set, `Quick setup: ${p.name}`) }, p.name, el('small', { textContent: p.desc }));
-      b.dataset.preset = i; box.append(b);
-    });
-  }
-
-  // ── settings, grouped, with what Default means ──
-  function buildSettings() {
-    const box = $('settings'); box.innerHTML = '';
-    for (const s of SETTINGS) {
-      if (s.group) { box.append(el('h3', { textContent: s.group })); continue; }
-      const name = el('span', {}, s.label); if (s.desc) name.append(el('small', { textContent: s.desc }));
-      const seg = el('div', { className: 'seg' });
+  // ── settings, with what Default means ──
+  const eff = (k) => (current[k] === undefined ? SET_BY_KEY[k].def : current[k]);
+  const restartWarn = (k, v) => RESTARTS.includes(k) && v !== (current[k] ?? null) ? ' (headsets start over)' : '';
+  function settingRow(s) {
+    const name = el('span', {}, s.label); if (s.desc) name.append(el('small', { textContent: s.desc }));
+    const seg = el('div', { className: 'seg' });
+    if (s.sizes) {
+      for (const [v, text] of SIZE_NAMES) {
+        const b = el('button', { textContent: text, onclick: () => toggleSize(v) });
+        b.dataset.key = 'sizes'; b.dataset.size = v; seg.append(b);
+      }
+      const b = el('button', { textContent: 'Default (all three)', onclick: () => send({ sizes: null }, 'Sizes: Default') });
+      b.dataset.key = 'sizes'; b.dataset.val = 'null'; seg.append(b);
+    } else {
       for (const [v, text] of s.opts) {
-        const b = el('button', { textContent: text, onclick: () => send({ [s.key]: v }, `${s.label}: ${text}`) });
+        const b = el('button', { textContent: text, onclick: () => send({ [s.key]: v }, `${s.label}: ${text}${restartWarn(s.key, v)}`) });
         b.dataset.key = s.key; b.dataset.val = JSON.stringify(v); seg.append(b);
       }
-      if (!s.noDefault) {
-        const defText = s.opts.find(([v]) => v === s.def)?.[1];
-        const b = el('button', { textContent: `Default (${defText})`, onclick: () => send({ [s.key]: null }, `${s.label}: Default`) });
-        b.dataset.key = s.key; b.dataset.val = 'null'; seg.append(b);
-      }
-      box.append(el('div', { className: 'set' }, name, seg));
+      const defText = s.def == null ? '' : ` (${s.opts.find(([v]) => v === s.def)?.[1]})`;
+      const b = el('button', { textContent: `Default${defText}`, onclick: () => send({ [s.key]: null }, `${s.label}: Default${restartWarn(s.key, null)}`) });
+      b.dataset.key = s.key; b.dataset.val = 'null'; seg.append(b);
     }
+    const row = el('div', { className: 'set' }, name, seg); row.dataset.row = s.key;
+    return row;
+  }
+  function buildSettings() {
+    $('labSettings').innerHTML = ''; LAB.forEach((s) => $('labSettings').append(settingRow(s)));
+    $('supportSettings').innerHTML = ''; SUPPORT_SETTINGS.forEach((s) => $('supportSettings').append(settingRow(s)));
+  }
+  const sizesNow = () => (typeof current.sizes === 'string' && current.sizes ? current.sizes.split(',') : SIZE_NAMES.map(([v]) => v));
+  function toggleSize(v) {
+    const now = sizesNow(), on = now.includes(v);
+    if (on && now.length === 1) { toast('Students need at least one size.', true); return; }
+    const next = SIZE_NAMES.map(([x]) => x).filter((x) => (x === v ? !on : now.includes(x)));
+    send({ sizes: next.length === 3 ? null : next.join(',') }, `Sizes: ${next.map((x) => SIZE_NAMES.find(([y]) => y === x)[1]).join(', ')}`);
   }
 
-  // ── dots: send everyone to a dot, or pick the tour step ──
-  function buildDots() {
-    const box = $('dots'); box.innerHTML = '';
-    exhibit.dots.forEach((d, i) => {
-      const b = el('button', { textContent: String(i + 1), title: `${i + 1}. ${d.title.en}` });
-      b.dataset.dot = i + 1; b.setAttribute('aria-label', `Dot ${i + 1}: ${d.title.en}`);
-      b.onclick = () => (tourOn() ? goStep(i + 1) : send({ dot: i + 1, dotAt: fb.serverTimestamp() }, `Everyone to dot ${i + 1}`));
-      box.append(b);
-    });
-  }
-
-  // ── guided tour ──
-  const TOUR_MAX = 3 * 3600e3;
-  const tourOn = () => current.tour === true && Number.isInteger(current.tourDot) && Date.now() - (current.tourAt || 0) < TOUR_MAX;
-  const nDots = () => (exhibit ? exhibit.dots.length : 0);
-  const dotTitle = (n) => exhibit?.dots[n - 1]?.title.en || '';
-  function goStep(n) {
-    n = Math.max(1, Math.min(nDots(), n));
-    send({ tour: true, tourDot: n, tourAt: fb.serverTimestamp() }, `Step ${n}: ${dotTitle(n)}`);
-  }
-  $('tourStart').onclick = () => goStep(1);
-  $('tourPrev').onclick = () => goStep((current.tourDot || 1) - 1);
-  $('tourNext').onclick = () => goStep((current.tourDot || 0) + 1);
-  $('tourEnd').onclick = () => send({ tour: false, tourAt: fb.serverTimestamp() }, 'Tour ended; students explore freely');
-  const revealedNow = () => tourOn() && current.reveal === current.tourDot && (current.revealAt || 0) >= (current.tourAt || 0);
-  $('tourReveal').onclick = () => { if (tourOn()) send({ reveal: current.tourDot, revealAt: fb.serverTimestamp() }, `Reading shown for dot ${current.tourDot}`); };
-  // the dot the script shows: the tour step, or the dot last sent to everyone (for 10 minutes)
-  const shownDot = () => (tourOn() ? current.tourDot : Number.isInteger(current.dot) && Date.now() - (current.dotAt || 0) < 10 * 60e3 ? current.dot : null);
-  const playPart = (kind, label) => {
-    const n = shownDot();
-    if (n) send({ narrate: n, narrateKind: kind, narrateAt: fb.serverTimestamp() }, `${label} playing for dot ${n}`);
-  };
-  $('narrate').onclick = () => playPart('main', 'Narration');
-  $('playNotice').onclick = () => playPart('notice', 'Prompt');
-  $('playMore').onclick = () => playPart('more', 'Tell me more');
-
-  // ── the script: what students see and hear for the shown dot ──
-  let scriptLang = 'en';
-  document.querySelectorAll('[data-sl]').forEach((b) => { b.onclick = () => { scriptLang = b.dataset.sl; render(); }; });
-  const clipCache = {};   // does a recording exist? (asked once per file)
-  function clipExists(n, kind, lang) {
-    const name = String(n).padStart(2, '0') + (kind === 'main' ? '' : '-' + kind);
-    const url = `exhibits/${exhibit.id}/audio/${lang}/${name}.mp3`;
-    if (!(url in clipCache)) { clipCache[url] = null; fetch(url, { method: 'HEAD', cache: 'no-cache' }).then((r) => { clipCache[url] = r.ok; render(); }).catch(() => { clipCache[url] = false; render(); }); }
-    return clipCache[url];
-  }
-  const T = (o) => (o == null ? '' : typeof o === 'string' ? o : o[scriptLang] ?? o.en ?? '');
-  const STEMS = { en: 'I notice… · I think it might be… because…', es: 'Yo noto… · Creo que podría ser… porque…' };
-  function renderScript(noticeOn) {
-    const n = exhibit ? shownDot() : null, d = n && exhibit.dots[n - 1];
-    $('script').hidden = !d; $('scriptEmpty').hidden = !!d;
-    if (!d) return;
-    const on = tourOn(), hl = eff('lang'), revealed = revealedNow();
-    $('scriptTitle').textContent = `Dot ${n}: ${T(d.title)}`;
-    document.querySelectorAll('[data-sl]').forEach((b) => b.classList.toggle('sel', b.dataset.sl === scriptLang));
-    $('scriptNote').textContent = hl !== scriptLang ? `Headsets are in ${hl === 'es' ? 'Spanish' : 'English'}, so students see and hear the ${hl === 'es' ? 'Spanish' : 'English'} version.` : '';
-    // prompt
-    const hasNotice = noticeOn && !!d.notice;
-    $('partNotice').hidden = !hasNotice;
-    $('txtNotice').textContent = T(d.notice); $('txtStems').textContent = STEMS[scriptLang] || STEMS.en;
-    const promptNow = on && hasNotice && !revealed;
-    $('tagNotice').textContent = promptNow ? 'Students see this now' : !on && hasNotice ? 'Each student sees this first' : '';
-    $('tagMain').textContent = on && (!hasNotice || revealed) ? 'Students see this now' : !on && hasNotice ? 'After Show me' : '';
-    // reading
-    const main = $('txtMain'); main.innerHTML = '';
-    main.append(el('p', { textContent: T(d.text) }));
-    if (d.facts) { const dl = el('dl'); d.facts.forEach((f) => dl.append(el('dt', { textContent: T(f.k) }), el('dd', { textContent: T(f.v) }))); main.append(dl); }
-    if (d.law) main.append(el('p', { className: 'plain' }, el('b', { textContent: scriptLang === 'es' ? 'En palabras sencillas: ' : 'In plain words: ' }), T(d.law.plain)));
-    if (d.think) main.append(el('p', { className: 'think' }, el('b', { textContent: scriptLang === 'es' ? 'Piensa: ' : 'Think about it: ' }), T(d.think)));
-    // Tell me more
-    const hasMore = !!(d.more || d.law?.original);
-    $('partMore').hidden = !hasMore;
-    const more = $('txtMore'); more.innerHTML = '';
-    if (d.more) more.append(el('p', { textContent: T(d.more) }));
-    if (d.law?.original) more.append(el('p', { className: 'orig', textContent: `“${T(d.law.original)}” (${T(d.law.source)})` }));
-    // play buttons, labelled with whether a recording exists in the headsets' language
-    for (const [id, kind, show] of [['playNotice', 'notice', hasNotice], ['narrate', 'main', true], ['playMore', 'more', hasMore]]) {
-      const ok = show ? clipExists(n, kind, hl) : false;
-      $(id).disabled = ok === false;
-      $(id).title = ok === false ? `No ${hl === 'es' ? 'Spanish' : 'English'} recording for this part yet` : '';
-    }
-  }
-
-  // ── headsets: groups + pause tiles ──
+  // ── headsets: groups, pause tiles, supports for one headset ──
   const PAUSE_MAX = 2 * 3600e3;
   const pausedNow = (i) => { const v = current.paused && current.paused['h' + i]; return typeof v === 'number' && Date.now() - v < PAUSE_MAX; };
   function buildGroups() {
@@ -310,8 +181,8 @@ async function start() {
       b.dataset.room = g.room; seg.append(b);
     }
   }
-  // pause tiles (and support toggles) for the headsets that follow this room (all of them for a custom ?room= code)
   const headsetNums = () => { const g = groupFor(room), list = g ? [g] : GROUPS; const out = [];
+    if (!list.length) return out;
     for (let i = Math.min(...list.map((x) => x.first)); i <= Math.max(...list.map((x) => x.last)); i++) out.push(i); return out; };
   function buildHeadsets() {
     const box = $('headsets'); box.innerHTML = '';
@@ -331,7 +202,7 @@ async function start() {
     }
   }
   const accessMap = () => { const a = current.access && typeof current.access === 'object' ? current.access : {};
-    return Object.fromEntries(Object.entries(a).filter(([k, v]) => /^h1?[0-9]$/.test(k) && typeof v === 'string' && /^[brca]{1,4}$/.test(v))); };
+    return Object.fromEntries(Object.entries(a).filter(([k, v]) => /^h1?[0-9]$/.test(k) && typeof v === 'string' && /^[bcnfs]{1,5}$/.test(v))); };
   function toggleSupport(i, letter, name) {
     const cur = accessMap()['h' + i] || '', on = cur.includes(letter);
     const next = SUPPORTS.map(([l]) => l).filter((l) => (l === letter ? !on : cur.includes(l))).join('');
@@ -343,72 +214,49 @@ async function start() {
   };
 
   // ── draw everything from the room record ──
+  const VAR_NAMES = Object.fromEntries(SET_BY_KEY.variable.opts);
   function render() {
-    renderKits();
-    const on = tourOn(), step = current.tourDot, n = nDots();
     const frozen = current.freeze && current.freeze !== 'none' && Date.now() - (current.freezeAt || 0) < 2 * 3600e3 ? current.freeze : null;
-    const pausedList = [...document.querySelectorAll('#headsets button')].map((b) => +b.dataset.hs).filter(pausedNow);
-    const noticeOn = eff('notice') === true;
+    const pausedList = headsetNums().filter(pausedNow);
+    const full = eff('path') === 'full';
 
-    // status strip: what students are seeing right now
     const strip = $('strip'); strip.innerHTML = '';
     const pill = (text, cls = '') => strip.append(el('span', { className: 'pill ' + cls, textContent: text }));
     if (frozen) pill(`Frozen: ${FREEZE_NAMES[frozen]}`, 'stop');
-    pill(exTitle(curExhibit()));
-    if (on) {
-      pill(`● Tour: step ${step} of ${n}`, 'live');
-      if (noticeOn) revealedNow() ? pill('Reading shown') : pill('Reading hidden: students are noticing', 'warn');
-    } else pill('Tour off: exploring freely');
+    pill(full ? `Full investigation${eff('start') === 'plan' ? ', starting at Plan' : ''}` : 'Guided path');
+    pill(`Variable: ${current.variable ? VAR_NAMES[current.variable] : full ? 'students choose' : 'cannon weight'}`);
+    if (current.sizes) pill(`Sizes: ${sizesNow().map((x) => SIZE_NAMES.find(([y]) => y === x)[1]).join(', ')}`);
+    if (current.lang) pill(current.lang === 'es' ? 'Español' : 'English');
     if (pausedList.length) pill(`Paused: headset${pausedList.length > 1 ? 's' : ''} ${pausedList.join(', ')}`, 'warn');
-    const roomSup = SUPPORTS.filter(([l]) => eff(SUPPORT_KEYS[l]) === true).map(([, , name]) => name);
+    const roomSup = SUPPORT_SETTINGS.filter((s) => eff(s.key) === true).map((s) => s.label);
     if (roomSup.length) pill(`Supports for everyone: ${roomSup.join(', ')}`);
     const hsSup = Object.entries(accessMap()).map(([h, v]) => `${h.slice(1)} (${SUPPORTS.filter(([l]) => v.includes(l)).map(([, short]) => short).join(' ')})`);
     if (hsSup.length) pill(`Supports: headset ${hsSup.join(', ')}`);
 
-    // everyone
     document.querySelectorAll('[data-freeze]').forEach((b) => b.classList.toggle('sel', frozen === b.dataset.freeze));
     $('unfreeze').disabled = !frozen;
     $('everyone').classList.toggle('frozen', !!frozen);
+    const ago = typeof current.restartAt === 'number' ? Math.round((Date.now() - current.restartAt) / 60000) : null;
+    $('restartNote').textContent = ago == null ? '' : ago < 1 ? 'Last started over just now.' : `Last started over ${ago} min ago.`;
 
-    // tour
-    $('tourOff').hidden = on; $('tourOn').hidden = !on; $('tourEnd').hidden = !on;
-    $('tourPrev').disabled = !on || step <= 1; $('tourNext').disabled = !on || step >= n;
-    $('tourCount').textContent = on ? `STEP ${step} OF ${n}` : '';
-    $('tourTitle').textContent = on ? dotTitle(step) : '';
-    $('dotsTitle').textContent = on ? 'Jump to a step:' : 'Send everyone to a dot:';
-    document.querySelectorAll('#dots button').forEach((b) => { const d = +b.dataset.dot; b.classList.toggle('cur', on && d === step); b.classList.toggle('done', on && d < step); });
-    $('tourReveal').hidden = !on || !noticeOn || !exhibit?.dots[step - 1]?.notice;
-    $('tourReveal').disabled = revealedNow();
-    $('tourReveal').textContent = revealedNow() ? 'Reading shown ✓' : 'Reveal reading';
-    renderScript(noticeOn);
-    $('tourNote').textContent = !on ? 'Tap a number to open that dot on every headset.'
-      : noticeOn && !revealedNow() ? `Students are looking at dot ${step} and talking. Reveal the reading when they’re ready.`
-        : step < n ? 'The reading is showing. Press ▶ for the next dot.' : 'Last dot. End the tour when you’re ready.';
-
-    // per-headset supports
+    document.querySelector('[data-row="start"]').hidden = !full;
+    document.querySelectorAll('#labSettings button, #supportSettings button').forEach((b) => {
+      const k = b.dataset.key;
+      const sel = b.dataset.size ? sizesNow().includes(b.dataset.size)
+        : JSON.stringify(current[k] === undefined ? null : current[k]) === b.dataset.val;
+      b.classList.toggle('sel', sel); b.setAttribute('aria-pressed', String(sel));
+    });
     document.querySelectorAll('#supports [data-sup]').forEach((b) => {
       const on = (accessMap()['h' + b.dataset.hs] || '').includes(b.dataset.sup);
       b.classList.toggle('sel', on); b.setAttribute('aria-pressed', String(on));
     });
     $('clearSupports').disabled = !Object.keys(accessMap()).length;
-
-    // pause tiles
     document.querySelectorAll('#headsets button').forEach((b) => {
       const p = pausedNow(+b.dataset.hs); b.classList.toggle('sel', p); b.querySelector('small').textContent = p ? 'paused' : '';
       b.setAttribute('aria-pressed', String(p));
     });
-
-    // settings + presets reflect what headsets are set to
-    document.querySelectorAll('#settings button').forEach((b) => {
-      const k = b.dataset.key, v = current[k];
-      const sel = SET_BY_KEY[k].noDefault ? JSON.stringify(eff(k)) === b.dataset.val : JSON.stringify(v === undefined ? null : v) === b.dataset.val;
-      b.classList.toggle('sel', sel); b.setAttribute('aria-pressed', String(sel));
-    });
-    document.querySelectorAll('#presets button').forEach((b) => {
-      const p = PRESETS[+b.dataset.preset];
-      b.classList.toggle('sel', Object.entries(p.set).every(([k, v]) => eff(k) === v));
-    });
   }
+  setInterval(() => { if (room) render(); }, 30000);   // "started over N min ago", expiring pauses
 
   // ── live safety check against the real database rules ──
   $('runCheck').onclick = async () => {
@@ -416,31 +264,28 @@ async function start() {
     const line = (ok, text) => list.append(el('li', { className: ok ? 'ok' : 'bad', textContent: (ok ? '✓ ' : '✗ ') + text }));
     const expectFail = async (p) => { try { await p; return false; } catch (e) { return /permission|denied/i.test(e.code || e.message); } };
     const expectOk = async (p) => { try { await p; return true; } catch { return false; } };
-    const target = `rooms/${room}`;
+    const target = `rooms/${room}`, ts = () => fb.serverTimestamp();
     // a second connection that is NOT signed in, like a headset or a stranger
     const anonApp = fb.initializeApp(FIREBASE_CONFIG, 'safety-check-' + Date.now());
     const anon = fb.getDatabase(anonApp);
     if (FIREBASE_CONFIG.emulator) fb.connectDatabaseEmulator(anon, ...FIREBASE_CONFIG.emulator);
-    line(await expectFail(fb.update(fb.ref(anon, target), { lang: 'en', updatedAt: fb.serverTimestamp() })), 'Someone not signed in cannot send commands');
+    line(await expectFail(fb.update(fb.ref(anon, target), { path: 'full', updatedAt: ts() })), 'Someone not signed in cannot send settings');
     line(await expectFail(fb.get(fb.ref(anon, '/'))), 'Nobody can list or read the whole database');
     line(await expectFail(fb.get(fb.ref(anon, 'rooms'))), 'Nobody can list the other rooms');
     line(await expectOk(fb.get(fb.ref(anon, target))), 'Headsets can read this room’s settings');
-    line(await expectFail(fb.update(fb.ref(anon, target), { 'paused/h0': fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Someone not signed in cannot pause or unpause headsets');
+    line(await expectFail(fb.update(fb.ref(anon, target), { restartAt: ts(), updatedAt: ts() })), 'Someone not signed in cannot start headsets over');
     fb.goOffline(anon);
     // signed in as you: junk must still be rejected
     const me = fb.ref(db, target);
-    line(await expectFail(fb.update(me, { note: 'hello', updatedAt: fb.serverTimestamp() })), 'Free text is rejected (even from you)');
-    line(await expectFail(fb.update(me, { lang: 'fr', updatedAt: fb.serverTimestamp() })), 'Unknown values are rejected');
-    line(await expectFail(fb.update(me, { freeze: 'Click this link', freezeAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Custom freeze messages are rejected');
-    line(await expectFail(fb.update(me, { dot: 99, dotAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Out-of-range dots are rejected');
-    line(await expectFail(fb.update(me, { tourDot: 0, tourAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Out-of-range tour steps are rejected');
-    line(await expectFail(fb.update(me, { 'paused/student-name': fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Only headset numbers can be paused (no names)');
-    line(await expectFail(fb.update(me, { 'paused/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Pauses can’t carry text');
-    line(await expectFail(fb.update(me, { 'access/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Supports only accept the four support letters (no text)');
-    line(await expectFail(fb.update(me, { narrate: 1, narrateKind: 'everything', narrateAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Only the three recording types can be played');
-    line(await expectFail(fb.update(me, { 'access/student-name': 'b', updatedAt: fb.serverTimestamp() })), 'Supports are only for headset numbers (no names)');
-    line(await expectOk(fb.update(me, { updatedAt: fb.serverTimestamp() })), 'Your account can send normal commands');
+    line(await expectFail(fb.update(me, { note: 'hello', updatedAt: ts() })), 'Free text is rejected (even from you)');
+    line(await expectFail(fb.update(me, { path: 'other', updatedAt: ts() })), 'Unknown values are rejected');
+    line(await expectFail(fb.update(me, { freeze: 'Click this link', freezeAt: ts(), updatedAt: ts() })), 'Custom freeze messages are rejected');
+    line(await expectFail(fb.update(me, { sizes: 'desk,giant', updatedAt: ts() })), 'Only the three sizes are accepted');
+    line(await expectFail(fb.update(me, { 'paused/student-name': ts(), updatedAt: ts() })), 'Only headset numbers can be paused (no names)');
+    line(await expectFail(fb.update(me, { 'access/h1': 'hello', updatedAt: ts() })), 'Supports only accept the five support letters (no text)');
+    line(await expectFail(fb.update(me, { 'access/student-name': 'b', updatedAt: ts() })), 'Supports are only for headset numbers (no names)');
+    line(await expectOk(fb.update(me, { updatedAt: ts() })), 'Your account can send normal settings');
   };
 
-  window.__teacher = { send, setRoom, setTab, get current() { return current; } };
+  window.__teacher = { send, setRoom, get current() { return current; } };
 }

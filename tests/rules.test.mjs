@@ -5,9 +5,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { ROOT, ok, eq, readJSON } from './lib/helpers.mjs';
+import { ROOT, ok, eq } from './lib/helpers.mjs';
 
-const RULES = readJSON('firebase/database.rules.json').rules;
+const RULES = JSON.parse(fs.readFileSync(path.join(ROOT, 'firebase/database.rules.json'), 'utf8')).rules;
 const ROOM_RULES = RULES.rooms.$room;
 const TEACHER = { uid: 't', token: { email: 'shaun.langevin@mmuusd.org', email_verified: true } };
 const NOW = Date.now();
@@ -62,41 +62,37 @@ const bad = (patch, msg, opts) => ok(tryUpdate('south', { updatedAt: TS, ...patc
 
 export default (test) => {
   test('rules: only the two verified teachers can write', () => {
-    bad({ lang: 'en' }, 'a signed-out write', { auth: null });
-    bad({ lang: 'en' }, 'an unverified teacher', { auth: { token: { email: 'shaun.langevin@mmuusd.org', email_verified: false } } });
-    bad({ lang: 'en' }, 'another district account', { auth: { token: { email: 'student@mmuusd.org', email_verified: true } } });
-    good({ lang: 'en' }, 'Shaun');
-    good({ lang: 'en' }, 'Mike', { auth: { token: { email: 'mike.weber@mmuusd.org', email_verified: true } } });
-    ok(tryUpdate('Bad Room!', { lang: 'en', updatedAt: TS }) !== null, 'a room name with spaces/capitals should be rejected');
+    bad({ path: 'full' }, 'a signed-out write', { auth: null });
+    bad({ path: 'full' }, 'an unverified teacher', { auth: { token: { email: 'shaun.langevin@mmuusd.org', email_verified: false } } });
+    bad({ path: 'full' }, 'another district account', { auth: { token: { email: 'student@mmuusd.org', email_verified: true } } });
+    good({ path: 'full' }, 'Shaun');
+    good({ path: 'full' }, 'Mike', { auth: { token: { email: 'mike.weber@mmuusd.org', email_verified: true } } });
+    ok(tryUpdate('Bad Room!', { path: 'full', updatedAt: TS }) !== null, 'a room name with spaces/capitals should be rejected');
     ok(!evalRule(RULES['.read'], {}) && !evalRule(RULES['.write'], {}), 'the database root must not be readable or writable');
     ok(evalRule(ROOM_RULES['.read'], { $room: 'south' }) && !evalRule(ROOM_RULES['.read'], { $room: '../x' }), 'rooms are readable only by valid name');
   });
 
   test('rules: every console command is accepted', () => {
     const cmds = [
-      { exhibit: 'rosetta-stone', kit: 'g5-egypt' }, { lang: 'es' }, { progress: false, detective: true, lock: true },
-      { mode: 'seated', size: 'table' }, { dot: 20, dotAt: TS }, { freeze: 'eyes', freezeAt: TS }, { freeze: 'none', freezeAt: TS },
-      { tour: true, tourDot: 1, tourAt: TS }, { narrate: 3, narrateAt: TS }, { narrate: 3, narrateKind: 'notice', narrateAt: TS }, { narrate: 3, narrateKind: 'more', narrateAt: TS }, { reveal: 3, revealAt: TS },
-      { moveWindows: false, notice: true, practice: true, moveStone: false }, { 'paused/h0': TS }, { 'paused/h11': TS }, { 'paused/h3': null },
-      { bigText: true, readAloud: true, calm: false, autoPlay: true }, { 'access/h3': 'b' }, { 'access/h19': 'brca' }, { 'access/h3': null },
-      { exhibit: null, kit: null },
+      { path: 'guided' }, { path: 'full', start: 'plan' }, { start: 'try' }, { variable: 'ball' }, { variable: 'wheels' }, { variable: null },
+      { sizes: 'desk' }, { sizes: 'half,life' }, { sizes: 'desk,half,life' }, { sizes: null }, { lang: 'es' },
+      { bigText: true, calm: false, num: true, fireButton: true }, { freeze: 'eyes', freezeAt: TS }, { freeze: 'none', freezeAt: TS }, { restartAt: TS },
+      { 'paused/h0': TS }, { 'paused/h11': TS }, { 'paused/h3': null }, { 'access/h3': 'b' }, { 'access/h19': 'bcnfs' }, { 'access/h3': null },
     ];
     for (const c of cmds) good(c, JSON.stringify(c));
   });
 
   test('rules: junk, free text and names are rejected', () => {
     bad({ note: 'hello' }, 'a free-text field');
-    bad({ lang: 'fr' }, 'an unknown language');
+    bad({ path: 'other' }, 'an unknown path'); bad({ variable: 'gravity' }, 'an unknown variable'); bad({ lang: 'fr' }, 'an unknown language');
+    bad({ sizes: 'desk,giant' }, 'an unknown size'); bad({ sizes: '' }, 'no sizes'); bad({ sizes: 'desk,half,life,desk' }, 'four sizes');
     bad({ freeze: 'Click this link' }, 'a custom freeze message');
-    bad({ dot: 21 }, 'dot 21'); bad({ dot: 2.5 }, 'dot 2.5'); bad({ tourDot: 0 }, 'tour step 0');
-    bad({ exhibit: 'https://evil.example' }, 'a URL as an exhibit');
-    bad({ dotAt: NOW + 3600e3 }, 'a time in the future');
+    bad({ restartAt: NOW + 3600e3 }, 'a time in the future'); bad({ restartAt: 'now' }, 'restart as text');
     bad({ 'paused/student-name': TS }, 'pausing by name'); bad({ 'paused/h1': 'hello' }, 'a pause carrying text'); bad({ 'paused/h20': TS }, 'headset 20');
-    bad({ 'access/h1': 'hello' }, 'a support carrying text'); bad({ 'access/h1': 'bbbbb' }, 'too many support letters');
-    bad({ narrateKind: 'everything' }, 'an unknown recording type'); bad({ autoPlay: 'yes' }, 'auto-play as text');
-    bad({ 'access/h1': 'x' }, 'an unknown support letter'); bad({ 'access/maria': 'b' }, 'a support by name'); bad({ access: 'brc' }, 'access as a plain string');
-    bad({ bigText: 'yes' }, 'a support as text');
-    ok(tryUpdate('south', { lang: 'en' }) !== null, 'a write without updatedAt should be rejected');
+    bad({ 'access/h1': 'hello' }, 'a support carrying text'); bad({ 'access/h1': 'bbbbbb' }, 'too many support letters');
+    bad({ 'access/h1': 'x' }, 'an unknown support letter'); bad({ 'access/maria': 'b' }, 'a support by name'); bad({ access: 'bc' }, 'access as a plain string');
+    bad({ bigText: 'yes' }, 'a support as text'); bad({ fireButton: 1 }, 'a support as a number');
+    ok(tryUpdate('south', { path: 'full' }) !== null, 'a write without updatedAt should be rejected');
   });
 
   test('rules, headset filter and console agree on the fields', async () => {
@@ -111,20 +107,21 @@ export default (test) => {
       .concat([...tjs.matchAll(/send\(\{\s*(\w+):/g)].map((m) => m[1]))
       .concat([...tjs.matchAll(/\['(paused|access)\/h'/g)].map((m) => m[1])));
     eq([...sent].filter((k) => !ruleKeys.includes(k)).sort(), [], 'the console sends fields the rules would reject');
-    // the console's safety check covers the newest fields too
-    ok(/access\/h1/.test(tjs) && /paused\/student-name/.test(tjs) && /narrateKind: 'everything'/.test(tjs), 'safety check should test pauses, supports and recording types');
+    eq(ruleKeys.filter((k) => !sent.has(k) && !['updatedAt', 'freezeAt'].includes(k)), [], 'rules allow fields the console never sends');
+    ok(/access\/h1/.test(tjs) && /paused\/student-name/.test(tjs) && /sizes: 'desk,giant'/.test(tjs), 'safety check should test pauses, supports and sizes');
   });
 
   test('headset filter (clean) keeps only safe, fresh values', async () => {
     const { clean } = await import(pathToFileURL(path.join(ROOT, 'js/classroom.js')).href);
     const now = Date.now(), H = 3600e3;
-    const c = clean({ lang: 'es', note: 'hi', exhibit: 'Bad Name', kit: 'g5-egypt', dot: 3, dotAt: now - 11 * 60e3, freeze: 'eyes', freezeAt: now - 3 * H,
-      tour: true, tourDot: 2, tourAt: now, narrate: 2, narrateAt: now - 30e3, paused: { h3: now, h4: now - 3 * H, bob: now }, access: { h2: 'rc', h5: 'zz', sam: 'b' },
-      bigText: true, calm: 'yes', reveal: 2, revealAt: now }, now);
-    eq(c.lang, 'es', 'language'); ok(!('note' in c) && !('exhibit' in c), 'junk and bad names dropped'); eq(c.kit, 'g5-egypt', 'kit');
-    ok(!('dot' in c), 'a "go to dot" older than 10 minutes is ignored'); eq(c.freeze, null, 'a freeze older than 2 hours is ignored');
-    eq([c.tour, c.tourDot], [true, 2], 'tour'); ok(!('narrate' in c), 'narration older than 20 s is ignored');
-    eq(c.paused, [3], 'only fresh pauses by number'); eq(c.access, { 2: 'rc' }, 'only valid supports by number');
-    eq(c.bigText, true, 'room support'); ok(!('calm' in c), 'a non-boolean support is dropped'); eq(c.reveal, 2, 'reveal');
+    const c = clean({ path: 'full', start: 'later', variable: 'gravity', sizes: 'life,desk', lang: 'es', note: 'hi', freeze: 'eyes', freezeAt: now - 3 * H,
+      restartAt: now - 11 * 60e3, paused: { h3: now, h4: now - 3 * H, bob: now }, access: { h2: 'bc', h5: 'zz', sam: 'b' }, bigText: true, calm: 'yes', fireButton: false }, now);
+    eq([c.path, c.lang], ['full', 'es'], 'path and language'); ok(!('note' in c) && !('start' in c) && !('variable' in c), 'junk and unknown values dropped');
+    eq(c.sizes, ['desk', 'life'], 'sizes, smallest first'); eq(c.freeze, null, 'a freeze older than 2 hours is ignored');
+    eq(c.restartAt, 0, 'a "Start over" older than 10 minutes is ignored');
+    eq(c.paused, [3], 'only fresh pauses by number'); eq(c.access, { 2: 'bc' }, 'only valid supports by number');
+    eq([c.bigText, c.fireButton], [true, false], 'room supports'); ok(!('calm' in c), 'a non-boolean support is dropped');
+    eq(clean({ freeze: 'wait', freezeAt: now, restartAt: now, variable: 'ball' }, now), { variable: 'ball', access: {}, paused: [], freeze: 'wait', restartAt: now }, 'fresh values');
+    eq(clean(null, now), { access: {}, paused: [], freeze: null, restartAt: 0 }, 'an empty room');
   });
 };
