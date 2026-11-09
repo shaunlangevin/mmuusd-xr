@@ -111,6 +111,17 @@ export default (test) => {
     ok(/access\/h1/.test(tjs) && /paused\/student-name/.test(tjs) && /sizes: 'desk,giant'/.test(tjs), 'safety check should test pauses, supports and sizes');
   });
 
+  test('the config is the labs project, and its teachers match the rules', async () => {
+    const cfg = await import(pathToFileURL(path.join(ROOT, 'js/firebase-config.js')).href);
+    const c = cfg.FIREBASE_CONFIG;
+    if (c.apiKey) {
+      eq([c.projectId, c.authDomain, c.databaseURL], ['mmuusd-labs', 'mmuusd-labs.firebaseapp.com', 'https://mmuusd-labs-default-rtdb.firebaseio.com'], 'the labs project (never the exhibits\' mmuusd-xr)');
+      ok(/^AIza/.test(c.apiKey) && /^1:\d+:web:/.test(c.appId), 'the apiKey and appId look like Firebase values');
+    }
+    const ruleEmails = [...ROOM_RULES['.write'].matchAll(/auth\.token\.email == '([^']+)'/g)].map((m) => m[1]).sort();
+    eq([...cfg.TEACHERS].sort(), ruleEmails, 'TEACHERS in firebase-config.js and the emails in the rules');
+  });
+
   test('headset filter (clean) keeps only safe, fresh values', async () => {
     const { clean } = await import(pathToFileURL(path.join(ROOT, 'js/classroom.js')).href);
     const now = Date.now(), H = 3600e3;

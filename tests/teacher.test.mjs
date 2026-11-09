@@ -16,7 +16,7 @@ const norm = (w) => JSON.parse(JSON.stringify(w, (k, v) => (v && v['.sv'] === 't
 
 export default (test) => {
   test('the console stays off until Firebase is filled in', async () => {
-    const p = await page();   // the real, empty config
+    const p = await page();   // the console switched off (empty apiKey)
     await p.goto(url('teacher.html')); await sleep(500);
     ok(await p.isVisible('#notConfigured'), 'shows "Not set up yet"');
     ok(!(await p.isVisible('#signIn')), 'no sign-in button');

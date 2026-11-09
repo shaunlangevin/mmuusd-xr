@@ -56,6 +56,8 @@ export async function page(opts = {}) {
     await p.route('**/vendor/firebase/fb-db.js', (r) => r.fulfill({ path: path.join(HERE, 'lib/fb-db.js'), contentType: 'text/javascript' }));
     await p.route('**/vendor/firebase/fb-auth.js', (r) => r.fulfill({ path: path.join(HERE, 'lib/fb-auth.js'), contentType: 'text/javascript' }));
     await p.route('**/js/firebase-config.js', (r) => r.fulfill({ path: path.join(HERE, 'lib/firebase-config.js'), contentType: 'text/javascript' }));
+  } else {   // otherwise the console is off, so no test ever talks to the real Firebase project
+    await p.route('**/js/firebase-config.js', (r) => r.fulfill({ path: path.join(HERE, 'lib/firebase-config-off.js'), contentType: 'text/javascript' }));
   }
   if (opts.xr) {
     await p.addInitScript({ content: fs.readFileSync(path.join(HERE, 'lib', 'iwer.min.js'), 'utf8') });

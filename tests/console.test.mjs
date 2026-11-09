@@ -36,7 +36,7 @@ export default (test) => {
     ok(!(await p.evaluate(() => Object.keys(window.__fbmock?.subs || {}).some((k) => k.startsWith('rooms/')))), 'and never listens');
     await p.close();
 
-    p = await page();   // the real config: empty, so the console is off
+    p = await page();   // the console switched off (empty apiKey)
     await ready(p);
     s = await st(p); eq(s.room, '', 'console off without a config'); ok(!(await p.isVisible('#hs-row')), 'no number picker');
     ok(!(await p.evaluate(() => 'xr-headset' in localStorage)), 'nothing stored');

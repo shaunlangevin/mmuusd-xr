@@ -5,11 +5,11 @@
 //  Leave apiKey empty to turn the teacher console off; the headsets then work on their own.
 // ─────────────────────────────────────────────────────────────
 export const FIREBASE_CONFIG = {
-  apiKey: '',
-  authDomain: '',
-  databaseURL: '',
-  projectId: '',
-  appId: '',
+  apiKey: 'AIzaSyDGza6M5URzbIhFxy_1ZpTkUd1hhDl7vG0',
+  authDomain: 'mmuusd-labs.firebaseapp.com',
+  databaseURL: 'https://mmuusd-labs-default-rtdb.firebaseio.com',
+  projectId: 'mmuusd-labs',
+  appId: '1:503099875585:web:92f2bfc4607857fb30bb00',
 };
 
 // Teacher accounts allowed to send settings (must match the database rules).
