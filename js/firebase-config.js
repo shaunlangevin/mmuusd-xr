@@ -1,21 +1,21 @@
 // ─────────────────────────────────────────────────────────────
-//  Teacher console connection (optional). This is the LABS project (mmuusd-labs), separate from the exhibits.
+//  Teacher console connection (optional).
 //  Paste the values from Firebase: Project settings → Your apps → Web app → "SDK setup and configuration" → Config.
 //  These values are meant to be public. What protects the database is firebase/database.rules.json.
 //  Leave apiKey empty to turn the teacher console off; the headsets then work on their own.
 // ─────────────────────────────────────────────────────────────
 export const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyDGza6M5URzbIhFxy_1ZpTkUd1hhDl7vG0',
-  authDomain: 'mmuusd-labs.firebaseapp.com',
-  databaseURL: 'https://mmuusd-labs-default-rtdb.firebaseio.com',
-  projectId: 'mmuusd-labs',
-  appId: '1:503099875585:web:92f2bfc4607857fb30bb00',
+  apiKey: 'AIzaSyAmsfxJaV-NDTP2gDlBH5_78388Bb1n2VM',
+  authDomain: 'mmuusd-xr.firebaseapp.com',
+  databaseURL: 'https://mmuusd-xr-default-rtdb.firebaseio.com',
+  projectId: 'mmuusd-xr',
+  appId: '1:461675214341:web:fd6c45e51e441bf953ce6c',
 };
 
-// Teacher accounts allowed to send settings (must match the database rules).
+// Teacher accounts allowed to send commands (must match the database rules).
 export const TEACHERS = ['shaun.langevin@mmuusd.org', 'mike.weber@mmuusd.org'];
 
-// Headset groups, the same as the exhibits. A headset's number (the sticker on it) decides which teacher page it follows,
+// Headset groups. A headset's number (the sticker on it) decides which teacher page it follows,
 // so every headset can use the same ArborXR link. Each teacher's page opens to their own group.
 // Room names: lowercase letters, numbers and dashes.
 export const GROUPS = [

@@ -7,28 +7,44 @@
         ".read": "$room.matches(/^[a-z0-9-]{1,24}$/)",
         ".write": "auth != null && auth.token.email_verified == true && (auth.token.email == 'shaun.langevin@mmuusd.org' || auth.token.email == 'mike.weber@mmuusd.org') && $room.matches(/^[a-z0-9-]{1,24}$/)",
         ".validate": "newData.hasChildren(['updatedAt'])",
-        "path":       { ".validate": "newData.isString() && newData.val().matches(/^(guided|full)$/)" },
-        "start":      { ".validate": "newData.isString() && newData.val().matches(/^(try|plan)$/)" },
-        "variable":   { ".validate": "newData.isString() && newData.val().matches(/^(ball|cannon|powder|wheels)$/)" },
-        "sizes":      { ".validate": "newData.isString() && newData.val().matches(/^(desk|half|life)(,(desk|half|life)){0,2}$/)" },
-        "lang":       { ".validate": "newData.isString() && newData.val().matches(/^(en|es)$/)" },
-        "bigText":    { ".validate": "newData.isBoolean()" },
-        "calm":       { ".validate": "newData.isBoolean()" },
-        "num":        { ".validate": "newData.isBoolean()" },
-        "fireButton": { ".validate": "newData.isBoolean()" },
-        "freeze":     { ".validate": "newData.isString() && newData.val().matches(/^(none|eyes|wait|remove|done)$/)" },
-        "freezeAt":   { ".validate": "newData.isNumber() && newData.val() <= now" },
-        "restartAt":  { ".validate": "newData.isNumber() && newData.val() <= now" },
-        "updatedAt":  { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "exhibit":   { ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9-]{1,32}$/)" },
+        "kit":       { ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9-]{1,32}$/)" },
+        "lang":      { ".validate": "newData.isString() && newData.val().matches(/^(en|es)$/)" },
+        "progress":  { ".validate": "newData.isBoolean()" },
+        "detective": { ".validate": "newData.isBoolean()" },
+        "lock":      { ".validate": "newData.isBoolean()" },
+        "mode":      { ".validate": "newData.isString() && newData.val().matches(/^(walk|seated)$/)" },
+        "size":      { ".validate": "newData.isString() && newData.val().matches(/^(life|table)$/)" },
+        "dot":       { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
+        "dotAt":     { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "freeze":    { ".validate": "newData.isString() && newData.val().matches(/^(none|eyes|wait|remove|done)$/)" },
+        "freezeAt":  { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "updatedAt": { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "tour":        { ".validate": "newData.isBoolean()" },
+        "tourDot":     { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
+        "tourAt":      { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "narrate":     { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
+        "narrateAt":   { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "narrateKind": { ".validate": "newData.isString() && newData.val().matches(/^(notice|main|more)$/)" },
+        "moveWindows": { ".validate": "newData.isBoolean()" },
+        "notice":      { ".validate": "newData.isBoolean()" },
+        "practice":    { ".validate": "newData.isBoolean()" },
+        "moveStone":   { ".validate": "newData.isBoolean()" },
+        "reveal":      { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20 && newData.val() % 1 == 0" },
+        "revealAt":    { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "bigText":     { ".validate": "newData.isBoolean()" },
+        "readAloud":   { ".validate": "newData.isBoolean()" },
+        "calm":        { ".validate": "newData.isBoolean()" },
+        "autoPlay":    { ".validate": "newData.isBoolean()" },
         "access": {
           ".validate": "newData.hasChildren()",
-          "$h":       { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isString() && newData.val().matches(/^[bcnfs]{1,5}$/)" }
+          "$h":        { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isString() && newData.val().matches(/^[brca]{1,4}$/)" }
         },
         "paused": {
           ".validate": "newData.hasChildren()",
-          "$h":       { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isNumber() && newData.val() <= now" }
+          "$h":        { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isNumber() && newData.val() <= now" }
         },
-        "$other":     { ".validate": false }
+        "$other":    { ".validate": false }
       }
     }
   }

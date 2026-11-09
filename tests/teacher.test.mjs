@@ -1,93 +1,99 @@
-// The teacher console page (teacher.html) with a fake Firebase: sign-in, what it sends, and what it shows.
-import { page, url, room, ok, eq, sleep } from './lib/helpers.mjs';
+// The teacher console (teacher.html) against the fake database: what each button sends.
+import { ok, eq, page, url, sleep, pageErrors } from './lib/helpers.mjs';
 
 async function signedIn(user) {
-  const p = await page({ mocks: true });
-  if (user) await p.addInitScript((u) => { window.__mockUser = u; }, user);
-  await p.goto(url('teacher.html'));
-  await p.click('#signIn');
-  if (!user || /^(shaun.langevin|mike.weber)@/.test(user.email)) await p.waitForSelector('#console:not([hidden])', { timeout: 10000 }).catch(() => {});
-  await sleep(300);
+  const p = await page({ viewport: { width: 1200, height: 1000 }, init: user ? `window.__mockUser = ${JSON.stringify(user)};` : '' });
+  await p.goto(url('teacher.html')); await sleep(400);
+  await p.click('#signIn'); await sleep(900);
   return p;
 }
-const last = (p) => p.evaluate(() => window.__fbmock.writes.at(-1));
-// server timestamps become 'TS' so writes can be compared
-const norm = (w) => JSON.parse(JSON.stringify(w, (k, v) => (v && v['.sv'] === 'timestamp' ? 'TS' : v)));
+const last = (p) => p.evaluate(() => { const w = window.__fbmock.writes.at(-1); if (!w) return null; const v = { ...w[2] }; delete v.updatedAt; return [w[1], v]; });
+const norm = (v) => JSON.parse(JSON.stringify(v, (k, x) => (x && x['.sv'] ? 'TS' : x)));
 
 export default (test) => {
-  test('the console stays off until Firebase is filled in', async () => {
-    const p = await page();   // the console switched off (empty apiKey)
-    await p.goto(url('teacher.html')); await sleep(500);
-    ok(await p.isVisible('#notConfigured'), 'shows "Not set up yet"');
-    ok(!(await p.isVisible('#signIn')), 'no sign-in button');
-    eq(p.offsite, [], 'nothing loaded from other sites');
+  test('sign-in: only listed teachers get the controls', async () => {
+    const p = await signedIn({ email: 'student@mmuusd.org', emailVerified: true });
+    ok(await p.isVisible('#signedOut'), 'others see the sign-in page'); ok(!(await p.isVisible('#setup')), 'no controls');
+    ok((await p.textContent('#signedOut p')).includes("isn't on the teacher list"), 'explains why');
     await p.close();
+    const m = await signedIn({ email: 'mike.weber@mmuusd.org', emailVerified: true });
+    ok(await m.isVisible('#setup'), 'Mike gets the console'); ok((await m.textContent('#toast')).includes('North End'), 'Mike opens to North End');
+    await m.close();
   });
 
-  test('only listed, verified teachers get the controls', async () => {
-    let p = await signedIn({ email: 'student@mmuusd.org', emailVerified: true });
-    ok(await p.isVisible('#signedOut') && !(await p.isVisible('#console')), 'a student account sees no controls');
-    ok((await p.textContent('#signedOut p')).includes("isn't on the teacher list"), 'and is told why');
-    await p.close();
-    p = await signedIn();
-    ok(await p.isVisible('#console'), 'Shaun sees the controls');
-    eq(await p.evaluate(() => window.__authParams.hd), 'mmuusd.org', 'sign-in is limited to district accounts');
-    eq(await p.inputValue('#room'), 'south', 'Shaun opens to the South End');
-    eq(await p.$$eval('#headsets button', (b) => b.map((x) => +x.dataset.hs)), [0, 1, 2, 3, 4, 5], 'South End pause tiles');
-    await p.close();
-    p = await signedIn({ email: 'mike.weber@mmuusd.org', emailVerified: true });
-    eq(await p.inputValue('#room'), 'north', 'Mike opens to the North End');
-    eq(await p.$$eval('#supports .sup b', (b) => b.map((x) => +x.textContent)), [6, 7, 8, 9, 10, 11], 'North End support rows');
-    await p.close();
-  });
-
-  test('every control sends the right setting', async () => {
+  test('Set up tab: presets, settings with Default, kits', async () => {
     const p = await signedIn();
-    const click = async (sel) => { await p.click(sel); await sleep(150); return norm(await last(p)); };
-    eq(await click('#labSettings button[data-key="path"][data-val="\\"full\\""]'), ['update', 'rooms/south', { path: 'full', updatedAt: 'TS' }], 'Full investigation');
-    ok(await p.isVisible('[data-row="start"]'), 'the start row appears for the full investigation');
-    ok((await p.textContent('#toast')).includes('headsets start over'), 'the teacher is told headsets start over');
-    eq(await click('#labSettings button[data-key="start"][data-val="\\"plan\\""]'), ['update', 'rooms/south', { start: 'plan', updatedAt: 'TS' }], 'start at Plan');
-    eq(await click('#labSettings button[data-key="variable"][data-val="\\"powder\\""]'), ['update', 'rooms/south', { variable: 'powder', updatedAt: 'TS' }], 'variable');
-    eq(await click('#labSettings button[data-size="life"]'), ['update', 'rooms/south', { sizes: 'desk,half', updatedAt: 'TS' }], 'turn off Life size');
-    eq(await click('#labSettings button[data-size="desk"]'), ['update', 'rooms/south', { sizes: 'half', updatedAt: 'TS' }], 'turn off Desk');
-    const n = await p.evaluate(() => window.__fbmock.writes.length);
-    await p.click('#labSettings button[data-size="half"]'); await sleep(150);
-    eq(await p.evaluate(() => window.__fbmock.writes.length), n, 'the last size can’t be turned off');
-    eq(await click('#labSettings button[data-key="sizes"][data-val="null"]'), ['update', 'rooms/south', { sizes: null, updatedAt: 'TS' }], 'sizes back to Default');
-    eq(await click('#supportSettings button[data-key="fireButton"][data-val="true"]'), ['update', 'rooms/south', { fireButton: true, updatedAt: 'TS' }], 'Fire button for everyone');
-    eq(await click('[data-freeze="eyes"]'), ['update', 'rooms/south', { freeze: 'eyes', freezeAt: 'TS', updatedAt: 'TS' }], 'Eyes up');
-    ok((await p.textContent('#strip')).includes('Frozen: Eyes up'), 'the strip shows the freeze');
-    eq(await click('#unfreeze'), ['update', 'rooms/south', { freeze: 'none', freezeAt: 'TS', updatedAt: 'TS' }], 'Resume');
-    eq(await click('#headsets button[data-hs="3"]'), ['update', 'rooms/south', { 'paused/h3': 'TS', updatedAt: 'TS' }], 'pause headset 3');
-    eq(await click('#headsets button[data-hs="3"]'), ['update', 'rooms/south', { 'paused/h3': null, updatedAt: 'TS' }], 'resume headset 3');
-    eq(await click('#supports [data-hs="2"][data-sup="s"]'), ['update', 'rooms/south', { 'access/h2': 's', updatedAt: 'TS' }], 'Spanish for headset 2');
-    eq(await click('#supports [data-hs="2"][data-sup="b"]'), ['update', 'rooms/south', { 'access/h2': 'bs', updatedAt: 'TS' }], 'and bigger text');
-    eq(await click('#clearSupports'), ['update', 'rooms/south', { 'access/h2': null, updatedAt: 'TS' }], 'clear supports');
-    // Start over needs two taps
-    const before = await p.evaluate(() => window.__fbmock.writes.length);
-    await p.click('#restartAll'); await sleep(150);
-    eq(await p.evaluate(() => window.__fbmock.writes.length), before, 'one tap sends nothing');
-    eq(await p.textContent('#restartAll'), 'Tap again to start over', 'it asks for a second tap');
-    eq(await click('#restartAll'), ['update', 'rooms/south', { restartAt: 'TS', updatedAt: 'TS' }], 'the second tap starts everyone over');
-    ok((await p.textContent('#restartNote')).includes('just now'), 'says when');
-    p.once('dialog', (d) => d.accept());
-    eq(await click('#clear'), ['set', 'rooms/south', { updatedAt: 'TS' }], 'Reset everything');
+    ok(await p.isVisible('#setup') && !(await p.isVisible('#teach')), 'Set up is the first tab');
+    await p.click('#presets button:nth-child(2)'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { notice: true, moveStone: false, lock: true, practice: false, detective: false }], 'Guided tour preset');
+    await p.click('#settings button[data-key="lang"][data-val="\\"es\\""]'); await sleep(200);
+    eq(norm(await last(p)), ['rooms/south', { lang: 'es' }], 'Language: Español');
+    await p.click('#settings button[data-key="lang"][data-val="null"]'); await sleep(200);
+    eq(norm(await last(p)), ['rooms/south', { lang: null }], 'Language: Default');
+    await p.click('#settings button[data-key="calm"][data-val="true"]'); await sleep(200);
+    eq(norm(await last(p)), ['rooms/south', { calm: true }], 'Calm mode for everyone');
+    const kits = await p.$$eval('#kitSeg button', (b) => b.map((x) => x.textContent));
+    ok(kits.includes('Grade 5 · Egypt') && kits.includes('Grade 5 · Mesopotamia'), 'both kits listed');
+    await p.click('#kitSeg button:nth-child(2)'); await sleep(400);
+    eq(norm(await last(p)), ['rooms/south', { kit: 'g5-egypt', exhibit: null, tour: false, tourAt: 'TS' }], 'changing kit ends any tour');
+    eq(await p.$$eval('#artSeg button', (b) => b.map((x) => x.textContent)), ['The Rosetta Stone'], 'artifact list follows the kit');
+    eq(pageErrors(p), [], 'page errors');
     await p.close();
   });
 
-  test('the console shows what the headsets are set to', async () => {
+  test('Teach tab: freeze, tour, reveal, narration, pause, supports', async () => {
     const p = await signedIn();
-    await room(p, 'south', { path: 'full', variable: 'wheels', sizes: 'half', lang: 'es', calm: true, paused: { h4: Date.now() }, access: { h1: 'nf' }, updatedAt: Date.now() });
-    const strip = await p.textContent('#strip');
-    for (const s of ['Full investigation', 'Variable: Wheels', 'Sizes: Half', 'Español', 'Paused: headset 4', 'Supports for everyone: Calm mode', 'Supports: headset 1 (123 Btn)']) ok(strip.includes(s), `strip shows "${s}"`);
-    eq(await p.$$eval('#labSettings button.sel', (b) => b.map((x) => x.textContent)), ['Full investigation', 'Default (Try it)', 'Wheels', 'Half', 'Español'], 'selected settings');
-    eq(await p.$$eval('#headsets button.sel', (b) => b.map((x) => +x.dataset.hs)), [4], 'paused tile');
-    eq(await p.$$eval('#supports button.sel', (b) => b.map((x) => x.dataset.hs + x.dataset.sup)), ['1n', '1f'], 'support toggles');
+    await p.click('#tabTeach'); await sleep(300);
+    await p.click('[data-freeze="eyes"]'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { freeze: 'eyes', freezeAt: 'TS' }], 'Eyes up');
+    await p.click('#unfreeze'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { freeze: 'none', freezeAt: 'TS' }], 'Resume');
+    await p.click('#tourStart'); await sleep(300); eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 1, tourAt: 'TS' }], 'Start tour');
+    ok(await p.isVisible('#tourReveal'), 'Reveal reading shows during a tour (Notice first is on by default)');
+    await p.click('#tourReveal'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { reveal: 1, revealAt: 'TS' }], 'Reveal');
+    await p.click('#tourNext'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 2, tourAt: 'TS' }], 'Next step');
+    ok(await p.isVisible('#script'), 'the script shows for the current step');
+    ok((await p.textContent('#txtMain')).length > 40, 'with the reading text');
+    await p.click('#narrate'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { narrate: 2, narrateKind: 'main', narrateAt: 'TS' }], 'Play narration');
+    await p.click('#playNotice'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { narrate: 2, narrateKind: 'notice', narrateAt: 'TS' }], 'Play prompt');
+    await p.click('#tourEnd'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { tour: false, tourAt: 'TS' }], 'End tour');
+    await p.click('#headsets button[data-hs="4"]'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { 'paused/h4': 'TS' }], 'Pause headset 4');
+    await p.click('#headsets button[data-hs="4"]'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { 'paused/h4': null }], 'Resume headset 4');
+    await p.click('#supports button[data-hs="1"][data-sup="b"]'); await sleep(200);
+    await p.click('#supports button[data-hs="1"][data-sup="c"]'); await sleep(200);
+    eq(norm(await last(p)), ['rooms/south', { 'access/h1': 'bc' }], 'Bigger text + Calm for headset 1');
+    ok((await p.textContent('#strip')).includes('headset 1 (A+ Calm)'), 'status strip lists supports');
+    await p.click('#clearSupports'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { 'access/h1': null }], 'Clear all supports');
+    await p.close();
+  });
+
+  test('Teach tab script: prompt, reading, Tell me more, language and recordings', async () => {
+    const p = await signedIn();
+    await p.click('#tabTeach'); await sleep(300);
+    ok(await p.isVisible('#scriptEmpty'), 'empty until a step or dot is chosen');
+    await p.click('#tourStart'); await sleep(300);
+    await p.click('#dots button[data-dot="2"]'); await sleep(800);
+    eq(await p.textContent('#scriptTitle'), 'Dot 2: Rivers, farms and rules', 'title');
+    ok((await p.textContent('#txtNotice')).startsWith("You can't read this writing yet"), 'prompt text');
+    eq(await p.textContent('#tagNotice'), 'Students see this now', 'before Reveal, the prompt is what students see');
+    ok((await p.textContent('#txtMain')).includes('Think about it:'), 'Think about it is shown');
+    ok((await p.textContent('#txtMore')).includes('Law 48'), 'Tell me more text');
+    ok(!(await p.$eval('#playNotice', (b) => b.disabled)) && !(await p.$eval('#playMore', (b) => b.disabled)), 'recordings exist, so the buttons work');
+    await p.click('#tourReveal'); await sleep(300);
+    eq(await p.textContent('#tagMain'), 'Students see this now', 'after Reveal, the reading is');
+    await p.click('[data-sl="es"]'); await sleep(200);
+    ok((await p.textContent('#scriptTitle')).includes('Ríos, granjas y reglas'), 'Spanish view');
+    ok((await p.textContent('#scriptNote')).includes('Headsets are in English'), 'says the headsets are in English');
+    await p.click('#partMore summary'); await sleep(100);
+    await p.click('#playMore'); await sleep(200);
+    eq(norm(await last(p)), ['rooms/south', { narrate: 2, narrateKind: 'more', narrateAt: 'TS' }], 'Play Tell me more');
+    await p.click('#settings button[data-key="autoPlay"][data-val="true"]').catch(() => {});
+    await p.close();
+  });
+
+  test('North End shows headsets 6–11', async () => {
+    const p = await signedIn();
     await p.click('#groupSeg button[data-room="north"]'); await sleep(300);
-    eq(await p.inputValue('#room'), 'north', 'switch to the North End');
-    ok(!(await p.textContent('#strip')).includes('Wheels'), 'the North End has its own settings');
-    eq(p.errors, [], 'no page errors');
+    eq(await p.$$eval('#headsets button', (b) => b.map((x) => +x.dataset.hs)), [6, 7, 8, 9, 10, 11], 'pause tiles');
+    eq(await p.$$eval('#supports .sup b', (b) => b.map((x) => +x.textContent)), [6, 7, 8, 9, 10, 11], 'support rows');
     await p.close();
   });
 };

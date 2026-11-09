@@ -1,19 +1,19 @@
-// Headset side of the teacher console. READ-ONLY: no sign-in, no IDs, never writes anything.
-// Listens to rooms/<room> and hands sanitized settings to the lab.
+// Headset side of the teacher console. READ-ONLY: no sign-in, no IDs, never writes.
+// Listens to rooms/<room> and hands sanitized settings to the app.
 import { FIREBASE_CONFIG } from './firebase-config.js';
 
 export const ROOM_RE = /^[a-z0-9-]{1,24}$/;
 export const FREEZE_KINDS = ['eyes', 'wait', 'remove', 'done'];
-export const VARIABLES = ['ball', 'cannon', 'powder', 'wheels'];
-export const SIZE_NAMES = ['desk', 'half', 'life'];
-export const SIZES_RE = /^(desk|half|life)(,(desk|half|life)){0,2}$/;
-export const ACCESS_RE = /^[bcnfs]{1,5}$/;   // b = bigger text, c = calm, n = show numbers, f = Fire button, s = Spanish
-const FREEZE_MAX_MS = 2 * 60 * 60 * 1000;    // a freeze or pause older than 2 hours is ignored
-const RESTART_MAX_MS = 10 * 60 * 1000;       // "Start over" only counts for 10 minutes
+const FREEZE_MAX_MS = 2 * 60 * 60 * 1000;   // a freeze older than 2 hours is ignored
+const DOT_MAX_MS = 10 * 60 * 1000;          // a "go to dot" older than 10 minutes is ignored
+const TOUR_MAX_MS = 3 * 60 * 60 * 1000;     // a tour step older than 3 hours means the tour was left on by mistake
+const NARRATE_MAX_MS = 20 * 1000;           // "play narration" only counts for 20 seconds (late joiners don't hear old clips)
+const PAUSE_MAX_MS = FREEZE_MAX_MS;
 
 export function configured() { return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.databaseURL); }
 
-// One connection per page. The room can change (picking a headset number), so listen() can be called again; stop() the old one first.
+// One connection per page. The room can change (a headset's number decides its room),
+// so listen() can be called again; stop() the old listener first.
 let conn = null;
 function connect(onStatus) {
   if (!conn) conn = (async () => {
@@ -29,7 +29,7 @@ function connect(onStatus) {
   return conn;
 }
 
-// onState(clean): clean only holds values that passed the checks below
+// onState(clean) — clean only contains values that passed the checks below
 export async function listen(room, onState, onStatus = () => {}) {
   if (!ROOM_RE.test(room) || !configured()) { onStatus('off'); return null; }
   const c = await connect(onStatus);
@@ -38,33 +38,44 @@ export async function listen(room, onState, onStatus = () => {}) {
   const unsub = c.fb.onValue(c.fb.ref(c.db, `rooms/${room}`),
     (snap) => { last = snap.val() || {}; if (live) onState(clean(last, now())); },
     () => onStatus('error'));
-  const timer = setInterval(() => { if (live) onState(clean(last, now())); }, 60000);   // an old freeze expires even if nothing new arrives
+  // re-check once a minute so an old freeze expires even if nothing new arrives
+  const timer = setInterval(() => { if (live) onState(clean(last, now())); }, 60000);
   return { stop: () => { live = false; clearInterval(timer); if (typeof unsub === 'function') unsub(); } };
 }
 
 // Only known keys with allowed values get through (a second check on top of the database rules).
 export function clean(r, now) {
-  r = r && typeof r === 'object' ? r : {};
   const out = {};
-  const fresh = (at, max) => typeof at === 'number' && now - at < max;
   const bool = (k) => { if (typeof r[k] === 'boolean') out[k] = r[k]; };
-  if (r.path === 'guided' || r.path === 'full') out.path = r.path;
-  if (r.start === 'try' || r.start === 'plan') out.start = r.start;
-  if (VARIABLES.includes(r.variable)) out.variable = r.variable;
-  if (typeof r.sizes === 'string' && SIZES_RE.test(r.sizes)) out.sizes = SIZE_NAMES.filter((s) => r.sizes.split(',').includes(s));
+  if (typeof r.exhibit === 'string' && /^[a-z0-9-]{1,32}$/.test(r.exhibit)) out.exhibit = r.exhibit;
+  if (typeof r.kit === 'string' && /^[a-z0-9-]{1,32}$/.test(r.kit)) out.kit = r.kit;
   if (r.lang === 'en' || r.lang === 'es') out.lang = r.lang;
-  bool('bigText'); bool('calm'); bool('num'); bool('fireButton');   // supports for every headset in the room
-  // supports for one headset: { h3: 'bc' } → { 3: 'bc' }  (sticker numbers, not students)
+  bool('progress'); bool('detective'); bool('lock');
+  if (r.mode === 'walk' || r.mode === 'seated') out.mode = r.mode;
+  if (r.size === 'life' || r.size === 'table') out.size = r.size;
+  if (Number.isInteger(r.dot) && r.dot >= 1 && r.dot <= 20 && typeof r.dotAt === 'number' && now - r.dotAt < DOT_MAX_MS) {
+    out.dot = r.dot; out.dotAt = r.dotAt;
+  }
+  const fresh = (at, max) => typeof at === 'number' && now - at < max;
+  const dotNum = (v) => Number.isInteger(v) && v >= 1 && v <= 20;
+  bool('moveWindows'); bool('notice'); bool('practice'); bool('moveStone');
+  bool('bigText'); bool('readAloud'); bool('calm'); bool('autoPlay');   // supports for every headset in the room
+  // supports for one headset: { h3: 'br' } → { 3: 'br' }  (b = bigger text, r = read to me, c = calm, a = auto-play; sticker numbers, not students)
   out.access = {};
   if (r.access && typeof r.access === 'object') {
-    for (const [k, v] of Object.entries(r.access)) { const m = /^h(1?[0-9])$/.exec(k); if (m && typeof v === 'string' && ACCESS_RE.test(v)) out.access[+m[1]] = v; }
+    for (const [k, v] of Object.entries(r.access)) { const m = /^h(1?[0-9])$/.exec(k); if (m && typeof v === 'string' && /^[brca]{1,4}$/.test(v)) out.access[+m[1]] = v; }
   }
-  // per-headset pause: { h0: time, h11: time } → [0, 11]
+  if (dotNum(r.reveal) && fresh(r.revealAt, TOUR_MAX_MS)) { out.reveal = r.reveal; out.revealAt = r.revealAt; }
+  if (r.tour === true && dotNum(r.tourDot) && fresh(r.tourAt, TOUR_MAX_MS)) { out.tour = true; out.tourDot = r.tourDot; out.tourAt = r.tourAt; }
+  if (dotNum(r.narrate) && fresh(r.narrateAt, NARRATE_MAX_MS)) {
+    out.narrate = r.narrate; out.narrateAt = r.narrateAt;
+    out.narrateKind = ['notice', 'main', 'more'].includes(r.narrateKind) ? r.narrateKind : 'main';   // which recording: prompt, reading or Tell me more
+  }
+  // per-headset pause: { h0: time, h11: time } → [0, 11]  (numbers on the headsets' stickers, not students)
   out.paused = [];
   if (r.paused && typeof r.paused === 'object') {
-    for (const [k, v] of Object.entries(r.paused)) { const m = /^h(1?[0-9])$/.exec(k); if (m && fresh(v, FREEZE_MAX_MS)) out.paused.push(+m[1]); }
+    for (const [k, v] of Object.entries(r.paused)) { const m = /^h(1?[0-9])$/.exec(k); if (m && fresh(v, PAUSE_MAX_MS)) out.paused.push(+m[1]); }
   }
-  out.freeze = FREEZE_KINDS.includes(r.freeze) && fresh(r.freezeAt, FREEZE_MAX_MS) ? r.freeze : null;
-  out.restartAt = fresh(r.restartAt, RESTART_MAX_MS) ? r.restartAt : 0;
+  out.freeze = (FREEZE_KINDS.includes(r.freeze) && typeof r.freezeAt === 'number' && now - r.freezeAt < FREEZE_MAX_MS) ? r.freeze : null;
   return out;
 }
