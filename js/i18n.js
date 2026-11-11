@@ -40,6 +40,9 @@ export const UI = {
     textView: 'Read it all as text', textViewTitle: 'Everything on this artifact, as text', bigQuestion: 'BIG QUESTION', lookFirst: 'LOOK CLOSELY FIRST',
     signsTitle: 'Three real cuneiform signs',
     signs: [['king', 'LUGAL'], ['god, sky', 'AN / DINGIR'], ['house', 'É']],
+    cartTitle: 'Read the king’s name',
+    cartSigns: [['P', 'stool'], ['T', 'bread'], ['O', 'rope'], ['L', 'lion'], ['M', ''], ['I', 'reeds'], ['S', 'cloth']],
+    cartNote: 'Sound it out: P-T-O-L-M-I-S → Ptolemy',
     mapNote: 'Simplified map',
     map: { iraq: 'IRAQ (today)', iran: 'IRAN (today)', gulf: 'Persian Gulf', tigris: 'Tigris', euphrates: 'Euphrates',
       babylon: 'Babylon', baghdad: 'Baghdad (today)', susa: 'Susa' },
@@ -91,6 +94,9 @@ export const UI = {
     textView: 'Leer todo como texto', textViewTitle: 'Todo sobre este objeto, como texto', bigQuestion: 'GRAN PREGUNTA', lookFirst: 'PRIMERO MIRA CON ATENCIÓN',
     signsTitle: 'Tres signos cuneiformes reales',
     signs: [['rey', 'LUGAL'], ['dios, cielo', 'AN / DINGIR'], ['casa', 'É']],
+    cartTitle: 'Lee el nombre del rey',
+    cartSigns: [['P', 'banco'], ['T', 'pan'], ['O', 'cuerda'], ['L', 'león'], ['M', ''], ['I', 'juncos'], ['S', 'tela']],
+    cartNote: 'Pronúncialo: P-T-O-L-M-I-S → Ptolomeo',
     mapNote: 'Mapa simplificado',
     map: { iraq: 'IRAK (hoy)', iran: 'IRÁN (hoy)', gulf: 'Golfo Pérsico', tigris: 'Tigris', euphrates: 'Éufrates',
       babylon: 'Babilonia', baghdad: 'Bagdad (hoy)', susa: 'Susa' },
@@ -105,6 +111,8 @@ export const UI = {
 };
 
 export const SIGN_CHARS = ['\u{12217}', '\u{1202D}', '\u{1208D}'];
+// Ptolemy's name in hieroglyphs: p (stool, Q3), t (bread, X1), o (rope, V4), l (lion, E23), m (Aa15), i (two reeds, M17a), s (folded cloth, S29)
+export const CARTOUCHE_CHARS = ['\u{132AA}', '\u{133CF}', '\u{1336F}', '\u{130ED}', '\u{1341D}', '\u{131CC}', '\u{132F4}'];
 
 // pick a language string from {en, es} objects (falls back to English)
 export function L(obj, lang) {

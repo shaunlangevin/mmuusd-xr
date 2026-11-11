@@ -1,5 +1,5 @@
-// Extra pictures some dots show: a simple map and a few cuneiform signs.
-import { UI, SIGN_CHARS } from './i18n.js';
+// Extra pictures some dots show: a simple map, a few cuneiform signs, and a king's name in hieroglyphs.
+import { UI, SIGN_CHARS, CARTOUCHE_CHARS } from './i18n.js';
 
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
 
@@ -77,6 +77,47 @@ export function drawSigns(canvas, lang, hasFont) {
     ctx.fillStyle = '#6b5a45'; ctx.font = `500 ${H * 0.06}px ${FONT}`;
     ctx.fillText(t.signs[i][1], cx, H * 0.87);
   }
+}
+
+// Ptolemy's cartouche: the seven signs inside a loop, each with its sound (and what it pictures)
+export function drawCartouche(canvas, lang, hasFont) {
+  const t = UI[lang] || UI.en;
+  const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#e9dcc0'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#5b4630'; ctx.font = `800 ${H * 0.08}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(t.cartTitle, W / 2, H * 0.04);
+  const n = CARTOUCHE_CHARS.length, x0 = W * 0.06, x1 = W * 0.94, top = H * 0.19, bot = H * 0.55, r = (bot - top) / 2;
+  // the loop: a long oval with a bar at the end, like the real cartouches
+  ctx.strokeStyle = '#2b2a2c'; ctx.lineWidth = H * 0.012;
+  ctx.beginPath(); ctx.moveTo(x0 + r, top); ctx.lineTo(x1 - r, top); ctx.arc(x1 - r, top + r, r, -Math.PI / 2, Math.PI / 2);
+  ctx.lineTo(x0 + r, bot); ctx.arc(x0 + r, top + r, r, Math.PI / 2, Math.PI * 1.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1 + H * 0.025, top - H * 0.01); ctx.lineTo(x1 + H * 0.025, bot + H * 0.01); ctx.stroke();
+  // lay the signs out by their real widths (the lion and the M sign are wide), with room for each label
+  const gF = H * 0.24, lF = H * 0.045, gap = H * 0.035;
+  const slots = CARTOUCHE_CHARS.map((ch, i) => {
+    ctx.font = `${gF}px SteleHiero, serif`; const gw = hasFont ? ctx.measureText(ch).width : 0;
+    ctx.font = `800 ${H * 0.09}px ${FONT}`; const sw = ctx.measureText(t.cartSigns[i][0]).width;
+    ctx.font = `500 ${lF}px ${FONT}`; const lw = ctx.measureText(t.cartSigns[i][1]).width;
+    return Math.max(gw, sw, lw);
+  });
+  const inner = x1 - x0 - r * 0.9, total = slots.reduce((a, b) => a + b, 0) + gap * (n - 1), k = Math.min(1, inner / total);
+  let x = x0 + r * 0.45 + (inner - total * k) / 2;
+  for (let i = 0; i < n; i++) {
+    const w = slots[i] * k, cx = x + w / 2; x += w + gap * k;
+    if (hasFont) { ctx.fillStyle = '#2b2a2c'; ctx.font = `${gF * k}px SteleHiero, serif`; ctx.textBaseline = 'middle'; ctx.fillText(CARTOUCHE_CHARS[i], cx, (top + bot) / 2); }
+    ctx.fillStyle = '#1a1612'; ctx.font = `800 ${H * 0.09}px ${FONT}`; ctx.textBaseline = 'top';
+    ctx.fillText(t.cartSigns[i][0], cx, H * 0.6);
+    ctx.fillStyle = '#6b5a45'; ctx.font = `500 ${lF}px ${FONT}`;
+    ctx.fillText(t.cartSigns[i][1], cx, H * 0.71);
+  }
+  ctx.fillStyle = '#5b4630'; ctx.font = `700 ${H * 0.065}px ${FONT}`; ctx.textBaseline = 'top';
+  ctx.fillText(t.cartNote, W / 2, H * 0.84);
+}
+export async function loadHieroFont() {
+  try {
+    const face = new FontFace('SteleHiero', 'url(fonts/NotoSansEgyptianHieroglyphs-ptolemy.woff2)');
+    await face.load(); document.fonts.add(face); return true;
+  } catch (e) { return false; }
 }
 
 export async function loadCuneiformFont() {

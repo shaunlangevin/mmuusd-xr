@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { UI, L } from './i18n.js';
-import { drawMap, drawSigns, loadCuneiformFont } from './extras.js';
+import { drawMap, drawSigns, drawCartouche, loadCuneiformFont, loadHieroFont } from './extras.js';
 import { InfoPanel, ExtraPanel, Toolbar, Tracker, ClueCard, OptionsPanel, HintPanel, FreezePanel, HandleBar, ShowTab, PracticeCard, markerTexture, labelPlane, arrowTexture } from './ui3d.js';
 import * as CFG from './firebase-config.js';
 
@@ -153,7 +153,8 @@ let audioFinish = { en: false, es: false };
 const audio = new Audio(); let playing = false, playingIndex = -1, playingKind = 'main';
 const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
-let hasCuneiformFont = false;
+let hasCuneiformFont = false, hasHieroFont = false;
+const PICTURES = ['map', 'signs', 'cartouche'];   // extras drawn as a picture panel
 const kitList = () => (EX?.index.kits || []).filter((k) => Array.isArray(k.exhibits));
 const sizeScale = () => (S.size === 'table' ? TABLE_SCALE : 1);
 const exPath = (f) => `exhibits/${EX.id}/${f}`;
@@ -176,6 +177,7 @@ async function loadExhibit() {
   EX.id = id; EX.index = index;
   DOTS = EX.dots;
   hasCuneiformFont = await loadCuneiformFont();
+  if (DOTS.some((d) => d.extra === 'cartouche')) hasHieroFont = await loadHieroFont();
   model = await loadModel(EX.model);
   root.add(model);
   computeAnchors();
@@ -506,7 +508,7 @@ function refreshInfo(reposition = false) {
   const st = infoState();
   panel.show(st);
   const d = openIndex === 'finish' ? null : DOTS[openIndex];
-  if (d && (d.extra === 'map' || d.extra === 'signs')) extra.showCanvas(extraCanvas(d.extra));
+  if (d && PICTURES.includes(d.extra)) extra.showCanvas(extraCanvas(d.extra));
   else extra.mesh.visible = false;
   handle.set(S.lang, moveOK, !!grab);
   handle.mesh.visible = true;
@@ -533,7 +535,7 @@ function extraCanvas(kind) {
   const key = kind + S.lang;
   if (!extraCache[key]) {
     const c = document.createElement('canvas'); c.width = 1000; c.height = kind === 'map' ? 760 : 560;
-    if (kind === 'map') drawMap(c, S.lang); else drawSigns(c, S.lang, hasCuneiformFont);
+    if (kind === 'map') drawMap(c, S.lang); else if (kind === 'cartouche') drawCartouche(c, S.lang, hasHieroFont); else drawSigns(c, S.lang, hasCuneiformFont);
     extraCache[key] = c;
   }
   return extraCache[key];
@@ -752,7 +754,7 @@ function showCard() {
   $('card-law').hidden = !d.law;
   if (d.law) { $('card-plain-label').textContent = tt.plain; $('card-plain').textContent = L(d.law.plain, S.lang); }
   const ex = $('card-extra'); ex.innerHTML = '';
-  if (d.extra === 'map' || d.extra === 'signs') { const c = extraCanvas(d.extra); const img = new Image(); img.src = c.toDataURL(); img.alt = ''; ex.append(img); }
+  if (PICTURES.includes(d.extra)) { const c = extraCanvas(d.extra); const img = new Image(); img.src = c.toDataURL(); img.alt = ''; ex.append(img); }
   ex.hidden = !ex.childElementCount;
   const more = $('card-more'); more.hidden = !st.expanded;
   $('card-more-text').textContent = L(d.more, S.lang); $('card-more-text').hidden = !d.more;

@@ -1,12 +1,12 @@
 # Extra recordings: The Rosetta Stone
 
-Two kinds of short clips that go with the reading clips you already have (or will have). Use the **same voice and settings** as the readings so it all sounds like one narrator. Send the MP3s to Claude, who will match the volume, name them and place them.
+Two kinds of short clips that go with the reading clips. Use the **same voice and settings** as the readings so it all sounds like one narrator. Send the MP3s to Claude, who will match the volume, name them and place them.
 
 ## Part 1: "Look closely" prompts
 
 These play **before** the reading, when a student opens a dot and sees the *Look closely* prompt. They add a **Listen** button to the prompt. Each is about 10–15 seconds. Leave a short pause after the question.
 
-Files: `exhibits/rosetta-stone/audio/en/01-notice.mp3` … `08-notice.mp3`, and the same names in `audio/es/`.
+Files: `exhibits/rosetta-stone/audio/en/01-notice.mp3` … `09-notice.mp3`, and the same names in `audio/es/`.
 
 Every prompt ends with the same sentence starters. Read them each time, or record them once and Claude will add them to each clip.
 
@@ -28,7 +28,15 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
-#### `03-notice.mp3` (dot 3: Everyday writing)
+#### `03-notice.mp3` (dot 3: A name in a loop)
+
+> Look closely.
+>
+> Look just to the right of this dot. Some signs have a loop drawn around them. Why would someone draw a loop around certain words?
+>
+> Talk about it with the people near you. You can start with: I notice… I think it might be… because…
+
+#### `04-notice.mp3` (dot 4: Everyday writing)
 
 > Look closely.
 >
@@ -36,7 +44,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
-#### `04-notice.mp3` (dot 4: The rulers' language)
+#### `05-notice.mp3` (dot 5: The rulers' language)
 
 > Look closely.
 >
@@ -44,7 +52,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
-#### `05-notice.mp3` (dot 5: A god on Earth?)
+#### `06-notice.mp3` (dot 6: A god on Earth?)
 
 > Look closely.
 >
@@ -52,7 +60,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
-#### `06-notice.mp3` (dot 6: Gifts and tax cuts)
+#### `07-notice.mp3` (dot 7: Gifts and tax cuts)
 
 > Look closely.
 >
@@ -60,7 +68,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
-#### `07-notice.mp3` (dot 7: Made for a temple wall)
+#### `08-notice.mp3` (dot 8: Made for a temple wall)
 
 > Look closely.
 >
@@ -68,7 +76,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
-#### `08-notice.mp3` (dot 8: Words in English?)
+#### `09-notice.mp3` (dot 9: Words in English?)
 
 > Look closely.
 >
@@ -94,7 +102,15 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
-#### `03-notice.mp3` (dot 3: Escritura de todos los días)
+#### `03-notice.mp3` (dot 3: Un nombre dentro de un óvalo)
+
+> Mira con atención.
+>
+> Mira justo a la derecha de este punto. Algunos signos tienen un óvalo dibujado alrededor. ¿Por qué alguien dibujaría un óvalo alrededor de ciertas palabras?
+>
+> Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
+
+#### `04-notice.mp3` (dot 4: Escritura de todos los días)
 
 > Mira con atención.
 >
@@ -102,7 +118,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
-#### `04-notice.mp3` (dot 4: El idioma de los gobernantes)
+#### `05-notice.mp3` (dot 5: El idioma de los gobernantes)
 
 > Mira con atención.
 >
@@ -110,7 +126,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
-#### `05-notice.mp3` (dot 5: ¿Un dios en la Tierra?)
+#### `06-notice.mp3` (dot 6: ¿Un dios en la Tierra?)
 
 > Mira con atención.
 >
@@ -118,7 +134,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
-#### `06-notice.mp3` (dot 6: Regalos y menos impuestos)
+#### `07-notice.mp3` (dot 7: Regalos y menos impuestos)
 
 > Mira con atención.
 >
@@ -126,7 +142,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
-#### `07-notice.mp3` (dot 7: Hecha para la pared de un templo)
+#### `08-notice.mp3` (dot 8: Hecha para la pared de un templo)
 
 > Mira con atención.
 >
@@ -134,7 +150,7 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
-#### `08-notice.mp3` (dot 8: ¿Palabras en inglés?)
+#### `09-notice.mp3` (dot 9: ¿Palabras en inglés?)
 
 > Mira con atención.
 >
@@ -144,40 +160,48 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 
 ## Part 2: "Tell me more"
 
-These play when a student opens **Tell me more** and presses **Listen to more**. Only 3 dots have a Tell me more section. Each clip reads the extra fact, then the original words (if the dot has them), and runs about 15–30 seconds. Read the original words a little more slowly; they're old-fashioned on purpose.
+These play when a student opens **Tell me more** and presses **Listen to more**. Only 4 dots have a Tell me more section. Each clip reads the extra fact, then the original words (if the dot has them), and runs about 15–30 seconds.
 
 Files: `exhibits/rosetta-stone/audio/en/NN-more.mp3` (the dot numbers below), and the same names in `audio/es/`.
 
-The Spanish original words are a new Spanish translation of the English translation. Please have your Spanish speaker check it.
+Read the original words a little more slowly; they're old-fashioned on purpose. The Spanish original words are a new Spanish translation of the English translation. Please have your Spanish speaker check them.
 
 ### English
 
-#### `05-more.mp3` (dot 5: A god on Earth?)
+#### `03-more.mp3` (dot 3: A name in a loop)
+
+> Thomas Young, from England, first matched this cartouche to Ptolemy's name. Champollion went further and showed that many hieroglyphs stand for sounds. Cleopatra's cartouche is on an obelisk from Philae [FY-lee], an island in the Nile River.
+
+#### `06-more.mp3` (dot 6: A god on Earth?)
 
 > The Greek part calls him “the living image of Zeus,” the king of the Greek gods. The same idea was written in a way each group would understand.
 
-#### `06-more.mp3` (dot 6: Gifts and tax cuts)
+#### `07-more.mp3` (dot 7: Gifts and tax cuts)
 
 > Here are the original words, from the Greek text, translated into English:
 >
 > Of the revenues and taxes levied in Egypt some he has wholly remitted and others he has lightened.
 
-#### `07-more.mp3` (dot 7: Made for a temple wall)
+#### `08-more.mp3` (dot 8: Made for a temple wall)
 
 > Other stones with this same message have been found in different parts of Egypt. Experts compare them to fill in some of the words that broke off this one.
 
 ### Español
 
-#### `05-more.mp3` (dot 5: ¿Un dios en la Tierra?)
+#### `03-more.mp3` (dot 3: Un nombre dentro de un óvalo)
+
+> Thomas Young, de Inglaterra, fue el primero en relacionar este cartucho con el nombre de Ptolomeo. Champollion fue más allá y demostró que muchos jeroglíficos representan sonidos. El cartucho de Cleopatra está en un obelisco de Filé, una isla del río Nilo.
+
+#### `06-more.mp3` (dot 6: ¿Un dios en la Tierra?)
 
 > La parte en griego lo llama “la imagen viviente de Zeus”, el rey de los dioses griegos. La misma idea se escribió de una manera que cada grupo pudiera entender.
 
-#### `06-more.mp3` (dot 6: Regalos y menos impuestos)
+#### `07-more.mp3` (dot 7: Regalos y menos impuestos)
 
-> Estas son las palabras originales, del texto en griego, traducidas del griego:
+> Estas son las palabras originales, de el texto en griego, traducidas al español de una traducción en inglés:
 >
 > De las rentas y los impuestos que se cobraban en Egipto, a algunos los perdonó por completo y a otros los hizo más ligeros.
 
-#### `07-more.mp3` (dot 7: Hecha para la pared de un templo)
+#### `08-more.mp3` (dot 8: Hecha para la pared de un templo)
 
 > Se han encontrado otras piedras con este mismo mensaje en distintas partes de Egipto. Los expertos las comparan para completar algunas de las palabras que se rompieron en esta.

@@ -62,6 +62,7 @@ To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `mode
   - Dot 3 shows three real cuneiform signs.
   - Dot 5 shows a then-and-now map.
   - Dot 9 shows a height comparison next to the stone.
+  - Rosetta Stone, dot 3 (A name in a loop): shows Ptolemy's cartouche with the sound of each sign (P-T-O-L-M-I-S), so students can sound out a king's name. The signs come from a tiny copy of the open Noto Sans Egyptian Hieroglyphs font (`fonts/`).
 - **Track my progress:** opened dots turn green, an "Explored: 3 of 9" tracker sits above the toolbar, and exploring all 9 shows a final big question.
 - **Detective mode:** the dots start hidden. A clue card above the tracker shows one clue at a time, such as "Near the bottom of the front, find the smooth spot where writing was rubbed away." When a student points near the right spot, the dot pops up, and selecting it opens its panel and moves on to the next clue. A **Hint** button uncovers the current dot for students who are stuck. On a Chromebook or iPad, students hover or tap near the spot. Clue wording lives in `exhibit.json` (`"clue"`), and `"clueRadius"` (in metres, default 0.2) sets how close the student has to point.
 - **Listen:** this button appears on any panel that has an audio clip (see below).

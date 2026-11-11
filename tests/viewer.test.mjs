@@ -65,7 +65,8 @@ export default (test) => {
     await p.evaluate(() => window.__dbg.openInfo(2));
     eq(await p.textContent('#card-title'), 'Look closely', 'prompt');
     ok(await p.isVisible('#card-listen'), 'Listen appears on the prompt');
-    await p.click('#card-listen'); await sleep(600);
+    await p.click('#card-listen');
+    await p.waitForFunction(() => window.__dbg.state().playing, null, { timeout: 8000 }).catch(() => {});   // play() resolves late in the emulator
     eq(await p.evaluate(() => [window.__dbg.state().playing, window.__dbg.state().playingKind]), [true, 'notice'], 'plays the prompt clip');
     eq(await p.textContent('#card-listen'), 'Stop', 'button turns into Stop');
     await p.click('#card-showme'); await sleep(200);
@@ -96,14 +97,14 @@ export default (test) => {
     const p = await page();
     await ready(p, '?room=off&exhibit=rosetta-stone&practice=off');
     const labels = await p.$$eval('#tracker button', (bs) => bs.map((b) => b.getAttribute('aria-label')));
-    eq(labels.length, 8, 'one button per dot'); ok(labels[1].startsWith('Dot 2: Sacred'), 'buttons are labelled with the dot title');
+    eq(labels.length, 9, 'one button per dot'); ok(labels[1].startsWith('Dot 2: Sacred'), 'buttons are labelled with the dot title');
     await p.keyboard.press('3'); await sleep(150);
     ok(await p.isVisible('#card'), 'key 3 opens a dot'); eq(await p.evaluate(() => document.activeElement.id), 'card-title', 'focus moves into the card');
     await p.keyboard.press('Escape'); await sleep(150);
     ok(!(await p.isVisible('#card')), 'Esc closes it');
     eq(await p.evaluate(() => document.activeElement.dataset.dot), '2', 'focus returns to dot 3 in the list');
     await p.click('#btn-text'); await sleep(150);
-    eq(await p.$$eval('#tv-body article', (a) => a.length), 9, 'text page: 8 dots + the big question');
+    eq(await p.$$eval('#tv-body article', (a) => a.length), 10, 'text page: 9 dots + the big question');
     await p.keyboard.press('Escape');
     ok(!(await p.isVisible('#textview')), 'Esc closes the text page');
     await p.evaluate(() => window.__dbg.setSetting('clues', true)); await sleep(100);
@@ -115,7 +116,7 @@ export default (test) => {
   test('supports on the 2D page: bigger text, read to me, calm', async () => {
     const p = await page({ speech: true });
     await ready(p, '?room=off&exhibit=rosetta-stone&practice=off');
-    await p.evaluate(() => window.__dbg.openInfo(4));
+    await p.evaluate(() => window.__dbg.openInfo(5));   // A god on Earth?
     ok(!(await p.isVisible('#card-read')), 'no Read button until the support is on');
     await p.click('[data-acc="read"]'); await sleep(100);
     ok(await p.isVisible('#card-read'), 'Read to me appears');
@@ -169,11 +170,26 @@ export default (test) => {
     await p.close();
   });
 
+  test('Rosetta cartouche dot: the king’s-name picture, with the hieroglyph font', async () => {
+    const p = await page();
+    await ready(p, '?room=off&exhibit=rosetta-stone&notice=off');
+    await p.evaluate(() => window.__dbg.openInfo(2)); await sleep(800);
+    eq(await p.textContent('#card-title'), 'A name in a loop', 'dot 3 is the cartouche');
+    ok(await p.isVisible('#card-extra img'), 'the picture shows');
+    ok(await p.evaluate(() => [...document.fonts].some((f) => f.family.replace(/"/g, '') === 'SteleHiero' && f.status === 'loaded')), 'the hieroglyph font loaded');
+    // the seven signs really draw (not empty boxes): each is wider than a space in the font
+    const widths = await p.evaluate(async () => { const { CARTOUCHE_CHARS } = await import('./js/i18n.js'); const c = document.createElement('canvas').getContext('2d'); c.font = '100px SteleHiero';
+      return CARTOUCHE_CHARS.map((ch) => Math.round(c.measureText(ch).width)); });
+    ok(widths.length === 7 && widths.every((w) => w > 20), `every sign has a shape (${widths})`);
+    eq(pageErrors(p), [], 'page errors');
+    await p.close();
+  });
+
   test('Spanish switches the interface and the model credit', async () => {
     const p = await page();
     await ready(p, '?room=off&exhibit=rosetta-stone&lang=es&notice=off');
     eq(await p.textContent('#btn-ar'), 'Ponerla en este salón', 'start button');
-    await p.evaluate(() => window.__dbg.openInfo(6)); await p.click('#card-moreBtn');
+    await p.evaluate(() => window.__dbg.openInfo(7)); await p.click('#card-moreBtn');   // the temple-wall dot carries the height ruler and credit
     ok((await p.textContent('#card-credit')).startsWith('Modelo 3D'), 'credit in Spanish on the height dot');
     await p.close();
   });

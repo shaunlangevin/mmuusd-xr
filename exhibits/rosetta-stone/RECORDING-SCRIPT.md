@@ -4,12 +4,12 @@ One MP3 per dot, per language. Read the text under each heading exactly as writt
 
 **Where the files go:**
 
-- English: `exhibits/rosetta-stone/audio/en/01.mp3` … `08.mp3`, plus `finish.mp3`
-- Spanish: `exhibits/rosetta-stone/audio/es/01.mp3` … `08.mp3`, plus `finish.mp3`
+- English: `exhibits/rosetta-stone/audio/en/01.mp3` … `09.mp3`, plus `finish.mp3`
+- Spanish: `exhibits/rosetta-stone/audio/es/01.mp3` … `09.mp3`, plus `finish.mp3`
 
 A **Listen** button appears automatically for any clip that exists, so you can add them a few at a time. If you change the words on a panel later, re-record that clip so the audio still matches.
 
-The *Look closely* prompts, the *Tell me more* text and the translated Greek quote are not in the clips, to keep each one short. Words in [brackets] are pronunciation help: say the word, not the brackets.
+The *Look closely* prompts, the *Tell me more* text and any original quotes are not in these clips, to keep each one short (they are in `EXTRA-RECORDING-SCRIPT.md`). Words in [brackets] are pronunciation help: say the word, not the brackets.
 
 ## English
 
@@ -31,7 +31,15 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Think about it: Why do you think priests used a special kind of writing for messages about the gods and the king?
 
-### `03.mp3` — Everyday writing
+### `03.mp3` — A name in a loop
+
+> A name in a loop.
+>
+> That loop is called a cartouche [kar-TOOSH]. Egyptians drew it around the name of a king or queen. Every cartouche on this stone holds the same name: King Ptolemy. The Greek part also says “Ptolemy,” so experts could match them up. Then Champollion compared it with Queen Cleopatra's cartouche from another monument. The two names share the sounds P, T, O and L, and that helped unlock hieroglyphs.
+>
+> Think about it: Why are names a good place to start when you try to read a lost writing system?
+
+### `04.mp3` — Everyday writing
 
 > Everyday writing.
 >
@@ -39,7 +47,7 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Think about it: How might everyday writing change the life of a farmer or a shop owner?
 
-### `04.mp3` — The rulers' language
+### `05.mp3` — The rulers' language
 
 > The rulers' language.
 >
@@ -47,15 +55,15 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Think about it: When new rulers arrive, what changes in a culture, and what stays the same?
 
-### `05.mp3` — A god on Earth?
+### `06.mp3` — A god on Earth?
 
-> A god on Earth?.
+> A god on Earth?
 >
 > The priests called young King Ptolemy “the living image of Amun,” the king of the gods. Egyptians believed their pharaoh was a god living on Earth. The message ordered a statue of him in every temple. Priests would care for it three times a day, and his birthday became a holiday.
 >
 > Think about it: If people believed the king was a god, how might that change the way they followed his rules?
 
-### `06.mp3` — Gifts and tax cuts
+### `07.mp3` — Gifts and tax cuts
 
 > Gifts and tax cuts.
 >
@@ -65,7 +73,7 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Think about it: Why might a ruler lower taxes after a time of fighting? Who pays for temples, roads and schools where you live?
 
-### `07.mp3` — Made for a temple wall
+### `08.mp3` — Made for a temple wall
 
 > Made for a temple wall.
 >
@@ -73,17 +81,17 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Think about it: Today, how do leaders share new rules with everyone? How is that like a stone in every temple?
 
-### `08.mp3` — Words in English?
+### `09.mp3` — Words in English?
 
-> Words in English?.
+> Words in English?
 >
 > In 1799, French soldiers found this stone while fixing a fort near the town of Rashid [rah-SHEED], which Europeans called Rosetta. In 1801, the British army defeated the French and took it. These labels say “Captured in Egypt by the British Army in 1801” and “Presented by King George III.” It has been in the British Museum in London since 1802. Egypt has asked for it to come back, and a copy stands in a museum in Rashid.
 >
 > Think about it: These labels were added about 2,000 years after the stone was carved. What do they tell you about the stone's journey?
 
-### `finish.mp3` — You explored all 8 dots!
+### `finish.mp3` — You explored all 9 dots!
 
-> You explored all 8 dots!
+> You explored all 9 dots!
 >
 > Great detective work. This stone shows what Egyptians believed about their king, and what the king did for them.
 >
@@ -97,7 +105,7 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Esta piedra es una fuente primaria. Tiene el mismo mensaje tallado tres veces, con tres tipos de escritura. Durante mucho tiempo nadie podía leer los jeroglíficos, pero los expertos sí sabían leer griego. En 1822, comparar las partes ayudó a un sabio francés llamado Champollion [shan-po-LIÓN] a descubrir cómo leer los jeroglíficos.
 >
-> ¿Quién la hizo? Sacerdotes egipcios. ¿Cuándo? El año 196 a. C.. ¿Dónde? Egipto, junto al río Nilo. ¿Para quién? La gente de todo Egipto. ¿Por qué? Para honrar al rey y dar a conocer sus nuevas reglas.
+> ¿Quién la hizo? Sacerdotes egipcios. ¿Cuándo? El año 196 a. C. ¿Dónde? Egipto, junto al río Nilo. ¿Para quién? La gente de todo Egipto. ¿Por qué? Para honrar al rey y dar a conocer sus nuevas reglas.
 >
 > Piensa: ¿Por qué alguien escribiría el mismo mensaje de tres maneras diferentes?
 
@@ -109,7 +117,15 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Piensa: ¿Por qué crees que los sacerdotes usaban un tipo especial de escritura para los mensajes sobre los dioses y el rey?
 
-### `03.mp3` — Escritura de todos los días
+### `03.mp3` — Un nombre dentro de un óvalo
+
+> Un nombre dentro de un óvalo.
+>
+> Ese óvalo se llama cartucho. Los egipcios lo dibujaban alrededor del nombre de un rey o una reina. Todos los cartuchos de esta piedra tienen el mismo nombre: el rey Ptolomeo. La parte en griego también dice “Ptolomeo”, así que los expertos pudieron relacionarlos. Luego, Champollion lo comparó con el cartucho de la reina Cleopatra, de otro monumento. Los dos nombres comparten los sonidos P, T, O y L, y eso ayudó a descifrar los jeroglíficos.
+>
+> Piensa: ¿Por qué los nombres son un buen punto de partida para leer una escritura perdida?
+
+### `04.mp3` — Escritura de todos los días
 
 > Escritura de todos los días.
 >
@@ -117,7 +133,7 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Piensa: ¿Cómo podría cambiar la vida de un agricultor o de un comerciante gracias a la escritura de todos los días?
 
-### `04.mp3` — El idioma de los gobernantes
+### `05.mp3` — El idioma de los gobernantes
 
 > El idioma de los gobernantes.
 >
@@ -125,15 +141,15 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Piensa: Cuando llegan nuevos gobernantes, ¿qué cambia en una cultura y qué sigue igual?
 
-### `05.mp3` — ¿Un dios en la Tierra?
+### `06.mp3` — ¿Un dios en la Tierra?
 
-> ¿Un dios en la Tierra?.
+> ¿Un dios en la Tierra?
 >
 > Los sacerdotes llamaron al joven rey Ptolomeo “la imagen viviente de Amón”, el rey de los dioses. Los egipcios creían que su faraón era un dios que vivía en la Tierra. El mensaje ordenaba poner una estatua de él en cada templo. Los sacerdotes la cuidarían tres veces al día, y su cumpleaños se volvió un día de fiesta.
 >
 > Piensa: Si la gente creía que el rey era un dios, ¿cómo cambiaría eso la manera en que seguían sus reglas?
 
-### `06.mp3` — Regalos y menos impuestos
+### `07.mp3` — Regalos y menos impuestos
 
 > Regalos y menos impuestos.
 >
@@ -143,7 +159,7 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Piensa: ¿Por qué un gobernante bajaría los impuestos después de un tiempo de peleas? ¿Quién paga los templos, las calles y las escuelas donde vives?
 
-### `07.mp3` — Hecha para la pared de un templo
+### `08.mp3` — Hecha para la pared de un templo
 
 > Hecha para la pared de un templo.
 >
@@ -151,17 +167,17 @@ The *Look closely* prompts, the *Tell me more* text and the translated Greek quo
 >
 > Piensa: Hoy en día, ¿cómo dan a conocer los líderes las nuevas reglas a todos? ¿En qué se parece eso a una piedra en cada templo?
 
-### `08.mp3` — ¿Palabras en inglés?
+### `09.mp3` — ¿Palabras en inglés?
 
-> ¿Palabras en inglés?.
+> ¿Palabras en inglés?
 >
 > En 1799, unos soldados franceses encontraron esta piedra mientras arreglaban un fuerte cerca del pueblo de Rashid, que los europeos llamaban Rosetta. En 1801, el ejército británico venció a los franceses y se la llevó. Estas etiquetas dicen en inglés “Capturada en Egipto por el ejército británico en 1801” y “Regalada por el rey Jorge III”. Está en el Museo Británico de Londres desde 1802. Egipto ha pedido que la devuelvan, y una copia está en un museo de Rashid.
 >
 > Piensa: Estas etiquetas se agregaron unos 2,000 años después de que se talló la piedra. ¿Qué te dicen sobre el viaje de la piedra?
 
-### `finish.mp3` — ¡Exploraste los 8 puntos!
+### `finish.mp3` — ¡Exploraste los 9 puntos!
 
-> ¡Exploraste los 8 puntos!
+> ¡Exploraste los 9 puntos!
 >
 > ¡Buen trabajo de detective! Esta piedra muestra lo que los egipcios creían sobre su rey y lo que el rey hizo por ellos.
 >

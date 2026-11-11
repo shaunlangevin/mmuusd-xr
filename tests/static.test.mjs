@@ -67,7 +67,7 @@ export default (test) => {
         (d.facts || []).forEach((f, j) => need(both(f.k) && both(f.v), `${n}: fact ${j + 1} needs en and es`));
         if (d.law) { need(both(d.law.plain), `${n}: law.plain needs en and es`); if (d.law.original) need(both(d.law.original) && both(d.law.source) && both(ex.lawCredit), `${n}: a quote needs en and es wording, law.source and the exhibit's lawCredit`); }
         if (d.more) need(both(d.more), `${n}: more needs en and es`);
-        if (d.extra) need(['height', 'map', 'signs'].includes(d.extra), `${n}: extra "${d.extra}" isn't built (height, map or signs)`);
+        if (d.extra) need(['height', 'map', 'signs', 'cartouche'].includes(d.extra), `${n}: extra "${d.extra}" isn't built (height, map, signs or cartouche)`);
       });
       for (const lang of ['en', 'es']) {
         const a = path.join(dir, 'audio', lang);

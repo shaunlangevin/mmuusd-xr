@@ -9,3 +9,7 @@ Not used by the website. They prepare a museum scan for the viewer.
 - `to_usdz.py`: makes the iPad / AR Quick Look copy.
   `pip install usd-core trimesh pillow numpy`, then
   `python3 tools/to_usdz.py model.glb model.usdz <work folder> <height in metres>`
+- `recording_scripts.py`: rebuilds an exhibit's `RECORDING-SCRIPT.md` and `EXTRA-RECORDING-SCRIPT.md` from its `exhibit.json`, so the scripts always match the panels.
+  `python3 tools/recording_scripts.py rosetta-stone`
+  Run it after changing any panel text, and re-record the clips whose words changed.
+- `package.py`: builds a site-update zip for GitHub. `python3 tools/package.py <label> [extra files]`
