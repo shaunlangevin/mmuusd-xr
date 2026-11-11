@@ -35,7 +35,7 @@ export default (test) => {
     const kits = await p.$$eval('#kitSeg button', (b) => b.map((x) => x.textContent));
     ok(kits.includes('Grade 5 · Egypt') && kits.includes('Grade 5 · Mesopotamia'), 'both kits listed');
     await p.click('#kitSeg button:nth-child(2)'); await sleep(400);
-    eq(norm(await last(p)), ['rooms/south', { kit: 'g5-egypt', exhibit: null, tour: false, tourAt: 'TS' }], 'changing kit ends any tour');
+    eq(norm(await last(p)), ['rooms/south', { kit: 'g5-egypt', exhibit: null, tour: false, tourAt: 'TS', selfTourAt: null, stops: null }], 'changing kit ends any tour and clears the stops');
     eq(await p.$$eval('#artSeg button', (b) => b.map((x) => x.textContent)), ['The Rosetta Stone'], 'artifact list follows the kit');
     eq(pageErrors(p), [], 'page errors');
     await p.close();
@@ -46,7 +46,7 @@ export default (test) => {
     await p.click('#tabTeach'); await sleep(300);
     await p.click('[data-freeze="eyes"]'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { freeze: 'eyes', freezeAt: 'TS' }], 'Eyes up');
     await p.click('#unfreeze'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { freeze: 'none', freezeAt: 'TS' }], 'Resume');
-    await p.click('#tourStart'); await sleep(300); eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 1, tourAt: 'TS' }], 'Start tour');
+    await p.click('#tourStart'); await sleep(300); eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 1, tourAt: 'TS', selfTourAt: null, stops: '1,2,5' }], 'Start tour (Highlights by default)');
     ok(await p.isVisible('#tourReveal'), 'Reveal reading shows during a tour (Notice first is on by default)');
     await p.click('#tourReveal'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { reveal: 1, revealAt: 'TS' }], 'Reveal');
     await p.click('#tourNext'); await sleep(200); eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 2, tourAt: 'TS' }], 'Next step');
@@ -71,7 +71,7 @@ export default (test) => {
     ok(await p.isVisible('#scriptEmpty'), 'empty until a step or dot is chosen');
     await p.click('#tourStart'); await sleep(300);
     await p.click('#dots button[data-dot="2"]'); await sleep(800);
-    eq(await p.textContent('#scriptTitle'), 'Dot 2: Rivers, farms and rules', 'title');
+    eq(await p.textContent('#scriptTitle'), 'Dot 2: Rivers, farms and rules ★', 'title (★ = curriculum link)');
     ok((await p.textContent('#txtNotice')).startsWith("You can't read this writing yet"), 'prompt text');
     eq(await p.textContent('#tagNotice'), 'Students see this now', 'before Reveal, the prompt is what students see');
     ok((await p.textContent('#txtMain')).includes('Think about it:'), 'Think about it is shown');
@@ -87,6 +87,67 @@ export default (test) => {
     eq(norm(await last(p)), ['rooms/south', { narrate: 2, narrateKind: 'more', narrateAt: 'TS' }], 'Play Tell me more');
     await p.click('#settings button[data-key="autoPlay"][data-val="true"]').catch(() => {});
     await p.close();
+  });
+
+  test('Tour stops: Highlights, All, Custom; teacher-led and self-guided', async () => {
+    const p = await signedIn();
+    await p.click('#tabTeach'); await sleep(300);
+    eq(await p.$$eval('#dots button.core', (b) => b.map((x) => +x.dataset.dot)), [2, 5], 'Hammurabi stars dots 2 and 5');
+    eq(await p.textContent('#stopsHl'), '★ Highlights (1 → 2 → 5)', 'Highlights names its stops');
+    ok(await p.$eval('#stopsHl', (b) => b.classList.contains('sel')), 'Highlights is the default');
+    ok((await p.textContent('#coreInfo')).includes('D2.Geo.4.3-5'), 'curriculum links listed');
+    // teacher-led
+    await p.click('#tourStart'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 1, tourAt: 'TS', selfTourAt: null, stops: '1,2,5' }], 'teacher-led tour sends its stops');
+    eq(await p.textContent('#tourCount'), 'STEP 1 OF 3 · HIGHLIGHTS', 'step count follows the stops');
+    ok((await p.textContent('#scriptLink')).startsWith('Opener'), 'dot 1 is labelled the opener');
+    await p.click('#tourNext'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 2, tourAt: 'TS' }], 'next: dot 2');
+    ok((await p.textContent('#scriptLink')).includes('D2.Geo.4.3-5'), 'script shows the curriculum link');
+    await p.click('#tourNext'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 5, tourAt: 'TS' }], 'next skips to dot 5');
+    ok(await p.$eval('#tourNext', (b) => b.disabled), 'no step after the last stop');
+    await p.click('#tourReveal'); await sleep(300);
+    ok((await p.textContent('#tourNote')).includes('Last stop'), 'says it is the last stop');
+    await p.click('#tourPrev'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 2, tourAt: 'TS' }], 'back: dot 2');
+    await p.click('[data-stops="all"]'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { stops: '1,2,3,4,5,6,7,8,9' }], 'changing stops mid-tour sends them');
+    await p.click('#tourNext'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 3, tourAt: 'TS' }], 'All dots: next is dot 3');
+    await p.click('#dots button[data-dot="7"]'); await sleep(300);
+    await p.click('[data-stops="highlights"]'); await sleep(300);
+    eq(await p.textContent('#tourCount'), 'EXTRA STOP · HIGHLIGHTS', 'a jump outside the stops is an extra stop');
+    await p.click('#tourPrev'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { tour: true, tourDot: 5, tourAt: 'TS' }], 'back from an extra stop: the stop before it');
+    await p.click('#tourEnd'); await sleep(300);
+    // custom + self-guided
+    await p.click('[data-stops="custom"]'); await sleep(200);
+    ok(await p.isVisible('#customPick'), 'Custom shows the stop picker');
+    ok(await p.$eval('#customPick [data-pick="1"]', (b) => b.disabled && b.classList.contains('sel')), 'dot 1 is always a stop');
+    await p.click('#customPick [data-pick="2"]'); await sleep(150);
+    await p.click('#customPick [data-pick="3"]'); await sleep(150);
+    await p.click('#customPick [data-pick="8"]'); await sleep(150);
+    eq(await p.textContent('#stopsNow'), 'Stops: 1 → 3 → 5 → 8', 'custom stops (2 removed, 3 and 8 added)');
+    await p.click('#selfStart'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { selfTourAt: 'TS', tour: false, tourAt: 'TS', stops: '1,3,5,8' }], 'Start self-guided tour');
+    ok(await p.isVisible('#selfOn') && !(await p.isVisible('#tourOff')), 'self-guided controls show');
+    ok((await p.textContent('#strip')).includes('Self-guided tour: 1 → 3 → 5 → 8'), 'status strip');
+    ok(await p.$eval('#dots button[data-dot="4"]', (b) => b.disabled), 'dot buttons rest during a self-guided tour');
+    await p.click('#selfRestart'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { selfTourAt: 'TS' }], 'Restart for everyone');
+    await p.click('#selfEnd'); await sleep(300);
+    eq(norm(await last(p)), ['rooms/south', { selfTourAt: null }], 'End self-guided tour');
+    ok(await p.isVisible('#tourOff'), 'back to the start buttons');
+    eq(pageErrors(p), [], 'page errors');
+    await p.close();
+    // the Rosetta Stone has its own links
+    const r = await signedIn();
+    await r.click('#kitSeg button:nth-child(2)'); await sleep(800);
+    await r.click('#tabTeach'); await sleep(300);
+    eq(await r.$$eval('#dots button.core', (b) => b.map((x) => +x.dataset.dot)), [5, 6], 'Rosetta stars dots 5 and 6');
+    eq(await r.textContent('#stopsHl'), '★ Highlights (1 → 5 → 6)', 'Rosetta highlights');
+    await r.close();
   });
 
   test('North End shows headsets 6–11', async () => {

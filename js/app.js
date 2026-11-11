@@ -143,6 +143,8 @@ let placePref = null;          // where this student likes panels (set by draggi
 let rigAng = -0.65;            // which side the open panel went to (negative = right of the dot)
 // teacher console
 let touring = false, tourStep = -1, tourPending = false, tourTurn = null;
+// self-guided tour: each headset walks its own student through the teacher's chosen stops (dot indexes)
+let selfGuided = false, selfStops = [], selfPos = 0, selfDone = false, lastSelfAt = 0;
 let moveOK = true;             // teacher can switch off panel dragging
 const audioOK = { en: [], es: [] };
 const noticeOK = { en: [], es: [] };   // recorded "Look closely" prompts: audio/<lang>/01-notice.mp3 …
@@ -326,7 +328,7 @@ function playClip(i, kind = 'main') {
   audio.play().then(() => { playing = true; refreshInfo(); }).catch((e) => { playingIndex = -1; console.warn('audio', e); });
 }
 // Auto-play (a support): the right clip starts by itself when a prompt, a reading or Tell me more appears
-const autoOn = () => acc('auto') && !frozen;
+const autoOn = () => (acc('auto') || selfGuided) && !frozen;   // a self-guided tour always auto-plays
 function autoPlay(i, kind) { if (autoOn() && typeof i === 'number' && openIndex === i && !hidden) playClip(i, kind); }
 function stopAudio() { audio.pause(); playing = false; playingIndex = -1; }
 audio.addEventListener('ended', () => { playing = false; playingIndex = -1; refreshInfo(); });
@@ -387,7 +389,7 @@ function updateMarkers(time) {
     tmpV.copy(d._p).applyMatrix4(root.matrixWorld);
     tmpV2.copy(d._n).transformDirection(root.matrixWorld);
     m.position.copy(tmpV).addScaledVector(tmpV2, 0.05 * k + 0.012);
-    m.visible = show && (!clueOn() || revealed.has(i) || found.has(i));
+    m.visible = show && (!clueOn() || revealed.has(i) || found.has(i)) && (!selfGuided || selfStops.includes(i));   // self-guided: only the stops until the end
     if (!m.visible) return;
     m.quaternion.copy(camera.quaternion);
     const pop = m.userData.popAt && !calm() ? Math.max(0, 1 - (time - m.userData.popAt) / 600) : 0;   // little bounce when revealed (not in Calm mode)
@@ -481,7 +483,7 @@ function baseInfoState() {
   if (noticePhase(openIndex)) {
     return { dot: DOTS[openIndex], index: openIndex, lang: S.lang, notice: true, single: true,
       hasAudio: hasAudio(openIndex, 'notice'), playing: playing && playingKind === 'notice' && playingIndex === openIndex,
-      canReveal: !touring, wait: touring, noClose: touring && mode !== 'desktop', found: tracking() && found.has(openIndex) };
+      canReveal: !touring || selfGuided, wait: touring && !selfGuided, noClose: touring && mode !== 'desktop', found: tracking() && found.has(openIndex) };
   }
   if (openIndex === 'finish') {
     const f = EX.finish;
@@ -494,6 +496,7 @@ function baseInfoState() {
     single: clueOn() || touring, noClose: touring && mode !== 'desktop',   // in a tour, students use Hide instead of Close
     hasAudio: hasAudio(openIndex, panelKind()), hasMore: !!(d.more || (d.law && d.law.original)),
     lawCredit: EX.lawCredit, credit: (d.id === 'height' || d.extra === 'height') ? L(EX.model.credit, S.lang) : '',
+    nextStop: selfGuided && openIndex === tourStep ? (selfPos < selfStops.length - 1 ? 'next' : 'finish') : null,
   };
 }
 
@@ -728,7 +731,7 @@ function showCard() {
     $('card-num').textContent = st.index + 1; $('card-num').classList.toggle('found', !!st.found);
     $('card-title').textContent = tt.lookClosely;
     $('card-body').textContent = L(d.notice, S.lang);
-    ['card-facts', 'card-law', 'card-extra', 'card-more', 'card-credit', 'card-listen', 'card-moreBtn', 'card-prev', 'card-next'].forEach((id) => { $(id).hidden = true; });
+    ['card-facts', 'card-law', 'card-extra', 'card-more', 'card-credit', 'card-listen', 'card-moreBtn', 'card-prev', 'card-next', 'card-nextstop'].forEach((id) => { $(id).hidden = true; });
     $('card-think-label').textContent = '';
     $('card-think').textContent = tt.stems.join('  ') + (st.wait ? '  ' + tt.waitReveal : '');
     $('card-showme').hidden = !st.canReveal;
@@ -768,6 +771,7 @@ function showCard() {
   $('card-prev').hidden = $('card-next').hidden = !!st.single;
   $('card-close').hidden = !!st.noClose;
   $('card-prev').textContent = tt.back; $('card-next').textContent = tt.next; $('card-close').textContent = tt.close;
+  $('card-nextstop').hidden = !st.nextStop; $('card-nextstop').textContent = st.nextStop === 'finish' ? tt.finishTour : tt.nextStop;
   afterCard();
 }
 // keyboard / screen-reader users: move focus into the card when they opened it, and keep the dot list current
@@ -782,6 +786,7 @@ function openFromKeyboard(i) {
   focusCard = true; focusBack = i; openInfo(i);
 }
 $('card-close').onclick = closeInfo;
+$('card-nextstop').onclick = () => nextSelfStop();
 $('card-prev').onclick = () => openInfo(openIndex - 1);
 $('card-next').onclick = () => openInfo(openIndex + 1);
 $('card-listen').onclick = () => toggleAudio(openIndex, panelKind());
@@ -1203,6 +1208,7 @@ function onSelect(c) {
 function onPanelButton(id) {
   if (id === 'close' && openIndex === 'practice') return finishPractice();
   if (id === 'reveal') return showReading(openIndex);
+  if (id === 'nextStop') return nextSelfStop();
   if (id === 'close') closeInfo();
   else if (id === 'next') openInfo(openIndex + 1);
   else if (id === 'prev') openInfo(openIndex - 1);
@@ -1502,10 +1508,12 @@ function applyRemote(r) {
   // guided tour
   if (r.tour) {
     const step = r.tourDot - 1;
+    selfGuided = false;   // the teacher is leading
     if (!touring || step !== tourStep || r.tourAt > lastTourAt) { lastTourAt = r.tourAt; setTour(true, step); }
-  } else if (touring) setTour(false);
+  } else if (r.selfTourAt) syncSelfTour(r);
+  else if (touring) { selfGuided = false; setTour(false); }
   // teacher pressed "Reveal reading" for this tour step (only counts if pressed after the step began)
-  if (touring && r.reveal === tourStep + 1 && r.revealAt >= (r.tourAt || 0)) showReading(tourStep);
+  if (touring && !selfGuided && r.reveal === tourStep + 1 && r.revealAt >= (r.tourAt || 0)) showReading(tourStep);
   if (!touring && r.dot && r.dotAt > lastDotAt) { lastDotAt = r.dotAt; pendingDot = r.dot - 1; runPendingDot(); }
   else if (r.dotAt > lastDotAt) lastDotAt = r.dotAt;
   applyPause();
@@ -1560,6 +1568,38 @@ function setFrozen(kind) {
 // The teacher steps everyone through the dots. Students can't open other dots; the current one
 // gets a pulsing ring. Walking: an arrow at the edge of view leads them to it and its reading opens
 // when they get there. Seated or table size: the stone turns so the dot faces them.
+// Self-guided tour: the teacher picks the stops and starts it; then each student goes at their own pace.
+// The same look-to-open as the teacher's tour: an arrow leads to the stop and it opens when they face it.
+// "Next stop" (on the reading) moves on; after the last stop every dot appears for free exploring.
+// Nothing is saved: a headset that reloads starts again at the first stop.
+function stopList(r) {
+  const n = DOTS.length, list = (Array.isArray(r.stops) ? r.stops : []).map((x) => x - 1).filter((i) => i >= 0 && i < n);
+  return list.length ? [...new Set(list)].sort((a, b) => a - b) : DOTS.map((_, i) => i);
+}
+function syncSelfTour(r) {
+  if (!DOTS.length) return;
+  const list = stopList(r);
+  if (r.selfTourAt !== lastSelfAt) {   // started (or restarted) by the teacher
+    lastSelfAt = r.selfTourAt; selfDone = false; selfStops = list; selfPos = 0;
+    selfGuided = true; setTour(true, selfStops[0]); return;
+  }
+  if (selfDone) return;
+  if (!selfGuided || !touring) { selfGuided = true; selfStops = list; selfPos = Math.min(selfPos, list.length - 1); setTour(true, selfStops[selfPos]); return; }
+  if (list.join() !== selfStops.join()) {   // the teacher changed the stops mid-tour: keep going from here
+    selfStops = list;
+    const at = list.indexOf(tourStep);
+    if (at >= 0) selfPos = at;
+    else { selfPos = Math.max(0, list.findIndex((i) => i > tourStep)); if (list[selfPos] < tourStep) selfPos = list.length - 1; setTour(true, list[selfPos]); }
+    refreshMarkerLooks(); if (openIndex !== -1) refreshInfo(false);
+  }
+}
+function nextSelfStop() {
+  if (!selfGuided) return;
+  if (selfPos < selfStops.length - 1) { selfPos++; setTour(true, selfStops[selfPos]); return; }
+  selfDone = true; selfGuided = false; setTour(false);   // finished: every dot appears
+  if (pendingFinish) { pendingFinish = false; showFinish(); }
+}
+
 function setTour(on, step) {
   const was = touring;
   touring = on;
@@ -1850,7 +1890,7 @@ renderer.setAnimationLoop((time, frame) => {
     practiceState: () => ({ stage: practice && practice.stage, done: practiceDone, card: practiceCard.mesh.visible, hint: hint.mesh.visible && hint.text }),
     noticeState: () => ({ notice: S.notice, phase: noticePhase(openIndex), shown: [...readingShown] }),
     showReading, practiceCard, dotsInfo: () => DOTS.map((d) => ({ id: d.id, hit: d._hit })), ACC, applyAccess, accState: () => ({ ...accNow(), zoom: panel.zoom, speaking, canSpeak: canSpeak(), voices: voices.length }), readText: () => readText(infoState()), toggleRead, syncRemoteAccess,
-    grabState: () => ({ grab: !!grab, placePref, rigAng, hidden }), tourState: () => ({ touring, tourStep, tourPending, turning: !!tourTurn, guide: guide.visible, guideText: guideLabelText, moveOK, headset: HEADSET, room: ROOM, frozen }), freezePanel, isFrozen: () => frozen, rigState: () => ({ rigGoal: rigGoal && rigGoal.toArray(), rigAway, xrFrames }), currentClue, useHint, revealed, toolbar, panel, options, extra, tracker, S, setSetting, openInfo, closeInfo,
+    grabState: () => ({ grab: !!grab, placePref, rigAng, hidden }), nextSelfStop, tourState: () => ({ touring, tourStep, tourPending, selfGuided, selfStops: [...selfStops], selfPos, selfDone, turning: !!tourTurn, guide: guide.visible, guideText: guideLabelText, moveOK, headset: HEADSET, room: ROOM, frozen }), freezePanel, isFrozen: () => frozen, rigState: () => ({ rigGoal: rigGoal && rigGoal.toArray(), rigAway, xrFrames }), currentClue, useHint, revealed, toolbar, panel, options, extra, tracker, S, setSetting, openInfo, closeInfo,
     state: () => ({ mode, placing, S: { ...S }, openIndex, expanded, found: [...found], finishShown, clue: currentClue(), revealed: [...revealed],
       panel: panel.mesh.visible, extra: extra.mesh.visible, options: options.mesh.visible, toolbarItems: toolbar.items,
       ruler: !!ruler?.visible, root: root.position.toArray().map((v) => +v.toFixed(2)), scale: +root.scale.x.toFixed(2),

@@ -8,6 +8,7 @@
   - `dot: 5` plus the time it was sent
   - `freeze: "eyes"` plus the time it was sent
   - `tour: true`, `tourDot: 3` (guided tour step), `narrate: 3` (play that dot's recording), `moveWindows: false`
+  - `stops: "1,2,5"` (which dots a tour visits) and `selfTourAt` (when the teacher started a self-guided tour)
   - `paused: { h3: <time> }`, meaning headset **number 3** (the sticker on the device) is paused. These are device numbers, not students.
   - Supports: `bigText`, `readAloud`, `calm`, `autoPlay` (true/false, for every headset in the room), and `access: { h3: "br" }`, meaning headset **number 3** shows Bigger text (`b`) and Read to me (`r`); `c` is Calm mode and `a` is Auto-play. Again, a device number, never a name. The teacher clears these at the end of class ("Clear all supports" or "Reset all to Default").
 - Each button press overwrites the record. No history, logs, or lists of devices or students are kept.
@@ -16,7 +17,7 @@
 - **No student names, accounts, sign-ins, IDs, answers, progress, audio, video, photos, camera or location data.**
 - **Headsets never write to the database.** They only read their room's settings. They don't sign in and aren't given any identifier.
 - **Headset numbers stay on the headset.** Each headset saves its own number (matching its sticker: South End 0–5, North End 6–11) in its browser. The number decides which teacher page the headset follows and whether a pause is meant for it. It is never sent anywhere. The teacher page can't see which headsets are connected or what they are looking at.
-- **No record of where students look or what they open.** Where a student moves a reading panel is remembered only in that headset's memory until the page is closed.
+- **No record of where students look or what they open.** Where a student moves a reading panel, and their place in a self-guided tour, are remembered only in that headset's memory until the page is closed. The teacher page can't see who has finished a tour.
 - **No Google Analytics, crash reporting, advertising or tracking code.** Only Firebase's database module (plus sign-in on the teacher page) is included, and it's hosted on our own GitHub site.
 
 ## Who can change anything
@@ -31,13 +32,14 @@
   - whether students can move reading panels, Notice first on/off, Practice card on/off, Move button show/hide, "reveal the reading for dot 1–20"
   - supports: Bigger text, Read to me, Calm mode, Auto-play, for every headset or for headset 0–19 (only the letters b, r, c, a)
   - which recording to play for a dot: the prompt, the reading, or Tell me more (`narrateKind`)
+  - tour stops (dot numbers 1–20 only) and start/end a self-guided tour
   - four preset freeze messages: Eyes up, Wait for instructions, Take off headset, Time to finish
 - **No free text.** The database rules reject anything else, and the headsets also ignore any value not on their own allowed list.
 - **It can't** open websites, start the camera or microphone, or see what students see.
 
 ## Fail-safe
 - If Firebase is unreachable or turned off, headsets work normally on their own.
-- Freezes and per-headset pauses expire automatically after 2 hours. "Go to dot" commands are ignored after 10 minutes, tour steps after 3 hours, and "play narration" after 20 seconds.
+- Freezes and per-headset pauses expire automatically after 2 hours. "Go to dot" commands are ignored after 10 minutes, tour steps and self-guided tours after 3 hours, and "play narration" after 20 seconds.
 
 ## Technical notes for IT
 - **Rooms:** each copy of the exhibit page listens to one room: `south` for headsets 0–5, `north` for 6–11, or `mmuusd` until a number is picked (unless its link ends in `?room=off`), so the read-only connection described here also happens on Chromebooks and iPads that open the page.

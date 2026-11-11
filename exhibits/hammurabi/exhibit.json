@@ -37,6 +37,32 @@
       "es": "Gran pregunta: ¿Era justo el Código de Hammurabi? Habla de esto con tu compañero o compañera."
     }
   },
+  "links": [
+    {
+      "id": "geo4",
+      "code": "D2.Geo.4.3-5",
+      "text": {
+        "en": "How people change and adapt to their environment (canals, dams, water laws)",
+        "es": "Cómo las personas cambian su entorno y se adaptan a él (canales, presas, leyes del agua)"
+      }
+    },
+    {
+      "id": "geo8",
+      "code": "D2.Geo.8.3-5",
+      "text": {
+        "en": "Where people settle, and the natural resources they use (cities by the rivers)",
+        "es": "Dónde se asientan las personas y qué recursos naturales usan (ciudades junto a los ríos)"
+      }
+    },
+    {
+      "id": "maps",
+      "code": "Bend 1, indicator 3",
+      "text": {
+        "en": "Compare ancient maps with today's political maps",
+        "es": "Comparar mapas antiguos con los mapas políticos de hoy"
+      }
+    }
+  ],
   "dots": [
     {
       "id": "source",
@@ -157,7 +183,11 @@
       "think": {
         "en": "Why would a land of rivers and farms need rules about water?",
         "es": "¿Por qué una tierra de ríos y granjas necesitaría reglas sobre el agua?"
-      }
+      },
+      "core": [
+        "geo4",
+        "geo8"
+      ]
     },
     {
       "id": "writing",
@@ -238,7 +268,11 @@
       "think": {
         "en": "Find the two rivers on the map. Why do you think people built cities close to them?",
         "es": "Busca los dos ríos en el mapa. ¿Por qué crees que la gente construía ciudades cerca de ellos?"
-      }
+      },
+      "core": [
+        "geo8",
+        "maps"
+      ]
     },
     {
       "id": "fair",

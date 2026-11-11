@@ -116,6 +116,77 @@ export default (test) => {
     await p.close();
   });
 
+  test('self-guided tour: chosen stops, look to open, Next stop, finish, restart, teacher takes over', async () => {
+    const p = await page({ xr: true });
+    await ready(p, '?headset=2&exhibit=hammurabi');
+    const send = room(p, 'south');
+    await send({ practice: false, mode: 'seated' });   // seated: the stone turns each stop to face the student
+    await p.click('#btn-vr'); await sleep(2000);
+    await p.waitForFunction(() => window.__dbg.state().noticeAudio.en.filter(Boolean).length === 9, null, { timeout: 20000 });
+    const playingSoon = (kind) => p.waitForFunction((k) => { const s = window.__dbg.state(); return s.playing && s.playingKind === k; }, kind, { timeout: 8000 }).catch(() => {});
+    const openSoon = (i) => p.waitForFunction((i) => window.__dbg.state().openIndex === i && !window.__dbg.tourState().tourPending, i, { timeout: 8000 }).catch(() => {});
+    const ts = () => p.evaluate(() => { const D = window.__dbg, t = D.tourState(), s = D.state();
+      return { touring: t.touring, self: t.selfGuided, stops: t.selfStops, pos: t.selfPos, done: t.selfDone, open: s.openIndex, notice: D.noticeState().phase,
+        playing: s.playing, kind: s.playingKind, btns: D.panel.buttons.map((b) => b.id), next: D.panel.state && D.panel.state.nextStop,
+        shown: D.markers.filter((m) => m.visible).map((m) => m.userData.index) }; });
+    await send({ selfTourAt: Date.now(), stops: [1, 2, 5].join(',') }, 1800);
+    await openSoon(0); await sleep(300);
+    let s = await ts();
+    eq([s.touring, s.self, s.stops, s.open, s.notice], [true, true, [0, 1, 4], 0, true], 'starts at stop 1 with the look-closely prompt');
+    eq(s.shown, [0, 1, 4], 'only the stops show');
+    ok(s.btns.includes('reveal'), 'the student can press Show me (no waiting for the teacher)');
+    await playingSoon('notice');
+    s = await ts(); eq([s.playing, s.kind], [true, 'notice'], 'auto-play is on during a self-guided tour');
+    await press(p, 'panel', 'reveal'); await sleep(400);
+    s = await ts(); eq(s.notice, false, 'Show me reveals the reading'); ok(s.btns.includes('nextStop') && s.next === 'next', 'Next stop button');
+    await playingSoon('main');
+    s = await ts(); eq([s.playing, s.kind], [true, 'main'], 'the reading plays by itself');
+    await press(p, 'panel', 'nextStop'); await openSoon(1); await sleep(300);
+    s = await ts(); eq([s.pos, s.open, s.notice], [1, 1, true], 'Next stop: dot 2, prompt first');
+    await press(p, 'panel', 'reveal'); await sleep(300);
+    await press(p, 'panel', 'nextStop'); await openSoon(4); await sleep(300);
+    s = await ts(); eq([s.pos, s.open], [2, 4], 'skips to dot 5 (the last stop)');
+    await press(p, 'panel', 'reveal'); await sleep(400);
+    s = await ts(); eq(s.next, 'finish', 'the last stop offers Finish tour');
+    await press(p, 'panel', 'nextStop'); await sleep(600);
+    s = await ts(); eq([s.touring, s.self, s.done], [false, false, true], 'tour finished'); eq(s.shown.length, 9, 'every dot appears for free exploring');
+    await send({}, 900); s = await ts(); eq(s.touring, false, 'an unchanged record does not restart it');
+    await send({ selfTourAt: Date.now() + 5 }, 1800); await openSoon(0);
+    s = await ts(); eq([s.touring, s.self, s.pos, s.shown], [true, true, 0, [0, 1, 4]], 'Restart for everyone: back to stop 1');
+    await send({ stops: '1,3' }, 1200); s = await ts(); eq([s.stops, s.shown], [[0, 2], [0, 2]], 'the teacher changes the stops mid-tour');
+    await send({ selfTourAt: null, tour: true, tourDot: 4, tourAt: Date.now() + 10 }, 1800);
+    s = await ts(); eq([s.touring, s.self], [true, false], 'a teacher-led tour takes over'); eq(s.shown.length, 9, 'all dots show again (dimmed)');
+    await send({ tour: false, tourAt: Date.now() + 20 }, 900);
+    s = await ts(); eq(s.touring, false, 'tour over');
+    eq(pageErrors(p), [], 'page errors');
+    await p.close();
+  });
+
+  test('self-guided tour while walking: an arrow leads on, and a stop opens when the student looks at it', async () => {
+    const p = await page({ xr: true });
+    await ready(p, '?headset=2&exhibit=hammurabi');
+    const send = room(p, 'south');
+    await send({ practice: false });
+    await p.click('#btn-vr'); await sleep(2000);
+    await send({ selfTourAt: Date.now(), stops: '1,6' }, 1800);
+    const ts = () => p.evaluate(() => { const D = window.__dbg, t = D.tourState(), s = D.state(); return { step: t.tourStep, pending: t.tourPending, guide: t.guide, guideText: t.guideText, open: s.openIndex }; });
+    await p.waitForFunction(() => window.__dbg.state().openIndex === 0, null, { timeout: 8000 }).catch(() => {});
+    let s = await ts(); eq([s.step, s.open], [0, 0], 'stop 1 (the front) opens: the student is already facing it');
+    await press(p, 'panel', 'reveal'); await sleep(300);
+    await press(p, 'panel', 'nextStop'); await sleep(900);
+    s = await ts(); eq([s.step, s.pending, s.open], [5, true, -1], 'stop 2 is dot 6 on the back: it waits');
+    ok(s.guide && s.guideText === 'Walk around', 'an arrow says to walk around');
+    // walk round to the back and look at dot 6
+    await p.evaluate(() => { const D = window.__dbg, P = D.markers[5].position, R = D.root.position, d = window.__xr;
+      const out = { x: P.x - R.x, z: P.z - R.z }, len = Math.hypot(out.x, out.z);
+      const H = { x: P.x + out.x / len * 1.1, y: 1.45, z: P.z + out.z / len * 1.1 };
+      const yaw = Math.atan2(-(P.x - H.x), -(P.z - H.z));
+      d.position.set(H.x, H.y, H.z); d.quaternion.set(0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)); });
+    await p.waitForFunction(() => window.__dbg.state().openIndex === 5, null, { timeout: 8000 }).catch(() => {});
+    s = await ts(); eq([s.open, s.pending, s.guide], [5, false, false], 'looking at it opens it, and the arrow goes away');
+    await p.close();
+  });
+
   test('freeze everyone, and pause one headset by its number', async () => {
     const p = await page({ xr: true });
     await ready(p, '?headset=2');

@@ -185,8 +185,9 @@ export class InfoPanel extends CanvasPanel {
     }
     if (!st.noClose) items.push({ id: 'close', label: t.close, w: 1 });
     if (!st.single && !st.notice) items.push({ id: 'next', label: t.next, w: 1 });
+    if (st.nextStop && !st.notice) items.push({ id: 'nextStop', label: st.nextStop === 'finish' ? t.finishTour : t.nextStop, w: 1.7 });   // self-guided tour
     this.buttons = items.length ? this.layoutRow(items, used - footer + 22, 88, 14, 40) : [];
-    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' || b.id === 'reveal' || b.id === 'read' }));
+    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' || b.id === 'reveal' || b.id === 'read' || b.id === 'nextStop' }));
     this.tex.needsUpdate = true;
   }
 }

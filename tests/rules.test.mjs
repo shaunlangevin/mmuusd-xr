@@ -80,6 +80,8 @@ export default (test) => {
       { moveWindows: false, notice: true, practice: true, moveStone: false }, { 'paused/h0': TS }, { 'paused/h11': TS }, { 'paused/h3': null },
       { bigText: true, readAloud: true, calm: false, autoPlay: true }, { 'access/h3': 'b' }, { 'access/h19': 'brca' }, { 'access/h3': null },
       { exhibit: null, kit: null },
+      { stops: '1,2,5' }, { stops: '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20' }, { stops: null },
+      { selfTourAt: TS, tour: false, tourAt: TS, stops: '1,5,6' }, { selfTourAt: null },
     ];
     for (const c of cmds) good(c, JSON.stringify(c));
   });
@@ -96,6 +98,8 @@ export default (test) => {
     bad({ narrateKind: 'everything' }, 'an unknown recording type'); bad({ autoPlay: 'yes' }, 'auto-play as text');
     bad({ 'access/h1': 'x' }, 'an unknown support letter'); bad({ 'access/maria': 'b' }, 'a support by name'); bad({ access: 'brc' }, 'access as a plain string');
     bad({ bigText: 'yes' }, 'a support as text');
+    bad({ stops: '1,2,hello' }, 'tour stops with text'); bad({ stops: '0,1' }, 'stop 0'); bad({ stops: '1,21' }, 'stop 21');
+    bad({ stops: '' }, 'empty stops'); bad({ stops: [1, 2] }, 'stops as a list'); bad({ selfTourAt: NOW + 3600e3 }, 'a self-guided start in the future');
     ok(tryUpdate('south', { lang: 'en' }) !== null, 'a write without updatedAt should be rejected');
   });
 
@@ -112,7 +116,7 @@ export default (test) => {
       .concat([...tjs.matchAll(/\['(paused|access)\/h'/g)].map((m) => m[1])));
     eq([...sent].filter((k) => !ruleKeys.includes(k)).sort(), [], 'the console sends fields the rules would reject');
     // the console's safety check covers the newest fields too
-    ok(/access\/h1/.test(tjs) && /paused\/student-name/.test(tjs) && /narrateKind: 'everything'/.test(tjs), 'safety check should test pauses, supports and recording types');
+    ok(/access\/h1/.test(tjs) && /paused\/student-name/.test(tjs) && /narrateKind: 'everything'/.test(tjs) && /stops: '1,2,hello'/.test(tjs), 'safety check should test pauses, supports, recording types and tour stops');
   });
 
   test('headset filter (clean) keeps only safe, fresh values', async () => {
@@ -120,11 +124,13 @@ export default (test) => {
     const now = Date.now(), H = 3600e3;
     const c = clean({ lang: 'es', note: 'hi', exhibit: 'Bad Name', kit: 'g5-egypt', dot: 3, dotAt: now - 11 * 60e3, freeze: 'eyes', freezeAt: now - 3 * H,
       tour: true, tourDot: 2, tourAt: now, narrate: 2, narrateAt: now - 30e3, paused: { h3: now, h4: now - 3 * H, bob: now }, access: { h2: 'rc', h5: 'zz', sam: 'b' },
-      bigText: true, calm: 'yes', reveal: 2, revealAt: now }, now);
+      bigText: true, calm: 'yes', reveal: 2, revealAt: now, stops: '5,1,2,5', selfTourAt: now - 60e3 }, now);
     eq(c.lang, 'es', 'language'); ok(!('note' in c) && !('exhibit' in c), 'junk and bad names dropped'); eq(c.kit, 'g5-egypt', 'kit');
     ok(!('dot' in c), 'a "go to dot" older than 10 minutes is ignored'); eq(c.freeze, null, 'a freeze older than 2 hours is ignored');
     eq([c.tour, c.tourDot], [true, 2], 'tour'); ok(!('narrate' in c), 'narration older than 20 s is ignored');
     eq(c.paused, [3], 'only fresh pauses by number'); eq(c.access, { 2: 'rc' }, 'only valid supports by number');
+    eq(c.stops, [1, 2, 5], 'stops: sorted dot numbers'); eq(c.selfTourAt, now - 60e3, 'a fresh self-guided start');
+    ok(!('stops' in clean({ stops: '1,<b>' }, now)) && !('selfTourAt' in clean({ selfTourAt: now - 4 * H }, now)), 'bad stops and an old self-guided start are dropped');
     eq(c.bigText, true, 'room support'); ok(!('calm' in c), 'a non-boolean support is dropped'); eq(c.reveal, 2, 'reveal');
   });
 };

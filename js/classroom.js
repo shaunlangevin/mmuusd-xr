@@ -67,6 +67,11 @@ export function clean(r, now) {
   }
   if (dotNum(r.reveal) && fresh(r.revealAt, TOUR_MAX_MS)) { out.reveal = r.reveal; out.revealAt = r.revealAt; }
   if (r.tour === true && dotNum(r.tourDot) && fresh(r.tourAt, TOUR_MAX_MS)) { out.tour = true; out.tourDot = r.tourDot; out.tourAt = r.tourAt; }
+  // tour stops chosen by the teacher ("1,2,5"); none = every dot. A self-guided tour starts (or restarts) at selfTourAt.
+  if (typeof r.stops === 'string' && /^([1-9]|1[0-9]|20)(,([1-9]|1[0-9]|20)){0,19}$/.test(r.stops)) {
+    out.stops = [...new Set(r.stops.split(',').map(Number))].sort((a, b) => a - b);
+  }
+  if (fresh(r.selfTourAt, TOUR_MAX_MS)) out.selfTourAt = r.selfTourAt;
   if (dotNum(r.narrate) && fresh(r.narrateAt, NARRATE_MAX_MS)) {
     out.narrate = r.narrate; out.narrateAt = r.narrateAt;
     out.narrateKind = ['notice', 'main', 'more'].includes(r.narrateKind) ? r.narrateKind : 'main';   // which recording: prompt, reading or Tell me more

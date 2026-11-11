@@ -37,6 +37,32 @@
       "es": "Gran pregunta: Elige una creencia o costumbre que encontraste en esta piedra. ¿Quién ayudó a difundirla? ¿Qué pregunta le harías a esa persona? Hablen de esto con las personas que están cerca."
     }
   },
+  "links": [
+    {
+      "id": "his3",
+      "code": "D2.His.3.3-5",
+      "text": {
+        "en": "Questions about a person who shaped change: Ptolemy V, the pharaoh as a living god",
+        "es": "Preguntas sobre una persona que influyó en los cambios: Ptolomeo V, el faraón como dios viviente"
+      }
+    },
+    {
+      "id": "civ13",
+      "code": "D2.Civ.13.3-5",
+      "text": {
+        "en": "How a policy was made to fix a public problem (the revolts)",
+        "es": "Cómo se creó una política para resolver un problema público (las revueltas)"
+      }
+    },
+    {
+      "id": "eco12",
+      "code": "D2.Eco.12.3-5",
+      "text": {
+        "en": "How the government paid for things, and who paid taxes",
+        "es": "Cómo pagaba el gobierno sus gastos y quién pagaba impuestos"
+      }
+    }
+  ],
   "dots": [
     {
       "id": "source",
@@ -223,7 +249,10 @@
       "think": {
         "en": "If people believed the king was a god, how might that change the way they followed his rules?",
         "es": "Si la gente creía que el rey era un dios, ¿cómo cambiaría eso la manera en que seguían sus reglas?"
-      }
+      },
+      "core": [
+        "his3"
+      ]
     },
     {
       "id": "taxes",
@@ -263,7 +292,11 @@
       "think": {
         "en": "Why might a ruler lower taxes after a time of fighting? Who pays for temples, roads and schools where you live?",
         "es": "¿Por qué un gobernante bajaría los impuestos después de un tiempo de peleas? ¿Quién paga los templos, las calles y las escuelas donde vives?"
-      }
+      },
+      "core": [
+        "civ13",
+        "eco12"
+      ]
     },
     {
       "id": "temple",

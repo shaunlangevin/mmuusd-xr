@@ -47,6 +47,14 @@ export default (test) => {
       need(ex.finish && both(ex.finish.title) && both(ex.finish.text) && both(ex.finish.think), 'finish needs title, text and think in en and es');
       const dots = ex.dots || [];
       need(dots.length >= 4 && dots.length <= 20, `has ${dots.length} dots (4–20 allowed; the console handles up to 20)`);
+      // curriculum links: a few best-fit targets, each used by at least one core dot (exhibits support a unit; they don't cover it)
+      const links = ex.links || [], linkIds = new Set(links.map((l) => l.id));
+      need(links.length <= 4, `has ${links.length} curriculum links; keep to the 1–4 targets the object fits best`);
+      links.forEach((l, j) => need(/^[a-z0-9-]{1,16}$/.test(l.id || '') && typeof l.code === 'string' && l.code.trim() && both(l.text), `link ${j + 1}: needs id, code, and text in en and es`));
+      need(linkIds.size === links.length, 'link ids must be unique');
+      for (const l of links) need(dots.some((d) => (d.core || []).includes(l.id)), `link "${l.id}" isn't used by any dot`);
+      dots.forEach((d, i) => { if (d.core !== undefined) need(Array.isArray(d.core) && d.core.length && d.core.every((c) => linkIds.has(c)), `dot ${i + 1} (${d.id}): core must list link ids from "links"`); });
+      if (dots.some((d) => d.core)) need(dots.filter((d) => d.core).length <= 4, 'more than 4 core dots makes the core tour long; star only the best fits');
       const seen = new Set();
       dots.forEach((d, i) => {
         const n = `dot ${i + 1} (${d.id})`;

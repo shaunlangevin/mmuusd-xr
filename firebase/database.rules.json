@@ -36,6 +36,8 @@
         "readAloud":   { ".validate": "newData.isBoolean()" },
         "calm":        { ".validate": "newData.isBoolean()" },
         "autoPlay":    { ".validate": "newData.isBoolean()" },
+        "stops":       { ".validate": "newData.isString() && newData.val().matches(/^([1-9]|1[0-9]|20)(,([1-9]|1[0-9]|20)){0,19}$/)" },
+        "selfTourAt":  { ".validate": "newData.isNumber() && newData.val() <= now" },
         "access": {
           ".validate": "newData.hasChildren()",
           "$h":        { ".validate": "$h.matches(/^h1?[0-9]$/) && newData.isString() && newData.val().matches(/^[brca]{1,4}$/)" }
