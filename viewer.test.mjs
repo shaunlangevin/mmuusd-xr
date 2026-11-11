@@ -83,7 +83,8 @@ export default (test) => {
     eq(await p.textContent('#card-listen'), 'Listen', 'collapsed: Listen plays the reading');
     await p.click('#card-moreBtn'); await sleep(200);
     eq(await p.textContent('#card-listen'), 'Listen to more', 'opened: Listen to more');
-    await p.click('#card-listen'); await sleep(600);
+    await p.click('#card-listen');
+    await p.waitForFunction(() => window.__dbg.state().playing, null, { timeout: 8000 }).catch(() => {});   // play() resolves late in the emulator
     eq(await p.evaluate(() => [window.__dbg.state().playing, window.__dbg.state().playingKind]), [true, 'more'], 'plays the Tell me more clip');
     await p.evaluate(() => window.__dbg.setSetting('lang', 'es')); await sleep(200);
     ok((await p.textContent('#card-orig-text')).startsWith('“Si un hombre le saca el ojo'), 'Spanish panel shows the Spanish quote');
@@ -145,6 +146,26 @@ export default (test) => {
     await p.waitForFunction(() => window.__steleReady && window.__dbg.kitState().exhibit === 'rosetta-stone', null, { timeout: 60000 });
     eq(await p.textContent('#kit-label'), 'Grade 5 · Egypt', 'kit label');
     ok(new URL(p.url()).search.includes('kit=g5-egypt'), 'remembers the kit in the address');
+    await p.close();
+  });
+
+  test('self-guided tour on a Chromebook: Show me, Next stop, Finish tour', async () => {
+    const p = await page();
+    await ready(p, '?room=5a&exhibit=hammurabi');
+    const send = room(p, '5a');
+    await send({ selfTourAt: Date.now(), stops: '1,2' }, 1200);
+    ok(await p.isVisible('#card') && await p.isVisible('#card-showme'), 'stop 1 opens with its prompt and Show me');
+    ok(!(await p.isVisible('#card-nextstop')), 'no Next stop on the prompt');
+    await p.click('#card-showme'); await sleep(300);
+    eq(await p.textContent('#card-nextstop'), 'Next stop ▶', 'Next stop after the reading');
+    await p.click('#card-nextstop'); await sleep(800);
+    eq(await p.evaluate(() => window.__dbg.state().openIndex), 1, 'dot 2 opens');
+    await p.click('#card-showme'); await sleep(300);
+    eq(await p.textContent('#card-nextstop'), 'Finish tour ✓', 'the last stop says Finish tour');
+    await p.click('#card-nextstop'); await sleep(500);
+    eq(await p.evaluate(() => window.__dbg.tourState().touring), false, 'finished: free exploring');
+    ok(!(await p.isVisible('#card-nextstop')), 'Next stop is gone');
+    eq(pageErrors(p), [], 'page errors');
     await p.close();
   });
 

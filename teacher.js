@@ -34,9 +34,11 @@ const SETTINGS = [
   { key: 'bigText', label: 'Bigger text', desc: 'Reading panels and menus about 30% larger', opts: ONOFF, def: false },
   { key: 'readAloud', label: 'Read to me', desc: 'Adds a Read to me button that reads panels aloud with the headset’s built-in voice (for text that has no recording)', opts: ONOFF, def: false },
   { key: 'calm', label: 'Calm mode', desc: 'No pulsing, bouncing or quick movements; slower turns', opts: ONOFF, def: false },
+  { key: 'autoPlay', label: 'Auto-play', desc: 'Recordings start by themselves: the prompt when a dot opens, the reading when it appears, Tell me more when it opens', opts: ONOFF, def: false },
 ];
-// per-headset supports: stored as letters, e.g. access/h3 = "br" (b = bigger text, r = read to me, c = calm)
-const SUPPORTS = [['b', 'A+', 'Bigger text'], ['r', '🔊', 'Read to me'], ['c', 'Calm', 'Calm mode']];
+// per-headset supports: stored as letters, e.g. access/h3 = "br" (b = bigger text, r = read to me, c = calm, a = auto-play)
+const SUPPORTS = [['b', 'A+', 'Bigger text'], ['r', '🔊', 'Read to me'], ['c', 'Calm', 'Calm mode'], ['a', 'Auto', 'Auto-play']];
+const SUPPORT_KEYS = { b: 'bigText', r: 'readAloud', c: 'calm', a: 'autoPlay' };
 const SET_BY_KEY = Object.fromEntries(SETTINGS.filter((s) => s.key).map((s) => [s.key, s]));
 // one tap sets several options (each preset only touches the keys it lists)
 const PRESETS = [
@@ -105,13 +107,13 @@ async function start() {
     const kitSeg = $('kitSeg'); kitSeg.innerHTML = '';
     for (const x of kits) {
       const b = el('button', { textContent: x.title.en, title: x.unit || '' }); b.classList.toggle('sel', x === k);
-      b.onclick = () => { if (x !== k) send({ kit: x.id, exhibit: null, tour: false, tourAt: fb.serverTimestamp() }, `Kit: ${x.title.en}`); };
+      b.onclick = () => { if (x !== k) send({ kit: x.id, exhibit: null, tour: false, tourAt: fb.serverTimestamp(), selfTourAt: null, stops: null }, `Kit: ${x.title.en}`); };
       kitSeg.append(b);
     }
     const artSeg = $('artSeg'); artSeg.innerHTML = '';
     for (const id of (k ? k.exhibits.filter(known) : (index.exhibits || []).map((e) => e.id))) {
       const b = el('button', { textContent: exTitle(id) }); b.classList.toggle('sel', id === ex);
-      b.onclick = () => { if (id !== ex) send({ exhibit: id, tour: false, tourAt: fb.serverTimestamp() }, `Artifact: ${exTitle(id)}`); };
+      b.onclick = () => { if (id !== ex) send({ exhibit: id, tour: false, tourAt: fb.serverTimestamp(), selfTourAt: null, stops: null }, `Artifact: ${exTitle(id)}`); };
       artSeg.append(b);
     }
     if (ex && (!exhibit || exhibit.id !== ex) && loadingEx !== ex) loadExhibit(ex);   // dots and tour follow the artifact
@@ -219,8 +221,10 @@ async function start() {
   function buildDots() {
     const box = $('dots'); box.innerHTML = '';
     exhibit.dots.forEach((d, i) => {
-      const b = el('button', { textContent: String(i + 1), title: `${i + 1}. ${d.title.en}` });
-      b.dataset.dot = i + 1; b.setAttribute('aria-label', `Dot ${i + 1}: ${d.title.en}`);
+      const core = isCore(i + 1);
+      const b = el('button', { textContent: String(i + 1), title: `${i + 1}. ${d.title.en}${core ? ' (★ curriculum link)' : ''}` });
+      b.dataset.dot = i + 1; b.setAttribute('aria-label', `Dot ${i + 1}: ${d.title.en}${core ? ', curriculum link' : ''}`);
+      b.classList.toggle('core', core);
       b.onclick = () => (tourOn() ? goStep(i + 1) : send({ dot: i + 1, dotAt: fb.serverTimestamp() }, `Everyone to dot ${i + 1}`));
       box.append(b);
     });
@@ -235,16 +239,111 @@ async function start() {
     n = Math.max(1, Math.min(nDots(), n));
     send({ tour: true, tourDot: n, tourAt: fb.serverTimestamp() }, `Step ${n}: ${dotTitle(n)}`);
   }
-  $('tourStart').onclick = () => goStep(1);
-  $('tourPrev').onclick = () => goStep((current.tourDot || 1) - 1);
-  $('tourNext').onclick = () => goStep((current.tourDot || 0) + 1);
+  // ── tour stops: Highlights (dot 1 + the ★ dots), All dots, or Custom. Used by both kinds of tour.
+  // The chosen stops are stored as "1,2,5" (dot numbers only). Dot 1 is always a stop: it says what the object is.
+  function linkById(id) { return (exhibit?.links || []).find((l) => l.id === id); }
+  function isCore(n) { return !!exhibit?.dots[n - 1]?.core?.some(linkById); }
+  const allSteps = () => (exhibit ? exhibit.dots.map((_, i) => i + 1) : []);
+  const highlightSteps = () => allSteps().filter((n) => n === 1 || isCore(n));
+  const hasHighlights = () => highlightSteps().length > 1;
+  const recordSteps = () => { const v = typeof current.stops === 'string' && /^\d{1,2}(,\d{1,2}){0,19}$/.test(current.stops) ? current.stops.split(',').map(Number).filter((n) => n >= 1 && n <= nDots()) : [];
+    return v.length ? [...new Set(v)].sort((a, b) => a - b) : null; };
+  const SELF_MAX = 3 * 3600e3;
+  const selfOn = () => typeof current.selfTourAt === 'number' && Date.now() - current.selfTourAt < SELF_MAX;
+  const busy = () => tourOn() || selfOn();
+  let pick = null, pickFor = null, custom = new Set([1]);   // the teacher's choice before a tour starts (sent with Start)
+  const same = (a, b) => a.join() === b.join();
+  const modeOf = (list) => (hasHighlights() && same(list, highlightSteps()) ? 'highlights' : same(list, allSteps()) ? 'all' : 'custom');
+  function chosen() {   // the stops in use: the room's, once a tour is running; otherwise the teacher's pick
+    const rec = recordSteps();
+    if (pickFor !== exhibit?.id) { pickFor = exhibit?.id; pick = null; }
+    if (!pick) { pick = rec ? modeOf(rec) : hasHighlights() ? 'highlights' : 'all'; if (rec && pick === 'custom') custom = new Set(rec); else custom = new Set(highlightSteps()); }
+    return pick === 'highlights' && hasHighlights() ? highlightSteps() : pick === 'custom' ? [...custom].sort((a, b) => a - b) : allSteps();
+  }
+  const steps = () => (busy() && recordSteps() ? recordSteps() : chosen());
+  const stopsVal = (list) => list.join(',');
+  function choose(mode) {
+    pick = mode;
+    if (busy()) send({ stops: stopsVal(chosen()) }, `Tour stops: ${chosen().join(' → ')}`); else render();
+  }
+  function toggleCustom(n) {
+    if (n === 1) return;   // dot 1 always opens the tour
+    custom.has(n) ? custom.delete(n) : custom.add(n);
+    choose('custom');
+  }
+  document.querySelectorAll('[data-stops]').forEach((b) => { b.onclick = () => choose(b.dataset.stops); });
+  const nextStep = (s) => steps().find((n) => n > s);
+  const prevStep = (s) => steps().filter((n) => n < s).pop();
+  $('tourStart').onclick = () => { const list = chosen();
+    send({ tour: true, tourDot: list[0], tourAt: fb.serverTimestamp(), selfTourAt: null, stops: stopsVal(list) }, `Teacher-led tour: ${list.join(' → ')}`); };
+  $('selfStart').onclick = () => { const list = chosen();
+    send({ selfTourAt: fb.serverTimestamp(), tour: false, tourAt: fb.serverTimestamp(), stops: stopsVal(list) }, `Self-guided tour started: ${list.join(' → ')}`); };
+  $('selfRestart').onclick = () => send({ selfTourAt: fb.serverTimestamp() }, 'Self-guided tour restarted for every headset');
+  $('selfEnd').onclick = () => send({ selfTourAt: null }, 'Self-guided tour ended; students explore freely');
+  $('tourPrev').onclick = () => { const p = prevStep(current.tourDot || 1); if (p) goStep(p); };
+  $('tourNext').onclick = () => { const x = nextStep(current.tourDot || 0); if (x) goStep(x); };
   $('tourEnd').onclick = () => send({ tour: false, tourAt: fb.serverTimestamp() }, 'Tour ended; students explore freely');
   const revealedNow = () => tourOn() && current.reveal === current.tourDot && (current.revealAt || 0) >= (current.tourAt || 0);
   $('tourReveal').onclick = () => { if (tourOn()) send({ reveal: current.tourDot, revealAt: fb.serverTimestamp() }, `Reading shown for dot ${current.tourDot}`); };
-  $('narrate').onclick = () => {
-    const n = tourOn() ? current.tourDot : current.dot;
-    if (n) send({ narrate: n, narrateAt: fb.serverTimestamp() }, `Narration playing for dot ${n}`);
+  // the dot the script shows: the tour step, or the dot last sent to everyone (for 10 minutes)
+  const shownDot = () => (tourOn() ? current.tourDot : Number.isInteger(current.dot) && Date.now() - (current.dotAt || 0) < 10 * 60e3 ? current.dot : null);
+  const playPart = (kind, label) => {
+    const n = shownDot();
+    if (n) send({ narrate: n, narrateKind: kind, narrateAt: fb.serverTimestamp() }, `${label} playing for dot ${n}`);
   };
+  $('narrate').onclick = () => playPart('main', 'Narration');
+  $('playNotice').onclick = () => playPart('notice', 'Prompt');
+  $('playMore').onclick = () => playPart('more', 'Tell me more');
+
+  // ── the script: what students see and hear for the shown dot ──
+  let scriptLang = 'en';
+  document.querySelectorAll('[data-sl]').forEach((b) => { b.onclick = () => { scriptLang = b.dataset.sl; render(); }; });
+  const clipCache = {};   // does a recording exist? (asked once per file)
+  function clipExists(n, kind, lang) {
+    const name = String(n).padStart(2, '0') + (kind === 'main' ? '' : '-' + kind);
+    const url = `exhibits/${exhibit.id}/audio/${lang}/${name}.mp3`;
+    if (!(url in clipCache)) { clipCache[url] = null; fetch(url, { method: 'HEAD', cache: 'no-cache' }).then((r) => { clipCache[url] = r.ok; render(); }).catch(() => { clipCache[url] = false; render(); }); }
+    return clipCache[url];
+  }
+  const T = (o) => (o == null ? '' : typeof o === 'string' ? o : o[scriptLang] ?? o.en ?? '');
+  const STEMS = { en: 'I notice… · I think it might be… because…', es: 'Yo noto… · Creo que podría ser… porque…' };
+  function renderScript(noticeOn) {
+    const n = exhibit ? shownDot() : null, d = n && exhibit.dots[n - 1];
+    $('script').hidden = !d; $('scriptEmpty').hidden = !!d;
+    if (!d) return;
+    const on = tourOn(), hl = eff('lang'), revealed = revealedNow();
+    $('scriptTitle').textContent = `Dot ${n}: ${T(d.title)}${isCore(n) ? ' ★' : ''}`;
+    const dl = (d.core || []).map(linkById).filter(Boolean);
+    $('scriptLink').textContent = dl.length ? `★ Curriculum link: ${dl.map((l) => `${l.code}, ${T(l.text)}`).join('; ')}`
+      : n === 1 && hasHighlights() ? 'Opener: says what the object is. Always the first stop of a tour.' : '';
+    document.querySelectorAll('[data-sl]').forEach((b) => b.classList.toggle('sel', b.dataset.sl === scriptLang));
+    $('scriptNote').textContent = hl !== scriptLang ? `Headsets are in ${hl === 'es' ? 'Spanish' : 'English'}, so students see and hear the ${hl === 'es' ? 'Spanish' : 'English'} version.` : '';
+    // prompt
+    const hasNotice = noticeOn && !!d.notice;
+    $('partNotice').hidden = !hasNotice;
+    $('txtNotice').textContent = T(d.notice); $('txtStems').textContent = STEMS[scriptLang] || STEMS.en;
+    const promptNow = on && hasNotice && !revealed;
+    $('tagNotice').textContent = promptNow ? 'Students see this now' : !on && hasNotice ? 'Each student sees this first' : '';
+    $('tagMain').textContent = on && (!hasNotice || revealed) ? 'Students see this now' : !on && hasNotice ? 'After Show me' : '';
+    // reading
+    const main = $('txtMain'); main.innerHTML = '';
+    main.append(el('p', { textContent: T(d.text) }));
+    if (d.facts) { const dl = el('dl'); d.facts.forEach((f) => dl.append(el('dt', { textContent: T(f.k) }), el('dd', { textContent: T(f.v) }))); main.append(dl); }
+    if (d.law) main.append(el('p', { className: 'plain' }, el('b', { textContent: scriptLang === 'es' ? 'En palabras sencillas: ' : 'In plain words: ' }), T(d.law.plain)));
+    if (d.think) main.append(el('p', { className: 'think' }, el('b', { textContent: scriptLang === 'es' ? 'Piensa: ' : 'Think about it: ' }), T(d.think)));
+    // Tell me more
+    const hasMore = !!(d.more || d.law?.original);
+    $('partMore').hidden = !hasMore;
+    const more = $('txtMore'); more.innerHTML = '';
+    if (d.more) more.append(el('p', { textContent: T(d.more) }));
+    if (d.law?.original) more.append(el('p', { className: 'orig', textContent: `“${T(d.law.original)}” (${T(d.law.source)})` }));
+    // play buttons, labelled with whether a recording exists in the headsets' language
+    for (const [id, kind, show] of [['playNotice', 'notice', hasNotice], ['narrate', 'main', true], ['playMore', 'more', hasMore]]) {
+      const ok = show ? clipExists(n, kind, hl) : false;
+      $(id).disabled = ok === false;
+      $(id).title = ok === false ? `No ${hl === 'es' ? 'Spanish' : 'English'} recording for this part yet` : '';
+    }
+  }
 
   // ── headsets: groups + pause tiles ──
   const PAUSE_MAX = 2 * 3600e3;
@@ -277,7 +376,7 @@ async function start() {
     }
   }
   const accessMap = () => { const a = current.access && typeof current.access === 'object' ? current.access : {};
-    return Object.fromEntries(Object.entries(a).filter(([k, v]) => /^h1?[0-9]$/.test(k) && typeof v === 'string' && /^[brc]{1,3}$/.test(v))); };
+    return Object.fromEntries(Object.entries(a).filter(([k, v]) => /^h1?[0-9]$/.test(k) && typeof v === 'string' && /^[brca]{1,4}$/.test(v))); };
   function toggleSupport(i, letter, name) {
     const cur = accessMap()['h' + i] || '', on = cur.includes(letter);
     const next = SUPPORTS.map(([l]) => l).filter((l) => (l === letter ? !on : cur.includes(l))).join('');
@@ -304,9 +403,10 @@ async function start() {
     if (on) {
       pill(`● Tour: step ${step} of ${n}`, 'live');
       if (noticeOn) revealedNow() ? pill('Reading shown') : pill('Reading hidden: students are noticing', 'warn');
-    } else pill('Tour off: exploring freely');
+    } else if (selfOn()) pill(`● Self-guided tour: ${steps().join(' → ')}`, 'live');
+    else pill('Tour off: exploring freely');
     if (pausedList.length) pill(`Paused: headset${pausedList.length > 1 ? 's' : ''} ${pausedList.join(', ')}`, 'warn');
-    const roomSup = SUPPORTS.filter(([l]) => eff({ b: 'bigText', r: 'readAloud', c: 'calm' }[l]) === true).map(([, , name]) => name);
+    const roomSup = SUPPORTS.filter(([l]) => eff(SUPPORT_KEYS[l]) === true).map(([, , name]) => name);
     if (roomSup.length) pill(`Supports for everyone: ${roomSup.join(', ')}`);
     const hsSup = Object.entries(accessMap()).map(([h, v]) => `${h.slice(1)} (${SUPPORTS.filter(([l]) => v.includes(l)).map(([, short]) => short).join(' ')})`);
     if (hsSup.length) pill(`Supports: headset ${hsSup.join(', ')}`);
@@ -317,21 +417,47 @@ async function start() {
     $('everyone').classList.toggle('frozen', !!frozen);
 
     // tour
-    $('tourOff').hidden = on; $('tourOn').hidden = !on; $('tourEnd').hidden = !on;
-    $('tourPrev').disabled = !on || step <= 1; $('tourNext').disabled = !on || step >= n;
-    $('tourCount').textContent = on ? `STEP ${step} OF ${n}` : '';
+    const self = selfOn() && !on;
+    $('tourOff').hidden = on || self; $('tourOn').hidden = !on; $('tourEnd').hidden = !on; $('selfOn').hidden = !self;
+    if (busy() && recordSteps() && exhibit) { const m = modeOf(recordSteps()); pick = m; if (m === 'custom') custom = new Set(recordSteps()); }
+    const list = steps(), next = on ? nextStep(step) : undefined, hl = hasHighlights() && same(list, highlightSteps());
+    $('tourPrev').disabled = !on || !prevStep(step); $('tourNext').disabled = !on || !next;
+    const at = list.indexOf(step);
+    $('tourCount').textContent = !on ? '' : (at >= 0 ? `STEP ${at + 1} OF ${list.length}` : 'EXTRA STOP') + (hl ? ' · HIGHLIGHTS' : list.length < n ? ' · CUSTOM' : '');
     $('tourTitle').textContent = on ? dotTitle(step) : '';
-    $('dotsTitle').textContent = on ? 'Jump to a step:' : 'Send everyone to a dot:';
+    // stops picker
+    const mode = exhibit ? (busy() && recordSteps() ? modeOf(recordSteps()) : (chosen(), pick)) : 'all';
+    $('stopsHl').hidden = !hasHighlights();
+    $('stopsHl').textContent = `★ Highlights (${highlightSteps().join(' → ')})`;
+    $('stopsAll').textContent = `All ${n} dots`;
+    document.querySelectorAll('[data-stops]').forEach((b) => { b.classList.toggle('sel', b.dataset.stops === mode); b.setAttribute('aria-pressed', String(b.dataset.stops === mode)); });
+    const cp = $('customPick'); cp.hidden = mode !== 'custom';
+    if (!cp.hidden) {
+      cp.innerHTML = '';
+      cp.append(el('span', { className: 'note', textContent: 'Tap to add or remove stops (dot 1 always starts the tour): ' }));
+      for (const k of allSteps()) {
+        const b = el('button', { textContent: String(k), title: dotTitle(k), onclick: () => toggleCustom(k) });
+        b.dataset.pick = k; b.classList.toggle('sel', list.includes(k)); b.classList.toggle('core', isCore(k)); b.disabled = k === 1;
+        b.setAttribute('aria-pressed', String(list.includes(k))); b.setAttribute('aria-label', `Stop ${k}: ${dotTitle(k)}`);
+        cp.append(b);
+      }
+    }
+    $('stopsNow').textContent = `Stops: ${list.join(' → ')}`;
+    $('selfNote').textContent = `Each student goes at their own pace: ${list.join(' → ')}. On each stop they look at the dot, it opens and plays, and they press Next stop. The other dots appear when they finish.`;
+    const links = exhibit?.links || [];
+    $('coreInfo').hidden = !links.length;
+    $('coreInfo').textContent = links.length ? `★ Curriculum links: ${links.map((l) => `${l.code} (${l.text.en})`).join('; ')}.` : '';
+    $('dotsTitle').textContent = on ? 'Jump to a step:' : self ? 'Dots (students move on their own during a self-guided tour):' : 'Send everyone to a dot:';
+    document.querySelectorAll('#dots button').forEach((b) => { b.disabled = self; });
     document.querySelectorAll('#dots button').forEach((b) => { const d = +b.dataset.dot; b.classList.toggle('cur', on && d === step); b.classList.toggle('done', on && d < step); });
-    $('tourReveal').hidden = !on || !noticeOn;
+    $('tourReveal').hidden = !on || !noticeOn || !exhibit?.dots[step - 1]?.notice;
     $('tourReveal').disabled = revealedNow();
     $('tourReveal').textContent = revealedNow() ? 'Reading shown ✓' : 'Reveal reading';
-    const narr = on ? step : current.dot;
-    $('narrate').disabled = !narr;
-    $('narrate').textContent = narr ? `▶ Play narration (dot ${narr})` : '▶ Play narration';
-    $('tourNote').textContent = !on ? 'Tap a number to open that dot on every headset.'
+    renderScript(noticeOn);
+    if (self) $('scriptEmpty').hidden = true;
+    $('tourNote').textContent = self ? '' : !on ? 'Tap a number to open that dot on every headset.'
       : noticeOn && !revealedNow() ? `Students are looking at dot ${step} and talking. Reveal the reading when they’re ready.`
-        : step < n ? 'The reading is showing. Press ▶ for the next dot.' : 'Last dot. End the tour when you’re ready.';
+        : next ? 'The reading is showing. Press ▶ for the next stop.' : list.length < n ? 'Last stop. End the tour, or tap another number for an extra stop.' : 'Last dot. End the tour when you’re ready.';
 
     // per-headset supports
     document.querySelectorAll('#supports [data-sup]').forEach((b) => {
@@ -384,8 +510,10 @@ async function start() {
     line(await expectFail(fb.update(me, { tourDot: 0, tourAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Out-of-range tour steps are rejected');
     line(await expectFail(fb.update(me, { 'paused/student-name': fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Only headset numbers can be paused (no names)');
     line(await expectFail(fb.update(me, { 'paused/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Pauses can’t carry text');
-    line(await expectFail(fb.update(me, { 'access/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Supports only accept the three support letters (no text)');
+    line(await expectFail(fb.update(me, { 'access/h1': 'hello', updatedAt: fb.serverTimestamp() })), 'Supports only accept the four support letters (no text)');
+    line(await expectFail(fb.update(me, { narrate: 1, narrateKind: 'everything', narrateAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp() })), 'Only the three recording types can be played');
     line(await expectFail(fb.update(me, { 'access/student-name': 'b', updatedAt: fb.serverTimestamp() })), 'Supports are only for headset numbers (no names)');
+    line(await expectFail(fb.update(me, { stops: '1,2,hello', updatedAt: fb.serverTimestamp() })), 'Tour stops only accept dot numbers (no text)');
     line(await expectOk(fb.update(me, { updatedAt: fb.serverTimestamp() })), 'Your account can send normal commands');
   };
 

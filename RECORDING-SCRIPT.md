@@ -1,196 +1,168 @@
-# Recording script: The Code of Hammurabi
+# Recording script: The Rosetta Stone
 
-One MP3 per dot, per language. Read the text under each heading exactly as written, at a calm pace. Each clip is 30–60 seconds.
+One MP3 per dot, per language. Read the text under each heading exactly as written, at a calm pace. Each clip is about 30–45 seconds.
 
 **Where the files go:**
 
-- English: `exhibits/hammurabi/audio/en/01.mp3` … `09.mp3`, plus `finish.mp3`
-- Spanish: `exhibits/hammurabi/audio/es/01.mp3` … `09.mp3`, plus `finish.mp3`
+- English: `exhibits/rosetta-stone/audio/en/01.mp3` … `08.mp3`, plus `finish.mp3`
+- Spanish: `exhibits/rosetta-stone/audio/es/01.mp3` … `08.mp3`, plus `finish.mp3`
 
 A **Listen** button appears automatically for any clip that exists, so you can add them a few at a time. If you change the words on a panel later, re-record that clip so the audio still matches.
 
-The *Tell me more* text and the original 1915 law wording are not in the clips, to keep each one short.
+The *Look closely* prompts, the *Tell me more* text and the translated Greek quote are not in the clips, to keep each one short. Words in [brackets] are pronunciation help: say the word, not the brackets.
 
 ## English
 
-### `01.mp3` — Source detective
+### `01.mp3` — One message, three ways
 
-> Source detective.
+> One message, three ways.
 >
-> This stone is a primary source: a real object from the past. At the top, King Hammurabi stands in front of Shamash, the god of the sun and of justice. Shamash sits on a throne.
+> This stone is a primary source. It has the same message carved three times, in three kinds of writing. For a long time, nobody could read hieroglyphs, but experts could read Greek. In 1822, comparing the parts helped a French scholar named Champollion [sham-POH-lee-on] figure out how to read hieroglyphs.
 >
-> Who made it? King Hammurabi of Babylon. When? About 1750 BC. Where? Mesopotamia (today's Iraq). For whom? The people of his kingdom. Why? To show he was a fair king.
+> Who made it? Egyptian priests. When? 196 BC. Where? Egypt, along the Nile River. For whom? People all over Egypt. Why? To honor the king and share his new rules.
 >
-> Think about it: Why would a king show himself next to a god at the top of his laws?
+> Think about it: Why would someone write the same message three different ways?
 
-### `02.mp3` — Rivers, farms and rules
+### `02.mp3` — Sacred writing
 
-> Rivers, farms and rules.
+> Sacred writing.
 >
-> Mesopotamia means “the land between the rivers.” The Tigris and Euphrates Rivers gave farmers water. Farmers dug canals and built dams to bring water to their fields. Many of Hammurabi's laws are about water and farming.
+> These are hieroglyphs [HY-roh-glifs]. Egyptians called them “the words of the gods.” Priests used them on temple walls and holy objects. Some signs stand for sounds, and some stand for ideas. The top of the stone broke off, so only the last 14 lines of hieroglyphs are left.
 >
-> In plain words: If you did not take care of your dam, and it broke and flooded your neighbors' fields, you had to pay for their ruined grain. If you could not pay, you could be sold, and the money went to the farmers.
->
-> Think about it: Why would a land of rivers and farms need rules about water?
+> Think about it: Why do you think priests used a special kind of writing for messages about the gods and the king?
 
-### `03.mp3` — Read the writing
+### `03.mp3` — Everyday writing
 
-> Read the writing.
+> Everyday writing.
 >
-> The writing is called cuneiform (say: kyoo-NEE-uh-form). Scribes made signs out of tiny wedge shapes. This stone has about 4,000 lines of writing in the Akkadian language. Look closely. Can you see the little wedges?
+> This middle part is Demotic [dih-MOT-ik]. The word means “writing of the people.” It was a fast way to write Egyptian. Scribes used it every day for letters, business records and agreements, like who owned a field. Writing in Demotic meant more Egyptian officials could read the message.
 >
-> Think about it: Writing let Hammurabi share his rules with people far away, and with us! How do we share rules today?
+> Think about it: How might everyday writing change the life of a farmer or a shop owner?
 
-### `04.mp3` — The missing laws
+### `04.mp3` — The rulers' language
 
-> The missing laws.
+> The rulers' language.
 >
-> Look near the bottom of this side. Some writing is gone! About 600 years after Hammurabi, a king from Elam won a war and carried this stone away to his city, Susa. Part of the writing was rubbed smooth. Historians think he wanted to carve his own message there.
+> The bottom part is in Greek. The king, Ptolemy [TOL-uh-mee] V, came from a family from Macedonia, near Greece. His family had ruled Egypt for more than 100 years, and the government used Greek. The new rulers kept many Egyptian traditions, but they also brought their own language and ways.
 >
-> Think about it: Why would a king who won a war want to take away another kingdom's monument?
+> Think about it: When new rulers arrive, what changes in a culture, and what stays the same?
 
-### `05.mp3` — Then and now
+### `05.mp3` — A god on Earth?
 
-> Then and now.
+> A god on Earth?.
 >
-> Hammurabi's city, Babylon, was built beside the Euphrates River. Today its ruins are in the country of Iraq, south of the city of Baghdad. This stone was found far away in Susa, a city that is in Iran today.
+> The priests called young King Ptolemy “the living image of Amun,” the king of the gods. Egyptians believed their pharaoh was a god living on Earth. The message ordered a statue of him in every temple. Priests would care for it three times a day, and his birthday became a holiday.
 >
-> Think about it: Find the two rivers on the map. Why do you think people built cities close to them?
+> Think about it: If people believed the king was a god, how might that change the way they followed his rules?
 
-### `06.mp3` — Fair for everyone?
+### `06.mp3` — Gifts and tax cuts
 
-> Fair for everyone?.
+> Gifts and tax cuts.
 >
-> Many punishments matched the harm. If you hurt someone's eye, your eye was hurt the same way. People call this “an eye for an eye.” But the rules were not the same for everyone. Rich people, poor people, and enslaved people were treated differently. Punishments were very harsh, and some crimes were punished with death.
+> Before this message, parts of Egypt had been fighting against the king. The message lists what he did: he cut some taxes, gave silver and grain to the temples, repaired temples and freed people from prison. In return, the priests honored him as a god.
 >
-> In plain words: If you hurt the eye of an important man, your eye was hurt too. If you hurt the eye of a poor man, you paid money. If you hurt the eye of an enslaved person, you paid their owner half of what the person was “worth.”
+> In plain words: He got rid of some taxes and made other taxes smaller.
 >
-> Think about it: Were these laws fair? Is giving everyone the same punishment always fair?
+> Think about it: Why might a ruler lower taxes after a time of fighting? Who pays for temples, roads and schools where you live?
 
-### `07.mp3` — Rules for builders
+### `07.mp3` — Made for a temple wall
 
-> Rules for builders.
+> Made for a temple wall.
 >
-> Some laws protected customers. If a builder did a bad job, the builder was responsible for what happened.
+> The back is rough because the stone probably stood against a temple wall. People only saw the front. The message ordered a copy to be set up in temples all over Egypt, so everyone would hear about the king. Once, this stone was about 1.5 meters tall, with a rounded top and a carving of the king with the gods.
 >
-> In plain words: If a builder built a house badly, and it fell down and killed the owner, the builder was put to death. If the walls started to fall before the house was finished, the builder had to fix them with his own money.
->
-> Think about it: Today, inspectors check buildings to make sure they are safe. How is that different from Hammurabi's rule?
+> Think about it: Today, how do leaders share new rules with everyone? How is that like a stone in every temple?
 
-### `08.mp3` — How did people know the laws?
+### `08.mp3` — Words in English?
 
-> How did people know the laws?.
+> Words in English?.
 >
-> Hammurabi had his laws carved on tall stones and set up for people to see. At the end of the writing, he says that anyone who was treated unfairly should come to the stone to learn their rights. Most people could not read, so a scribe probably read it to them.
+> In 1799, French soldiers found this stone while fixing a fort near the town of Rashid [rah-SHEED], which Europeans called Rosetta. In 1801, the British army defeated the French and took it. These labels say “Captured in Egypt by the British Army in 1801” and “Presented by King George III.” It has been in the British Museum in London since 1802. Egypt has asked for it to come back, and a copy stands in a museum in Rashid.
 >
-> In plain words: Anyone who has a problem with the law should come and stand in front of this stone and listen to the writing. It will explain their case, and they will know what is fair.
->
-> Think about it: How do people learn the rules at our school or in our town today?
+> Think about it: These labels were added about 2,000 years after the stone was carved. What do they tell you about the stone's journey?
 
-### `09.mp3` — How tall is it?
+### `finish.mp3` — You explored all 8 dots!
 
-> How tall is it?.
+> You explored all 8 dots!
 >
-> The real stone is made of basalt, a very hard black rock. It is about 2.25 meters (7 feet 4 inches) tall. A typical 5th grader is about 1.4 meters (4 feet 7 inches) tall.
+> Great detective work. This stone shows what Egyptians believed about their king, and what the king did for them.
 >
-> Think about it: Stand next to it. How much taller than you is it?
-
-### `finish.mp3` — You explored all 9 dots!
-
-> You explored all 9 dots!
->
-> Great detective work. Now think about everything you learned.
->
-> Big question: Was Hammurabi's Code fair? Talk it over with your partner.
+> Big question: Pick one belief or practice you found on this stone. Who helped spread it? What question would you ask that person? Talk it over with the people near you.
 
 ## Español (have a Spanish speaker check the translation first)
 
-### `01.mp3` — Detective de fuentes
+### `01.mp3` — Un mensaje, tres maneras
 
-> Detective de fuentes.
+> Un mensaje, tres maneras.
 >
-> Esta piedra es una fuente primaria: un objeto real del pasado. Arriba, el rey Hammurabi está de pie frente a Shamash, el dios del sol y de la justicia. Shamash está sentado en un trono.
+> Esta piedra es una fuente primaria. Tiene el mismo mensaje tallado tres veces, con tres tipos de escritura. Durante mucho tiempo nadie podía leer los jeroglíficos, pero los expertos sí sabían leer griego. En 1822, comparar las partes ayudó a un sabio francés llamado Champollion [shan-po-LIÓN] a descubrir cómo leer los jeroglíficos.
 >
-> ¿Quién la hizo? El rey Hammurabi de Babilonia. ¿Cuándo? Alrededor del año 1750 a. C.. ¿Dónde? Mesopotamia (hoy Irak). ¿Para quién? La gente de su reino. ¿Por qué? Para mostrar que era un rey justo.
+> ¿Quién la hizo? Sacerdotes egipcios. ¿Cuándo? El año 196 a. C.. ¿Dónde? Egipto, junto al río Nilo. ¿Para quién? La gente de todo Egipto. ¿Por qué? Para honrar al rey y dar a conocer sus nuevas reglas.
 >
-> Piensa: ¿Por qué un rey se mostraría junto a un dios arriba de sus leyes?
+> Piensa: ¿Por qué alguien escribiría el mismo mensaje de tres maneras diferentes?
 
-### `02.mp3` — Ríos, granjas y reglas
+### `02.mp3` — Escritura sagrada
 
-> Ríos, granjas y reglas.
+> Escritura sagrada.
 >
-> Mesopotamia significa “la tierra entre los ríos”. Los ríos Tigris y Éufrates les daban agua a los agricultores. Ellos cavaban canales y construían diques para llevar agua a sus campos. Muchas leyes de Hammurabi hablan del agua y de la agricultura.
+> Estos son jeroglíficos. Los egipcios los llamaban “las palabras de los dioses”. Los sacerdotes los usaban en las paredes de los templos y en objetos sagrados. Algunos signos representan sonidos y otros representan ideas. La parte de arriba de la piedra se rompió, así que solo quedan las últimas 14 líneas de jeroglíficos.
 >
-> En palabras sencillas: Si no cuidabas tu dique, y se rompía e inundaba los campos de tus vecinos, tenías que pagar el grano que se echó a perder. Si no podías pagar, te podían vender, y el dinero era para los agricultores.
->
-> Piensa: ¿Por qué una tierra de ríos y granjas necesitaría reglas sobre el agua?
+> Piensa: ¿Por qué crees que los sacerdotes usaban un tipo especial de escritura para los mensajes sobre los dioses y el rey?
 
-### `03.mp3` — Lee la escritura
+### `03.mp3` — Escritura de todos los días
 
-> Lee la escritura.
+> Escritura de todos los días.
 >
-> Esta escritura se llama cuneiforme. Los escribas hacían signos con pequeñas formas de cuña. Esta piedra tiene unas 4,000 líneas escritas en idioma acadio. Mira de cerca. ¿Puedes ver las pequeñas cuñas?
+> Esta parte del medio es demótico. La palabra significa “escritura del pueblo”. Era una manera rápida de escribir en egipcio. Los escribas la usaban todos los días para cartas, registros de negocios y acuerdos, como quién era dueño de un campo. Escribir en demótico permitía que más funcionarios egipcios pudieran leer el mensaje.
 >
-> Piensa: La escritura le permitió a Hammurabi compartir sus reglas con gente lejana, ¡y con nosotros! ¿Cómo compartimos las reglas hoy?
+> Piensa: ¿Cómo podría cambiar la vida de un agricultor o de un comerciante gracias a la escritura de todos los días?
 
-### `04.mp3` — Las leyes que faltan
+### `04.mp3` — El idioma de los gobernantes
 
-> Las leyes que faltan.
+> El idioma de los gobernantes.
 >
-> Mira cerca de la parte de abajo de este lado. ¡Falta parte de la escritura! Unos 600 años después de Hammurabi, un rey de Elam ganó una guerra y se llevó esta piedra a su ciudad, Susa. Parte de la escritura fue borrada. Los historiadores creen que él quería tallar ahí su propio mensaje.
+> La parte de abajo está en griego. El rey, Ptolomeo V, venía de una familia de Macedonia, cerca de Grecia. Su familia había gobernado Egipto por más de 100 años, y el gobierno usaba el griego. Los nuevos gobernantes mantuvieron muchas tradiciones egipcias, pero también trajeron su propio idioma y sus costumbres.
 >
-> Piensa: ¿Por qué un rey que ganó una guerra querría llevarse el monumento de otro reino?
+> Piensa: Cuando llegan nuevos gobernantes, ¿qué cambia en una cultura y qué sigue igual?
 
-### `05.mp3` — Antes y ahora
+### `05.mp3` — ¿Un dios en la Tierra?
 
-> Antes y ahora.
+> ¿Un dios en la Tierra?.
 >
-> La ciudad de Hammurabi, Babilonia, se construyó junto al río Éufrates. Hoy sus ruinas están en el país de Irak, al sur de la ciudad de Bagdad. Esta piedra se encontró lejos, en Susa, una ciudad que hoy está en Irán.
+> Los sacerdotes llamaron al joven rey Ptolomeo “la imagen viviente de Amón”, el rey de los dioses. Los egipcios creían que su faraón era un dios que vivía en la Tierra. El mensaje ordenaba poner una estatua de él en cada templo. Los sacerdotes la cuidarían tres veces al día, y su cumpleaños se volvió un día de fiesta.
 >
-> Piensa: Busca los dos ríos en el mapa. ¿Por qué crees que la gente construía ciudades cerca de ellos?
+> Piensa: Si la gente creía que el rey era un dios, ¿cómo cambiaría eso la manera en que seguían sus reglas?
 
-### `06.mp3` — ¿Justo para todos?
+### `06.mp3` — Regalos y menos impuestos
 
-> ¿Justo para todos?.
+> Regalos y menos impuestos.
 >
-> Muchos castigos eran iguales al daño. Si lastimabas el ojo de alguien, te lastimaban el ojo de la misma forma. A esto se le llama “ojo por ojo”. Pero las reglas no eran iguales para todos. Las personas ricas, las pobres y las esclavizadas recibían un trato distinto. Los castigos eran muy duros, y algunos delitos se castigaban con la muerte.
+> Antes de este mensaje, algunas partes de Egipto habían estado peleando contra el rey. El mensaje dice lo que él hizo: bajó algunos impuestos, dio plata y grano a los templos, reparó templos y liberó a personas de la cárcel. A cambio, los sacerdotes lo honraron como a un dios.
 >
-> En palabras sencillas: Si lastimabas el ojo de un hombre importante, te lastimaban el ojo a ti también. Si lastimabas el ojo de un hombre pobre, pagabas dinero. Si lastimabas el ojo de una persona esclavizada, le pagabas a su dueño la mitad de lo que esa persona “valía”.
+> En palabras sencillas: Quitó algunos impuestos y bajó otros.
 >
-> Piensa: ¿Eran justas estas leyes? ¿Dar el mismo castigo a todos siempre es justo?
+> Piensa: ¿Por qué un gobernante bajaría los impuestos después de un tiempo de peleas? ¿Quién paga los templos, las calles y las escuelas donde vives?
 
-### `07.mp3` — Reglas para constructores
+### `07.mp3` — Hecha para la pared de un templo
 
-> Reglas para constructores.
+> Hecha para la pared de un templo.
 >
-> Algunas leyes protegían a los clientes. Si un constructor hacía un mal trabajo, era responsable de lo que pasara.
+> La parte de atrás es áspera porque la piedra probablemente estaba contra la pared de un templo. La gente solo veía el frente. El mensaje ordenaba poner una copia en templos de todo Egipto, para que todos supieran del rey. Antes, esta piedra medía unos 1.5 metros, con la parte de arriba redondeada y una imagen tallada del rey con los dioses.
 >
-> En palabras sencillas: Si un constructor hacía mal una casa, y se caía y mataba al dueño, el constructor era condenado a muerte. Si las paredes empezaban a caerse antes de terminar la casa, el constructor tenía que arreglarlas con su propio dinero.
->
-> Piensa: Hoy, los inspectores revisan los edificios para asegurarse de que sean seguros. ¿En qué se diferencia eso de la regla de Hammurabi?
+> Piensa: Hoy en día, ¿cómo dan a conocer los líderes las nuevas reglas a todos? ¿En qué se parece eso a una piedra en cada templo?
 
-### `08.mp3` — ¿Cómo conocía la gente las leyes?
+### `08.mp3` — ¿Palabras en inglés?
 
-> ¿Cómo conocía la gente las leyes?.
+> ¿Palabras en inglés?.
 >
-> Hammurabi mandó tallar sus leyes en piedras altas y ponerlas donde la gente las viera. Al final del texto, dice que cualquier persona tratada injustamente debía venir a la piedra para conocer sus derechos. La mayoría de la gente no sabía leer, así que probablemente un escriba se lo leía.
+> En 1799, unos soldados franceses encontraron esta piedra mientras arreglaban un fuerte cerca del pueblo de Rashid, que los europeos llamaban Rosetta. En 1801, el ejército británico venció a los franceses y se la llevó. Estas etiquetas dicen en inglés “Capturada en Egipto por el ejército británico en 1801” y “Regalada por el rey Jorge III”. Está en el Museo Británico de Londres desde 1802. Egipto ha pedido que la devuelvan, y una copia está en un museo de Rashid.
 >
-> En palabras sencillas: Cualquier persona que tenga un problema con la ley debe venir, pararse frente a esta piedra y escuchar lo que dice. Le explicará su caso, y sabrá qué es lo justo.
->
-> Piensa: ¿Cómo aprende la gente las reglas de nuestra escuela o de nuestro pueblo hoy?
+> Piensa: Estas etiquetas se agregaron unos 2,000 años después de que se talló la piedra. ¿Qué te dicen sobre el viaje de la piedra?
 
-### `09.mp3` — ¿Qué tan alta es?
+### `finish.mp3` — ¡Exploraste los 8 puntos!
 
-> ¿Qué tan alta es?.
+> ¡Exploraste los 8 puntos!
 >
-> La piedra real es de basalto, una roca negra muy dura. Mide unos 2.25 metros (7 pies y 4 pulgadas) de alto. Un estudiante típico de 5.º grado mide alrededor de 1.4 metros (4 pies y 7 pulgadas).
+> ¡Buen trabajo de detective! Esta piedra muestra lo que los egipcios creían sobre su rey y lo que el rey hizo por ellos.
 >
-> Piensa: Párate a su lado. ¿Cuánto más alta que tú es?
-
-### `finish.mp3` — ¡Exploraste los 9 puntos!
-
-> ¡Exploraste los 9 puntos!
->
-> ¡Buen trabajo de detective! Ahora piensa en todo lo que aprendiste.
->
-> Gran pregunta: ¿Era justo el Código de Hammurabi? Habla de esto con tu compañero o compañera.
+> Gran pregunta: Elige una creencia o costumbre que encontraste en esta piedra. ¿Quién ayudó a difundirla? ¿Qué pregunta le harías a esa persona? Hablen de esto con las personas que están cerca.

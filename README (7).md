@@ -1,0 +1,149 @@
+# WebXR Exhibits (MMUUSD)
+
+These are life-size 3D artifacts that students can explore on Quest 3 headsets, either in passthrough (the artifact appears in the real classroom) or in a VR gallery. They also work on a Chromebook. The first exhibit is **The Code of Hammurabi**, built for the Grade 5 Ancient Cultures unit (Bend 1: Mesopotamia and the Fertile Crescent).
+
+Students don't sign in, and the app doesn't save or send any student data.
+
+---
+
+## Updating your GitHub copy
+
+1. On your repo page, click **Add file → Upload files**.
+2. Drag in **everything inside this folder**, and click **Commit changes**.
+3. If GitHub asks about replacing files, that's expected.
+
+A few old files (`js/main.js`, `js/config.js`, `js/content.js`, `js/panels.js`, `models/`) are no longer used. They're harmless, and you can delete them on GitHub whenever you like.
+
+## Links for ArborXR
+
+Add each version you want as its own **WebXR Link** in ArborXR. The settings go at the end of your normal address.
+
+| ArborXR title (suggestion) | Link ending | What it does |
+|---|---|---|
+| Hammurabi | `/hammurabi-xr/` | All 9 dots visible, with a progress tracker |
+| Hammurabi – Detective | `/hammurabi-xr/?detective=on` | Dots start hidden. Students follow clues and point at the right spot to uncover each one |
+| Hammurabi – Quick Look | `/hammurabi-xr/?progress=off` | No tracker, just explore |
+| Hammurabi – Seated | `/hammurabi-xr/?mode=seated` | The stone appears in front of a seated student. They turn it instead of walking. |
+| Hammurabi – Español | `/hammurabi-xr/?lang=es` | Starts in Spanish |
+| (any of the above) + lock | add `&lock=1` (or `?lock=1`) | Hides Options, Move and Exit so students can't change things |
+
+You can combine settings, for example `…/hammurabi-xr/?mode=seated&hunt=off&lock=1`.
+
+All settings:
+
+- `lang=en|es`
+- `progress=on|off` (the older `hunt=` still works)
+- `detective=on|off` (`clues=` also works)
+- `mode=walk|seated`
+- `size=life|table`
+- `lock=1`
+- `notice=on|off`, `practice=on|off`, `move=off` (hides the Move button)
+- supports: `text=big`, `read=on`, `calm=on`, `autoplay=on`
+- `kit=<kit id>` and `exhibit=<folder name>`
+
+## iPad and iPhone
+
+Safari on iPad doesn't support the WebXR standard the Quest uses, so on an iPad the page works like this:
+
+1. It shows the touch-screen 3D view with all the dots, panels, hunt and Spanish.
+2. A **See it in your room** button opens a copy of the stone (`model.usdz`) in Apple's AR Quick Look. Students point at the floor and walk around the life-size stone.
+
+Inside Apple's viewer, there are no dots or panels. It's just the stone.
+
+To make the `.usdz` for a new exhibit, ask Claude to convert the exhibit's `model.glb`, then add `"usdz": "model.usdz"` to its `exhibit.json`.
+
+## What students can do
+
+- **Practice card (off by default):** when the teacher turns on *Practice card*, a small card with a pinching hand floats at the lower left of the student's view. Pinching it starts a one-minute practice (open a panel, Hide it, bring it back). Nothing starts by itself, so a teacher can place the stone and hand the headset over. Turn it off and on again to offer it to the next student, or use `?practice=on` in a link.
+- **Notice first:** each dot opens with a *Look closely* prompt and sentence starters ("I notice…") before the reading. Students press **Show me** to see the reading. In a guided tour, the teacher reveals it for everyone (**Reveal reading**, or by playing the narration). The prompts are the `notice` field of each dot in `exhibit.json`. Turn it off with Notice first: Off, or `?notice=off`.
+- **Dots:** select the 9 numbered dots on the stone. Dots 6–8 are on the back, so walking around pays off.
+- **Reading panel:** each dot opens a short reading with a "Think about it" question. In the headset it opens off to the side of the dot, so the stone stays in view. Students can grab the bar above it to move it (later panels open where they put it), or press **Hide** to shrink it to a small tab while the narration keeps playing. Panels with laws show them in plain words first. The original 1915 wording is under **Tell me more**.
+- **Extras:**
+  - Dot 3 shows three real cuneiform signs.
+  - Dot 5 shows a then-and-now map.
+  - Dot 9 shows a height comparison next to the stone.
+- **Track my progress:** opened dots turn green, an "Explored: 3 of 9" tracker sits above the toolbar, and exploring all 9 shows a final big question.
+- **Detective mode:** the dots start hidden. A clue card above the tracker shows one clue at a time, such as "Near the bottom of the front, find the smooth spot where writing was rubbed away." When a student points near the right spot, the dot pops up, and selecting it opens its panel and moves on to the next clue. A **Hint** button uncovers the current dot for students who are stuck. On a Chromebook or iPad, students hover or tap near the spot. Clue wording lives in `exhibit.json` (`"clue"`), and `"clueRadius"` (in metres, default 0.2) sets how close the student has to point.
+- **Listen:** this button appears on any panel that has an audio clip (see below).
+- **Saved spot (passthrough):** the stone is pinned to the real room, so it stays put even if the headset recentres (for example after being taken off and put back on). In walking mode each headset also remembers where the stone was placed, separately for life size and table size, and puts it back there next time. **Move** places it somewhere new and remembers the new spot. If the saved spot can't be found within a few seconds (a different room, or the headset's room setup was reset), the student just places it as usual.
+- **Toolbar:** Turn ‹ / Turn ›, Move, Options, Exit. The right thumbstick also turns the stone, and the toolbar follows the student if they walk away.
+- **Options in the headset:** language, track my progress, Detective mode, walking or sitting, life size or table size, and Supports.
+- **Supports (UDL):** three supports a student can turn on themselves (start screen, or Options in the headset), or that the teacher can turn on for the whole room (Set up → Settings) or quietly for one headset (Teach → Supports for one headset):
+  - **Bigger text:** reading panels and menus about 30% larger (on a Chromebook, bigger text on the page).
+  - **Read to me:** a **Read to me** button reads the open panel aloud, including the *Look closely* prompts, using the device's built-in voice. Panels that have a recorded clip keep their **Listen** button instead. If a device has no built-in voice for the language, the button doesn't appear (`?debug=1` shows how many voices a headset has).
+  - **Auto-play:** recordings start by themselves: the *Look closely* prompt when a dot opens, the reading when it appears, Tell me more when it's opened.
+  - **Calm mode:** no pulsing, bouncing or flashing; slower turns and gentler panel movement. It also switches on by itself on a device set to "reduce motion."
+- **Chromebook and iPad accessibility:** the numbered dots along the bottom are buttons, so students can use Tab and Enter (or a screen reader or switch) instead of clicking on the 3D stone. Number keys 1–9 open a dot, and Esc closes it. **Read it all as text** on the start screen shows every dot's reading on one plain page (hidden in Detective mode, because it would give away the clues).
+
+## Teacher console (optional)
+
+`teacher.html` lets approved staff (Shaun and Mike) control every headset in a room from a Chromebook or phone. It has two tabs: **Set up** (opens first: quick setups, today's artifact, a before-class checklist, settings, the headset link and the safety check) and **Teach** (during the lesson: freeze everyone, the guided tour, and pausing one headset, with a status strip showing what students are seeing). It lets you:
+
+- freeze screens with preset messages, or pause one headset by its number
+- run a **guided tour**: Start, ◀ Previous, Next ▶ or pick a step, End tour. The tour card shows the step's script (the *Look closely* prompt, the reading with its Think about it question, and Tell me more) with an English/Español view switch, and a ▶ button for each recording: **Play prompt**, **Play narration** and **Play Tell me more**
+- pick **Tour stops**: **★ Highlights** (dot 1, which says what the object is, plus the ★ dots with a strong curriculum link), **All dots**, or **Custom** (tap the numbers you want; dot 1 always starts). Both kinds of tour use them:
+  - **Teacher-led tour:** you move everyone from stop to stop (◀ ▶); tap any number for an extra stop.
+  - **Self-guided tour:** each student goes at their own pace. An arrow leads to the next stop, it opens when they look at it, the recordings play by themselves, and they press **Next stop ▶** (the last stop says **Finish tour ✓**). Only the stops show until they finish; then every dot appears. **Restart for everyone** sends every headset back to the first stop. A headset that reloads also starts again at the first stop.
+- send everyone to a dot
+- switch language, Detective mode, progress, seated/walking, size, the classroom lock, and whether students can move reading panels
+
+Every headset uses the same normal link. Each headset asks for its number once (the sticker on it) and keeps it in its own browser. The number decides which teacher page it follows: **South End 0–5** (Shaun) and **North End 6–11** (Mike), so both ends can run at the same time. Bookmark `teacher.html`. It opens to your own headsets and has buttons to switch ends. Headsets only **read** settings and never send anything back.
+
+- Setup: `firebase/SETUP.md`
+- Privacy and safety summary (for administrators or the SDPC file): `firebase/PRIVACY.md`
+
+Until `js/firebase-config.js` is filled in, the console is simply off and everything else works as before.
+
+## Adding the audio
+
+Record from **RECORDING-SCRIPT.md** and name the files exactly as listed. Put them in:
+
+- `exhibits/hammurabi/audio/en/` → `01.mp3` … `09.mp3`, `finish.mp3`
+- `exhibits/hammurabi/audio/es/` → the same names
+
+Upload them to the same folders on GitHub. The **Listen** button appears by itself for every clip that exists.
+
+## Changing the words
+
+All the text, in English and Spanish, is in each artifact's `exhibit.json` (for example `exhibits/hammurabi/exhibit.json` or `exhibits/rosetta-stone/exhibit.json`). You can edit it in GitHub's file editor (pencil icon). It's picky about quotes and commas, so change only the words between the quote marks.
+
+Each dot also has:
+
+- `h`: its height on the stone, from 0 (bottom) to 1 (top)
+- `angle`: where it sits around the stone, where 0 is the front (the relief side), 90 is the right side, 180 is the back, and −90 is the left side
+- `x` (optional): a sideways shift in metres, + to the right as you face the dot. Use it on wide, flat faces like the Rosetta Stone's, where changing `angle` alone barely moves a dot.
+- `core` (optional): the curriculum links this dot supports strongly, for example `["geo4", "geo8"]`. It puts a ★ on the dot in the teacher page and makes it one of the **Highlights** tour stops.
+
+Each artifact can list its **curriculum links** in `links`: the one to four unit targets the object fits best, each with an `id`, a `code` (such as `D2.Geo.4.3-5`) and plain-words `text` in English and Spanish. Exhibits are supporting material: a high-interest activity tied to the targets the object shows naturally, not a way to cover a whole unit. Teachers see the links; students don't, so every dot still feels worth exploring.
+
+## Unit kits
+
+Artifacts are grouped into **kits**: short, ordered lists of artifacts for one unit, such as *Grade 5 · Mesopotamia*. Students only ever see the current kit, so a growing collection doesn't become a distracting menu.
+
+- Kits are listed in `exhibits/index.json` (`kits`, plus `defaultKit`). Each artifact is stored once in its own folder and can belong to more than one kit.
+- On the teacher page, **Today's artifact** (Set up tab) picks the kit and artifact for your headsets. Changing the artifact ends any tour and reloads the headsets, so do it before students start.
+- Without the console, a link ending in `?kit=<kit id>` opens that kit. The start screen shows a picker only when the kit has more than one artifact (and not when locked).
+- Keep kits small: 3–5 artifacts.
+- Kits so far: **Grade 5 · Mesopotamia** (`g5-mesopotamia`: The Code of Hammurabi) and **Grade 5 · Egypt** (`g5-egypt`: The Rosetta Stone).
+
+## Adding another artifact later
+
+1. Make a new folder in `exhibits/`, for example `exhibits/cylinder-seal/`, with a `model.glb` and an `exhibit.json` copied from Hammurabi's and edited.
+2. Add it to the `exhibits` list in `exhibits/index.json`, **and** to the `exhibits` list of the kit(s) it belongs to (or add a new kit).
+3. It then appears in that kit on the teacher page and on the start screen. A direct link with `?exhibit=cylinder-seal` also works.
+
+You can also give an exhibit a 360° background for the VR gallery by putting an equirectangular image in its folder and adding `"backdrop": "yourimage.jpg"` to its `exhibit.json`.
+
+## Automated tests
+
+The `tests/` folder holds automated checks (35 of them: content, translations, privacy guards, database rules, the 2D page, an emulated Quest 3, and the teacher page). They need Node and Playwright, so they're for Claude or a developer, not for class: `node tests/run.mjs`. See `tests/README.md`.
+
+## Credits and licenses
+
+- **3D model:** "Stela of Hammurabi (replica)" by Peter Der Manuelian, Harvard Museum of the Ancient Near East (object 1901.10.1), licensed **CC BY-NC-SA 4.0**. The sign, floor and base were removed, the bottom was capped, and the side textures were resized for headsets. Under that license, this adapted model (`exhibits/hammurabi/model.glb`) is shared under the same CC BY-NC-SA 4.0 terms, for non-commercial use, with credit.
+- **Law quotations:** L. W. King's 1915 English translation (public domain).
+- **Facts:** the Louvre's page on the Code of Hammurabi and the Wikipedia article "Code of Hammurabi". The unit alignment comes from the MMUUSD Grade 5 Ancient Cultures planning guide.
+- **Rosetta Stone 3D model:** "The Rosetta Stone" © The Trustees of the British Museum, shared under **CC BY-NC-SA 4.0** (Sketchfab). It was turned to face forward and sized to its real height (112.3 cm); nothing else was changed. This adapted model (`exhibits/rosetta-stone/model.glb` and `model.usdz`) is shared under the same terms, for non-commercial use, with credit.
+- **Rosetta Stone quote:** one sentence from Carol Andrews' English translation of the Greek text (British Museum), used for teaching.
+- **Rosetta Stone facts:** the British Museum collection record (EA24), the Wikipedia articles "Rosetta Stone" and "Rosetta Stone decree", and The National (July 2026) on the return question. Unit alignment: MMUUSD Grade 5 Ancient Cultures, Bend 2.
+- **Code libraries:** three.js (MIT license, in `vendor/`) and the Noto Sans Cuneiform font (SIL Open Font License, in `fonts/`).

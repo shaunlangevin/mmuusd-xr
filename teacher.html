@@ -77,6 +77,19 @@
   #dots button { width: 42px; height: 42px; padding: 0; border-radius: 50%; border-color: var(--line); color: var(--dim); }
   #dots button.done { border-color: var(--gold); color: var(--ink); } #dots button.cur { background: var(--gold); border-color: var(--gold); color: #1a1612; }
   #tourEnd { margin-left: auto; border-color: var(--red); }
+  #dots button.core { position: relative; border-color: var(--gold); }
+  #dots button.core::after { content: '★'; position: absolute; top: -7px; right: -5px; font-size: 14px; color: var(--gold); text-shadow: 0 0 3px #000; }
+  .core-note { color: #f6e2b4; } .core-note:empty { display: none; }
+  #stopsBox { margin-bottom: 14px; } #stopsBox h3 { font-size: 13px; color: var(--dim); font-weight: 600; margin: 0 0 6px; }
+  #stopsSeg button { padding: 7px 13px; font-size: 14px; }
+  #customPick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  #customPick .note { width: 100%; margin: 0 0 2px; }
+  #customPick button { width: 38px; height: 38px; padding: 0; border-radius: 50%; position: relative; border-color: var(--line); color: var(--dim); }
+  #customPick button.sel { background: var(--gold); border-color: var(--gold); color: #1a1612; }
+  #customPick button.core::after { content: '★'; position: absolute; top: -7px; right: -5px; font-size: 13px; color: var(--gold); text-shadow: 0 0 3px #000; }
+  #customPick button:disabled { opacity: 1; cursor: default; }
+  .selfhead { color: var(--green); font-weight: 800; font-size: 18px; margin: 0 0 4px; }
+  #selfEnd { border-color: var(--red); }
   #script { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
   .scripthead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
   .scripthead b { font-size: 17px; } #scriptLang button { padding: 5px 11px; font-size: 13px; }
@@ -208,11 +221,23 @@
   </div>
 
   <div class="card wide" id="tourCard">
-    <h2>Guided tour <button class="q" data-help aria-label="What is this?">?</button></h2>
-    <p class="help" hidden>The script below shows what students read and hear at the current step: the Look closely prompt, the reading, and Tell me more. Each part has its own ▶ button that plays that recording on every headset (it's greyed out if there's no recording yet). With Auto-play on, the recordings start by themselves. You lead everyone through the dots. Students can't open other dots or turn the stone, so everyone's stone stays lined up; they can still Listen, Hide and move panels (if allowed). With Notice first on, each step opens with a look-closely prompt: let them talk, then Reveal reading (playing the narration reveals it too). Walking students get an arrow to the dot; seated or table-size stones turn to face them. Headsets that join late jump to the current step.</p>
+    <h2>Tours <button class="q" data-help aria-label="What is this?">?</button></h2>
+    <p class="help" hidden>The script below shows what students read and hear at the current step: the Look closely prompt, the reading, and Tell me more. Each part has its own ▶ button that plays that recording on every headset (it's greyed out if there's no recording yet). With Auto-play on, the recordings start by themselves. <b>Tour stops</b> picks which dots a tour visits: <b>★ Highlights</b> (dot 1, which says what the object is, plus the ★ dots with a strong curriculum link), <b>All dots</b>, or <b>Custom</b> (tap the numbers you want; dot 1 always starts). <b>Teacher-led</b>: you lead everyone through the stops; tap any number for an extra stop. <b>Self-guided</b>: each student goes at their own pace. An arrow leads them to each stop, it opens when they look at it, the recordings play by themselves, and they press <b>Next stop</b>. Only the stops show until they finish; then every dot appears. A headset that restarts begins again at the first stop. In a teacher-led tour, students can't open other dots or turn the stone, so everyone's stone stays lined up; they can still Listen, Hide and move panels (if allowed). With Notice first on, each step opens with a look-closely prompt: let them talk, then Reveal reading (playing the narration reveals it too). Walking students get an arrow to the dot; seated or table-size stones turn to face them. Headsets that join late jump to the current step.</p>
+    <div id="stopsBox">
+      <h3>Tour stops</h3>
+      <div class="seg" id="stopsSeg" aria-label="Tour stops"><button data-stops="highlights" id="stopsHl">★ Highlights</button><button data-stops="all" id="stopsAll">All dots</button><button data-stops="custom">Custom</button></div>
+      <div id="customPick" hidden></div>
+      <p class="note" id="stopsNow"></p>
+      <p class="note core-note" id="coreInfo" hidden></p>
+    </div>
     <div id="tourOff">
-      <button class="big gold" id="tourStart">Start guided tour</button>
-      <p class="note">The tour is off, so students explore on their own.</p>
+      <div class="row"><button class="big gold" id="tourStart">Start teacher-led tour</button><button class="big gold" id="selfStart">Start self-guided tour</button></div>
+      <p class="note">No tour is running, so students explore on their own.</p>
+    </div>
+    <div id="selfOn" hidden>
+      <p class="selfhead">● Self-guided tour running</p>
+      <p class="note" id="selfNote"></p>
+      <div class="row"><button class="big" id="selfRestart">Restart for everyone</button><button class="big" id="selfEnd">End self-guided tour</button></div>
     </div>
     <div id="tourOn" hidden>
       <div class="stepper">
@@ -227,6 +252,7 @@
     <p class="note" id="scriptEmpty">Start the tour or tap a dot number to see what students will read and hear.</p>
     <div id="script" hidden>
       <div class="scripthead"><b id="scriptTitle"></b><span class="seg" id="scriptLang" aria-label="Script language (your view only)"><button data-sl="en">English</button><button data-sl="es">Español</button></span></div>
+      <p class="note core-note" id="scriptLink"></p>
       <p class="note" id="scriptNote"></p>
       <section class="part" id="partNotice">
         <h4>1 · Look closely (prompt) <span class="tag" id="tagNotice"></span></h4>

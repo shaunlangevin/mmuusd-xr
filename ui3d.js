@@ -185,8 +185,9 @@ export class InfoPanel extends CanvasPanel {
     }
     if (!st.noClose) items.push({ id: 'close', label: t.close, w: 1 });
     if (!st.single && !st.notice) items.push({ id: 'next', label: t.next, w: 1 });
+    if (st.nextStop && !st.notice) items.push({ id: 'nextStop', label: st.nextStop === 'finish' ? t.finishTour : t.nextStop, w: 1.7 });   // self-guided tour
     this.buttons = items.length ? this.layoutRow(items, used - footer + 22, 88, 14, 40) : [];
-    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' || b.id === 'reveal' || b.id === 'read' }));
+    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' || b.id === 'reveal' || b.id === 'read' || b.id === 'nextStop' }));
     this.tex.needsUpdate = true;
   }
 }
@@ -383,7 +384,7 @@ export class OptionsPanel extends CanvasPanel {
     ];
     if (this.acc) {   // supports: each one toggles on its own (Bigger text, Read to me, Calm mode)
       const a = this.acc;
-      rows.push([t.optSupports, [['acc:big', t.bigText, a.big], ['acc:read', t.readAloud, a.read], ['acc:calm', t.calm, a.calm]]]);
+      rows.push([t.optSupports, [['acc:big', t.bigText, a.big], ['acc:read', t.readAloud, a.read], ['acc:calm', t.calm, a.calm], ['acc:auto', t.autoPlay, a.auto]]]);
     }
     if (this.headset) {   // one row per headset group (e.g. South End 0–5, North End 6–11)
       const hs = this.headset;
