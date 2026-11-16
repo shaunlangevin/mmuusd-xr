@@ -106,6 +106,15 @@ export class InfoPanel extends CanvasPanel {
     const label = (str) => { y += 14 * s; text(str, `800 ${Math.round(24 * s)}px ${FONT}`, GOLD); y += 2; };
     text(L(d.title, lang), `800 ${Math.round(52 * s)}px ${FONT}`, INK, pad + 96, maxW - 96, 1.15);
     y = Math.max(y, 46 + 84) + 12 * s;
+    if (st.short) {   // Key words: the narration explains; the panel keeps a few big words to anchor it (build rule R10)
+      label(t.keyWords); y += 4 * s;
+      for (const k of L(d.keys, lang)) {
+        const top = y; text(k, `700 ${Math.round(38 * s)}px ${FONT}`, '#f6e2b4', pad + 26, maxW - 26);
+        ops.push({ bar: true, y0: top - 2, y1: y - 6 * s }); y += 10 * s;
+      }
+      if (st.expanded && d.more) { y += 6 * s; text(L(d.more, lang), `400 ${Math.round(31 * s)}px ${FONT}`, INK); }
+      return { ops, height: y };
+    }
     text(L(d.text, lang), `400 ${Math.round(35 * s)}px ${FONT}`, INK);
     if (d.facts) {
       y += 10 * s;
@@ -182,6 +191,7 @@ export class InfoPanel extends CanvasPanel {
       if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : st.audioKind === 'more' ? t.listenMore : t.listen, w: st.audioKind === 'more' && !st.playing ? 1.5 : 1.1 });
       else if (read) items.push(read);
       if (st.hasMore) items.push({ id: 'more', label: st.expanded ? t.less : t.more, w: 1.5 });
+      if (st.canShort) items.push({ id: 'words', label: st.short ? t.allWords : t.keyWords, w: 1.6 });
     }
     if (!st.noClose) items.push({ id: 'close', label: t.close, w: 1 });
     if (!st.single && !st.notice) items.push({ id: 'next', label: t.next, w: 1 });

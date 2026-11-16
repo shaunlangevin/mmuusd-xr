@@ -16,6 +16,8 @@ d_path = os.path.join(ROOT, 'exhibits', ex_id)
 ex = json.load(open(os.path.join(d_path, 'exhibit.json'), encoding='utf-8'))
 dots, title = ex['dots'], ex['title']['en']
 n = len(dots)
+NR = ex.get('narration', {})   # optional: {"facts": false, "think": false} leaves those out of the reading clips
+WITH_FACTS, WITH_THINK = NR.get('facts', True) is not False, NR.get('think', True) is not False
 nn = lambda i: f'{i + 1:02d}'
 L = {
     'en': {'head': 'English', 'plain': 'In plain words', 'think': 'Think about it', 'look': 'Look closely.',
@@ -32,19 +34,21 @@ def quote(paras):
 
 # ── readings ──
 out = [f'# Recording script: {title}', '',
-       'One MP3 per dot, per language. Read the text under each heading exactly as written, at a calm pace. Each clip is about 30–45 seconds.', '',
+       'One MP3 per dot, per language. Read the text under each heading exactly as written, at a calm pace. Each clip is about ' + ('30–45' if WITH_FACTS and WITH_THINK else '20–30') + ' seconds.', '',
        '**Where the files go:**', '',
        f'- English: `exhibits/{ex_id}/audio/en/01.mp3` … `{nn(n - 1)}.mp3`, plus `finish.mp3`',
        f'- Spanish: `exhibits/{ex_id}/audio/es/01.mp3` … `{nn(n - 1)}.mp3`, plus `finish.mp3`', '',
        'A **Listen** button appears automatically for any clip that exists, so you can add them a few at a time. If you change the words on a panel later, re-record that clip so the audio still matches.', '',
        'The *Look closely* prompts, the *Tell me more* text and any original quotes are not in these clips, to keep each one short (they are in `EXTRA-RECORDING-SCRIPT.md`). Words in [brackets] are pronunciation help: say the word, not the brackets.', '']
+if not (WITH_FACTS and WITH_THINK):
+    out += ['For this exhibit the clips leave out ' + ' and '.join(x for x, keep in [('the facts table', WITH_FACTS), ('the "Think about it" question', WITH_THINK)] if not keep) + ', so each clip is the title and the reading only (about 20–30 seconds). Those stay on the panel and in the teacher\'s debrief.', '']
 for lang in ('en', 'es'):
     t = L[lang]; out += [f'## {t["head"]}', '']
     for i, d in enumerate(dots):
         paras = [end(d['title'][lang]), d['text'][lang]]
-        if d.get('facts'): paras.append(' '.join(f'{f["k"][lang]} {end(f["v"][lang])}' for f in d['facts']))
+        if d.get('facts') and WITH_FACTS: paras.append(' '.join(f'{f["k"][lang]} {end(f["v"][lang])}' for f in d['facts']))
         if d.get('law'): paras.append(f'{t["plain"]}: {d["law"]["plain"][lang]}')
-        paras.append(f'{t["think"]}: {d["think"][lang]}')
+        if WITH_THINK: paras.append(f'{t["think"]}: {d["think"][lang]}')
         out += [f'### `{nn(i)}.mp3` — {d["title"][lang]}', '', quote(paras)]
     f = ex['finish']
     out += [f'### `finish.mp3` — {f["title"][lang]}', '', quote([end(f['title'][lang]), f['text'][lang], f['think'][lang]])]

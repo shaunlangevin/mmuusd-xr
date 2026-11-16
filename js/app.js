@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { UI, L } from './i18n.js';
-import { drawMap, drawSigns, drawCartouche, loadCuneiformFont, loadHieroFont } from './extras.js';
+import { drawMap, drawSigns, drawCartouche, drawMagnifier, loadCuneiformFont, loadHieroFont } from './extras.js';
 import { InfoPanel, ExtraPanel, Toolbar, Tracker, ClueCard, OptionsPanel, HintPanel, FreezePanel, HandleBar, ShowTab, PracticeCard, markerTexture, labelPlane, arrowTexture } from './ui3d.js';
 import * as CFG from './firebase-config.js';
 
@@ -155,6 +155,11 @@ const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3(), tmpV2 = new THREE.
 const raycaster = new THREE.Raycaster();
 let hasCuneiformFont = false, hasHieroFont = false;
 const PICTURES = ['map', 'signs', 'cartouche'];   // extras drawn as a picture panel
+// Key words (build rule R10): once a dot's reading is narrated (a recording exists), its panel shows a few key words;
+// "All the words" brings back the full text and stays on for this student (this visit only, nothing saved).
+let allWords = false;
+const canShort = (i) => typeof i === 'number' && !!DOTS[i]?.keys && hasAudio(i, 'main');
+const shortNow = (i) => canShort(i) && !allWords;
 const kitList = () => (EX?.index.kits || []).filter((k) => Array.isArray(k.exhibits));
 const sizeScale = () => (S.size === 'table' ? TABLE_SCALE : 1);
 const exPath = (f) => `exhibits/${EX.id}/${f}`;
@@ -496,6 +501,7 @@ function baseInfoState() {
   return {
     dot: d, index: openIndex, lang: S.lang, expanded, playing: playing && playingIndex === openIndex, audioKind: panelKind(), found: tracking() && found.has(openIndex),
     single: clueOn() || touring, noClose: touring && mode !== 'desktop',   // in a tour, students use Hide instead of Close
+    short: shortNow(openIndex), canShort: canShort(openIndex),
     hasAudio: hasAudio(openIndex, panelKind()), hasMore: !!(d.more || (d.law && d.law.original)),
     lawCredit: EX.lawCredit, credit: (d.id === 'height' || d.extra === 'height') ? L(EX.model.credit, S.lang) : '',
     nextStop: selfGuided && openIndex === tourStep ? (selfPos < selfStops.length - 1 ? 'next' : 'finish') : null,
@@ -508,7 +514,8 @@ function refreshInfo(reposition = false) {
   const st = infoState();
   panel.show(st);
   const d = openIndex === 'finish' ? null : DOTS[openIndex];
-  if (d && PICTURES.includes(d.extra)) extra.showCanvas(extraCanvas(d.extra));
+  if (d && d.closeup && noticePhase(openIndex)) extra.showCanvas(closeupCanvas(d));   // the magnifier goes with the question, then goes away
+  else if (d && PICTURES.includes(d.extra)) extra.showCanvas(extraCanvas(d.extra));
   else extra.mesh.visible = false;
   handle.set(S.lang, moveOK, !!grab);
   handle.mesh.visible = true;
@@ -529,6 +536,22 @@ function setHidden(h) {
   refreshInfo(false);
 }
 const rigOpen = () => openIndex !== -1 && mode !== 'desktop';
+
+// magnifier: a close-up photo of the carving (exhibits/<id>/<closeup>) drawn in a round lens
+const closeupCache = {};
+function closeupCanvas(d) {
+  const key = d.id + S.lang;
+  if (!closeupCache[key]) {
+    const c = document.createElement('canvas'); c.width = 1000; c.height = 760;
+    const img = closeupImage(d);
+    drawMagnifier(c, img.complete ? img : null, S.lang);
+    if (!img.complete) img.addEventListener('load', () => { drawMagnifier(c, img, S.lang); if (DOTS[openIndex] === d) refreshInfo(false); }, { once: true });
+    closeupCache[key] = c;
+  }
+  return closeupCache[key];
+}
+const closeupImgs = {};
+function closeupImage(d) { return closeupImgs[d.id] || (closeupImgs[d.id] = Object.assign(new Image(), { src: exPath(d.closeup) })); }
 
 const extraCache = {};
 function extraCanvas(kind) {
@@ -733,7 +756,12 @@ function showCard() {
     $('card-num').textContent = st.index + 1; $('card-num').classList.toggle('found', !!st.found);
     $('card-title').textContent = tt.lookClosely;
     $('card-body').textContent = L(d.notice, S.lang);
-    ['card-facts', 'card-law', 'card-extra', 'card-more', 'card-credit', 'card-listen', 'card-moreBtn', 'card-prev', 'card-next', 'card-nextstop'].forEach((id) => { $(id).hidden = true; });
+    ['card-facts', 'card-law', 'card-extra', 'card-more', 'card-credit', 'card-listen', 'card-moreBtn', 'card-prev', 'card-next', 'card-nextstop', 'card-keys', 'card-words'].forEach((id) => { $(id).hidden = true; });
+    for (const id of ['card-body', 'card-think-label', 'card-think']) $(id).hidden = false;
+    if (d.closeup) {   // the magnifier: a close-up of the real carving next to the question
+      const ex = $('card-extra'); ex.innerHTML = ''; ex.hidden = false;
+      ex.append(Object.assign(document.createElement('img'), { src: exPath(d.closeup), className: 'lens', alt: tt.magnifierNote }));
+    }
     $('card-think-label').textContent = '';
     $('card-think').textContent = tt.stems.join('  ') + (st.wait ? '  ' + tt.waitReveal : '');
     $('card-showme').hidden = !st.canReveal;
@@ -767,6 +795,12 @@ function showCard() {
   $('card-credit').textContent = st.credit || ''; $('card-credit').hidden = !st.credit;
   $('card-think-label').textContent = tt.think;
   $('card-think').textContent = L(d.think, S.lang);
+  // Key words: a few big words while the narration explains; the rest waits behind "All the words"
+  const keys = $('card-keys'); keys.innerHTML = ''; keys.hidden = !st.short;
+  if (st.short) for (const k of L(d.keys, S.lang)) keys.append(Object.assign(document.createElement('li'), { textContent: k }));
+  for (const id of ['card-body', 'card-think-label', 'card-think']) $(id).hidden = !!st.short;
+  if (st.short) { facts.hidden = true; $('card-law').hidden = true; }
+  $('card-words').hidden = !st.canShort; $('card-words').textContent = st.short ? tt.allWords : tt.keyWords;
   $('card-listen').hidden = !st.hasAudio; $('card-listen').textContent = st.playing ? tt.stop : st.audioKind === 'more' ? tt.listenMore : tt.listen;
   $('card-read').hidden = !st.canRead || st.hasAudio; $('card-read').textContent = speaking ? tt.stop : tt.readBtn;
   $('card-moreBtn').hidden = !st.hasMore; $('card-moreBtn').textContent = st.expanded ? tt.less : tt.more;
@@ -789,6 +823,7 @@ function openFromKeyboard(i) {
 }
 $('card-close').onclick = closeInfo;
 $('card-nextstop').onclick = () => nextSelfStop();
+$('card-words').onclick = () => { allWords = !allWords; refreshInfo(false); };
 $('card-prev').onclick = () => openInfo(openIndex - 1);
 $('card-next').onclick = () => openInfo(openIndex + 1);
 $('card-listen').onclick = () => toggleAudio(openIndex, panelKind());
@@ -1217,6 +1252,7 @@ function onPanelButton(id) {
   else if (id === 'listen') toggleAudio(openIndex, panelKind());
   else if (id === 'read') toggleRead();
   else if (id === 'more') toggleMore();
+  else if (id === 'words') { allWords = !allWords; refreshInfo(false); }
 }
 
 function findTarget(c, frame) {

@@ -16,39 +16,39 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 
 > Look closely.
 >
-> Look at the front. Can you find lines that split the writing into parts? How many parts are there? Does the writing in each part look the same or different?
+> Look at the front. How many kinds of writing can you find? Could they all say the same thing?
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
-#### `02-notice.mp3` (dot 2: Sacred writing)
+#### `02-notice.mp3` (dot 2: The part they could read)
 
 > Look closely.
 >
-> Look closely at the writing near the top. What shapes can you find? Do any look like animals, people or objects?
+> Look through the magnifier at the Greek writing just to the right of this dot. Do any letters look like letters you know?
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
-#### `03-notice.mp3` (dot 3: A name in a loop)
+#### `03-notice.mp3` (dot 3: Pictures or sounds?)
 
 > Look closely.
 >
-> Look just to the right of this dot. Some signs have a loop drawn around them. Why would someone draw a loop around certain words?
+> Look through the magnifier at the writing near the top. Do any signs look like animals, people or objects? Do you think each sign is a picture of a thing, or could some stand for sounds?
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
-#### `04-notice.mp3` (dot 4: Everyday writing)
+#### `04-notice.mp3` (dot 4: A name in a loop)
+
+> Look closely.
+>
+> Look through the magnifier at the loop. The Greek says “Ptolemy” [TOL-uh-mee] again and again, and in the hieroglyphs [HY-roh-glifs] this loop shows up again and again too. What do you think is inside it?
+>
+> Talk about it with the people near you. You can start with: I notice… I think it might be… because…
+
+#### `05-notice.mp3` (dot 5: Everyday writing)
 
 > Look closely.
 >
 > Compare the middle writing with the writing at the top. How is it different? Which one looks faster to write?
->
-> Talk about it with the people near you. You can start with: I notice… I think it might be… because…
-
-#### `05-notice.mp3` (dot 5: The rulers' language)
-
-> Look closely.
->
-> Look at the bottom part. Do any of these letters look like letters you know?
 >
 > Talk about it with the people near you. You can start with: I notice… I think it might be… because…
 
@@ -90,39 +90,39 @@ Every prompt ends with the same sentence starters. Read them each time, or recor
 
 > Mira con atención.
 >
-> Mira el frente. ¿Puedes encontrar líneas que dividen la escritura en partes? ¿Cuántas partes hay? ¿La escritura de cada parte se ve igual o diferente?
+> Mira el frente. ¿Cuántos tipos de escritura puedes encontrar? ¿Podrían todos decir lo mismo?
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
-#### `02-notice.mp3` (dot 2: Escritura sagrada)
+#### `02-notice.mp3` (dot 2: La parte que podían leer)
 
 > Mira con atención.
 >
-> Mira con atención la escritura cerca de la parte de arriba. ¿Qué formas encuentras? ¿Alguna parece un animal, una persona o un objeto?
+> Mira con la lupa la escritura griega justo a la derecha de este punto. ¿Alguna letra se parece a las letras que conoces?
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
-#### `03-notice.mp3` (dot 3: Un nombre dentro de un óvalo)
+#### `03-notice.mp3` (dot 3: ¿Dibujos o sonidos?)
 
 > Mira con atención.
 >
-> Mira justo a la derecha de este punto. Algunos signos tienen un óvalo dibujado alrededor. ¿Por qué alguien dibujaría un óvalo alrededor de ciertas palabras?
+> Mira con la lupa la escritura de arriba. ¿Algún signo parece un animal, una persona o un objeto? ¿Crees que cada signo es el dibujo de una cosa, o algunos podrían representar sonidos?
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
-#### `04-notice.mp3` (dot 4: Escritura de todos los días)
+#### `04-notice.mp3` (dot 4: Un nombre dentro de un óvalo)
+
+> Mira con atención.
+>
+> Mira con la lupa el óvalo. El griego dice “Ptolomeo” una y otra vez, y en los jeroglíficos este óvalo también aparece una y otra vez. ¿Qué crees que hay dentro?
+>
+> Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
+
+#### `05-notice.mp3` (dot 5: Escritura de todos los días)
 
 > Mira con atención.
 >
 > Compara la escritura del medio con la de arriba. ¿En qué es diferente? ¿Cuál parece más rápida de escribir?
->
-> Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
-
-#### `05-notice.mp3` (dot 5: El idioma de los gobernantes)
-
-> Mira con atención.
->
-> Mira la parte de abajo. ¿Alguna de estas letras se parece a letras que conoces?
 >
 > Hablen de esto con las personas que están cerca. Pueden empezar con: Yo noto… Creo que podría ser… porque…
 
@@ -168,13 +168,13 @@ Read the original words a little more slowly; they're old-fashioned on purpose. 
 
 ### English
 
-#### `03-more.mp3` (dot 3: A name in a loop)
+#### `04-more.mp3` (dot 4: A name in a loop)
 
-> Thomas Young, from England, first matched this cartouche to Ptolemy's name. Champollion went further and showed that many hieroglyphs stand for sounds. Cleopatra's cartouche is on an obelisk from Philae [FY-lee], an island in the Nile River.
+> Cleopatra's cartouche is on an obelisk [OB-uh-lisk] from Philae [FY-lee], an island in the Nile River. Champollion went on to show that hieroglyphs [HY-roh-glifs] mix signs for sounds with signs for ideas, and in 1824 he published how to read them.
 
 #### `06-more.mp3` (dot 6: A god on Earth?)
 
-> The Greek part calls him “the living image of Zeus,” the king of the Greek gods. The same idea was written in a way each group would understand.
+> The Greek part calls him “the living image of Zeus” [ZOOS], the king of the Greek gods. The same idea was written in a way each group would understand.
 
 #### `07-more.mp3` (dot 7: Gifts and tax cuts)
 
@@ -188,9 +188,9 @@ Read the original words a little more slowly; they're old-fashioned on purpose. 
 
 ### Español
 
-#### `03-more.mp3` (dot 3: Un nombre dentro de un óvalo)
+#### `04-more.mp3` (dot 4: Un nombre dentro de un óvalo)
 
-> Thomas Young, de Inglaterra, fue el primero en relacionar este cartucho con el nombre de Ptolomeo. Champollion fue más allá y demostró que muchos jeroglíficos representan sonidos. El cartucho de Cleopatra está en un obelisco de Filé, una isla del río Nilo.
+> El cartucho de Cleopatra está en un obelisco de Filé, una isla del río Nilo. Champollion demostró después que los jeroglíficos mezclan signos de sonidos con signos de ideas, y en 1824 publicó cómo leerlos.
 
 #### `06-more.mp3` (dot 6: ¿Un dios en la Tierra?)
 

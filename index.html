@@ -92,9 +92,11 @@
   #card-law { border-left: 5px solid var(--gold); padding-left: 14px; margin-bottom: 12px; }
   #card-plain { color: #f6e2b4; font-weight: 500; }
   #card-extra img { width: 100%; border-radius: 12px; margin-bottom: 12px; display: block; }
+  #card-extra img.lens { width: min(78%, 340px); aspect-ratio: 1; object-fit: cover; border-radius: 50%; border: 9px solid #8a6a3a; box-shadow: 0 0 0 3px #d4af6a inset, 0 6px 18px rgba(0,0,0,0.5); margin: 4px auto 14px; }
   #card-orig-text { font-family: Georgia, "Times New Roman", serif; font-style: italic; color: #e7d3a6; margin-bottom: 4px !important; }
   #card-orig-src, #card-credit { font-size: 13px !important; color: var(--dim); }
   #card-think { font-weight: 700; }
+  #card-keys { list-style: none; padding: 0; margin: 4px 0 14px; } #card-keys li { font-size: 1.25em; font-weight: 700; color: #f6e2b4; border-left: 5px solid var(--gold); padding: 4px 0 4px 14px; margin: 8px 0; }
   #card nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
   #card nav button { flex: 1 1 auto; font-size: 15px; padding: 10px 12px; }
   [hidden] { display: none !important; }
@@ -147,6 +149,7 @@
   <aside id="card" class="box" hidden role="dialog" aria-labelledby="card-title">
     <header><div id="card-num" aria-hidden="true">1</div><h2 id="card-title" tabindex="-1"></h2></header>
     <p id="card-body"></p>
+    <ul id="card-keys" hidden></ul>
     <dl id="card-facts" hidden></dl>
     <div id="card-law" hidden><div class="label" id="card-plain-label"></div><p id="card-plain"></p></div>
     <div id="card-extra" hidden></div>
@@ -159,7 +162,7 @@
     <p id="card-think"></p>
     <nav>
       <button id="card-prev"></button><button id="card-listen" class="primary" hidden></button><button id="card-read" class="primary" hidden></button>
-      <button id="card-showme" class="primary" hidden></button><button id="card-moreBtn"></button><button id="card-close" class="primary"></button><button id="card-next"></button><button id="card-nextstop" class="primary" hidden></button>
+      <button id="card-showme" class="primary" hidden></button><button id="card-moreBtn"></button><button id="card-close" class="primary"></button><button id="card-next"></button><button id="card-nextstop" class="primary" hidden></button><button id="card-words" hidden></button>
     </nav>
   </aside>
 

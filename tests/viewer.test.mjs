@@ -48,11 +48,14 @@ export default (test) => {
   test('notice first: prompt, then Show me, then the reading', async () => {
     const p = await page();
     await ready(p, '?room=off&exhibit=rosetta-stone&practice=off');
-    await p.evaluate(() => window.__dbg.openInfo(1));
+    await p.evaluate(() => window.__dbg.openInfo(2));
     eq(await p.textContent('#card-title'), 'Look closely', 'prompt title');
     ok(await p.isVisible('#card-showme'), 'Show me button');
+    ok(await p.isVisible('#card-extra img.lens'), 'the magnifier shows with the question');
+    await p.waitForFunction(() => document.querySelector('#card-extra img.lens')?.naturalWidth > 0, null, { timeout: 8000 });
     await p.click('#card-showme');
-    eq(await p.textContent('#card-title'), 'Sacred writing', 'reading after Show me');
+    eq(await p.textContent('#card-title'), 'Pictures or sounds?', 'reading after Show me');
+    ok(!(await p.isVisible('#card-extra img.lens')), 'the magnifier goes away once the reading shows');
     await p.close();
   });
 
@@ -97,7 +100,7 @@ export default (test) => {
     const p = await page();
     await ready(p, '?room=off&exhibit=rosetta-stone&practice=off');
     const labels = await p.$$eval('#tracker button', (bs) => bs.map((b) => b.getAttribute('aria-label')));
-    eq(labels.length, 9, 'one button per dot'); ok(labels[1].startsWith('Dot 2: Sacred'), 'buttons are labelled with the dot title');
+    eq(labels.length, 9, 'one button per dot'); ok(labels[1].startsWith('Dot 2: The part they could read'), 'buttons are labelled with the dot title');
     await p.keyboard.press('3'); await sleep(150);
     ok(await p.isVisible('#card'), 'key 3 opens a dot'); eq(await p.evaluate(() => document.activeElement.id), 'card-title', 'focus moves into the card');
     await p.keyboard.press('Escape'); await sleep(150);
@@ -115,6 +118,7 @@ export default (test) => {
 
   test('supports on the 2D page: bigger text, read to me, calm', async () => {
     const p = await page({ speech: true });
+    await p.route(/rosetta-stone\/audio\//, (r) => r.fulfill({ status: 404, body: '' }));   // as if not yet recorded: Read to me only shows where there is no recording
     await ready(p, '?room=off&exhibit=rosetta-stone&practice=off');
     await p.evaluate(() => window.__dbg.openInfo(5));   // A god on Earth?
     ok(!(await p.isVisible('#card-read')), 'no Read button until the support is on');
@@ -173,8 +177,8 @@ export default (test) => {
   test('Rosetta cartouche dot: the king’s-name picture, with the hieroglyph font', async () => {
     const p = await page();
     await ready(p, '?room=off&exhibit=rosetta-stone&notice=off');
-    await p.evaluate(() => window.__dbg.openInfo(2)); await sleep(800);
-    eq(await p.textContent('#card-title'), 'A name in a loop', 'dot 3 is the cartouche');
+    await p.evaluate(() => window.__dbg.openInfo(3)); await sleep(800);
+    eq(await p.textContent('#card-title'), 'A name in a loop', 'dot 4 is the cartouche');
     ok(await p.isVisible('#card-extra img'), 'the picture shows');
     ok(await p.evaluate(() => [...document.fonts].some((f) => f.family.replace(/"/g, '') === 'SteleHiero' && f.status === 'loaded')), 'the hieroglyph font loaded');
     // the seven signs really draw (not empty boxes): each is wider than a space in the font
@@ -183,6 +187,33 @@ export default (test) => {
     ok(widths.length === 7 && widths.every((w) => w > 20), `every sign has a shape (${widths})`);
     eq(pageErrors(p), [], 'page errors');
     await p.close();
+  });
+
+  test('Key words: a narrated reading shows key words; All the words brings the full text back', async () => {
+    const p = await page();
+    // pretend the Rosetta readings are recorded (serve Hammurabi's dot 1 clip for any NN.mp3)
+    await p.route(/rosetta-stone\/audio\/(en|es)\/\d\d\.mp3/, (r) => r.fulfill({ path: new URL('../exhibits/hammurabi/audio/en/01.mp3', import.meta.url).pathname, contentType: 'audio/mpeg' }));
+    await ready(p, '?room=off&exhibit=rosetta-stone&notice=off');
+    await p.waitForFunction(() => window.__dbg.state().audio.en.filter(Boolean).length === 9, null, { timeout: 20000 });
+    await p.evaluate(() => window.__dbg.openInfo(3)); await sleep(500);
+    ok(await p.isVisible('#card-keys'), 'key words show');
+    eq(await p.$$eval('#card-keys li', (l) => l.map((x) => x.textContent)), ['Cartouche [kar-TOOSH]: a loop around a royal name', 'Inside: Ptolemy [TOL-uh-mee]', 'Signs can stand for sounds'], 'the dot’s key terms');
+    ok(!(await p.isVisible('#card-body')) && !(await p.isVisible('#card-think')), 'the long reading and the question wait');
+    eq(await p.textContent('#card-words'), 'All the words', 'button to see everything');
+    await p.click('#card-words'); await sleep(200);
+    ok(await p.isVisible('#card-body') && !(await p.isVisible('#card-keys')), 'All the words: full text');
+    await p.evaluate(() => window.__dbg.openInfo(1)); await sleep(300);
+    ok(await p.isVisible('#card-body'), 'the choice sticks for the next dot');
+    eq(await p.textContent('#card-words'), 'Key words', 'and can be switched back');
+    await p.close();
+    // no recording → nothing narrates, so the full text shows and there is no Key words button
+    const q = await page();
+    await q.route(/rosetta-stone\/audio\//, (r) => r.fulfill({ status: 404, body: '' }));   // as if not yet recorded: Read to me only shows where there is no recording
+    await ready(q, '?room=off&exhibit=rosetta-stone&notice=off');
+    await q.evaluate(() => window.__dbg.openInfo(3)); await sleep(500);
+    ok(await q.isVisible('#card-body') && !(await q.isVisible('#card-keys')) && !(await q.isVisible('#card-words')), 'without a recording: the full text');
+    eq(pageErrors(q), [], 'page errors');
+    await q.close();
   });
 
   test('Spanish switches the interface and the model credit', async () => {

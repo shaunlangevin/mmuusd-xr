@@ -187,6 +187,27 @@ export default (test) => {
     await p.close();
   });
 
+  test('Rosetta magnifier: a close-up with the question, then the decode picture with the reading', async () => {
+    const p = await page({ xr: true });
+    await ready(p, '?headset=2&exhibit=rosetta-stone&kit=g5-egypt&room=off&practice=off');
+    await p.click('#btn-vr'); await sleep(2000);
+    const ex = () => p.evaluate(() => { const D = window.__dbg, e = D.extra; const c = e.canvas.getContext('2d');
+      // sample the panel: the magnifier has a dark round lens at the left; the decode picture is light parchment there
+      const px = c.getImageData(Math.round(e.canvas.width * 0.3), Math.round(e.canvas.height * 0.5), 1, 1).data;
+      return { visible: e.mesh.visible, dark: px[0] + px[1] + px[2] < 300, notice: D.noticeState().phase }; });
+    await p.evaluate(() => window.__dbg.openInfo(3));
+    await p.waitForFunction(() => { const e = window.__dbg.extra; return e.mesh.visible; }, null, { timeout: 8000 });
+    await sleep(1500);   // the close-up photo loads
+    let s = await ex(); eq([s.notice, s.visible, s.dark], [true, true, true], 'the magnifier (dark lens) shows with the Look closely question');
+    await p.evaluate(() => window.__dbg.showReading(3)); await sleep(500);
+    s = await ex(); eq([s.notice, s.visible, s.dark], [false, true, false], 'after the reveal: the decode picture instead');
+    await p.evaluate(() => window.__dbg.openInfo(2)); await sleep(800);
+    await p.evaluate(() => window.__dbg.showReading(2)); await sleep(500);
+    eq((await ex()).visible, false, 'hieroglyphs: the magnifier goes away once the reading shows (nothing else to picture)');
+    eq(pageErrors(p), [], 'page errors');
+    await p.close();
+  });
+
   test('freeze everyone, and pause one headset by its number', async () => {
     const p = await page({ xr: true });
     await ready(p, '?headset=2');
@@ -225,6 +246,7 @@ export default (test) => {
 
   test('supports from the console: room-wide and for one headset', async () => {
     const p = await page({ xr: true, speech: true });
+    await p.route(/rosetta-stone\/audio\//, (r) => r.fulfill({ status: 404, body: '' }));   // as if not yet recorded: Read to me only shows where there is no recording
     await ready(p, '?headset=2&exhibit=rosetta-stone&kit=g5-egypt');
     const send = room(p, 'south');
     await send({ kit: 'g5-egypt', exhibit: 'rosetta-stone', practice: false });

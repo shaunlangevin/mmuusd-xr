@@ -42,11 +42,25 @@
       "id": "writing",
       "code": "Bend 2: elements of culture",
       "text": {
-        "en": "Writing is part of a culture: compare Egypt's three kinds of writing, and find a royal name in a cartouche",
-        "es": "La escritura es parte de una cultura: comparar los tres tipos de escritura de Egipto y encontrar un nombre real en un cartucho"
+        "en": "Writing is part of a culture: how the code breakers used the Greek to read hieroglyphs, starting with a royal name in a cartouche",
+        "es": "La escritura es parte de una cultura: cómo los descifradores usaron el griego para leer los jeroglíficos, empezando por un nombre real en un cartucho"
       }
     }
   ],
+  "pronounce": {
+    "Ptolemy": "TOL-uh-mee",
+    "hieroglyph": "HY-roh-glif",
+    "Demotic": "dih-MOT-ik",
+    "cartouche": "kar-TOOSH",
+    "Champollion": "sham-POH-lee-on",
+    "Cleopatra": "klee-oh-PAT-ruh",
+    "Philae": "FY-lee",
+    "Rashid": "rah-SHEED",
+    "Amun": "AH-mun",
+    "pharaoh": "FAIR-oh",
+    "obelisk": "OB-uh-lisk",
+    "Zeus": "ZOOS"
+  },
   "dots": [
     {
       "id": "source",
@@ -59,16 +73,16 @@
         "es": "Un mensaje, tres maneras"
       },
       "notice": {
-        "en": "Look at the front. Can you find lines that split the writing into parts? How many parts are there? Does the writing in each part look the same or different?",
-        "es": "Mira el frente. ¿Puedes encontrar líneas que dividen la escritura en partes? ¿Cuántas partes hay? ¿La escritura de cada parte se ve igual o diferente?"
+        "en": "Look at the front. How many kinds of writing can you find? Could they all say the same thing?",
+        "es": "Mira el frente. ¿Cuántos tipos de escritura puedes encontrar? ¿Podrían todos decir lo mismo?"
       },
       "clue": {
         "en": "Find a line across the front that separates two kinds of writing.",
         "es": "Busca una línea en el frente que separa dos tipos de escritura."
       },
       "text": {
-        "en": "This stone is a primary source. It has the same message carved three times, in three kinds of writing. For a long time, nobody could read hieroglyphs, but experts could read Greek. In 1822, comparing the parts helped a French scholar named Champollion [sham-POH-lee-on] figure out how to read hieroglyphs.",
-        "es": "Esta piedra es una fuente primaria. Tiene el mismo mensaje tallado tres veces, con tres tipos de escritura. Durante mucho tiempo nadie podía leer los jeroglíficos, pero los expertos sí sabían leer griego. En 1822, comparar las partes ayudó a un sabio francés llamado Champollion [shan-po-LIÓN] a descubrir cómo leer los jeroglíficos."
+        "en": "In 1799, French soldiers found this stone in Egypt. It has three kinds of writing: hieroglyphs [HY-roh-glifs] at the top, Demotic [dih-MOT-ik] in the middle and Greek at the bottom. Experts guessed it was the same message written three ways. If they could read one part, could it help them crack the others?",
+        "es": "En 1799, unos soldados franceses encontraron esta piedra en Egipto. Tiene tres tipos de escritura: jeroglíficos arriba, demótico en el medio y griego abajo. Los expertos pensaron que era el mismo mensaje escrito de tres maneras. Si podían leer una parte, ¿podría ayudarlos a descifrar las otras?"
       },
       "facts": [
         {
@@ -123,8 +137,62 @@
         }
       ],
       "think": {
-        "en": "Why would someone write the same message three different ways?",
-        "es": "¿Por qué alguien escribiría el mismo mensaje de tres maneras diferentes?"
+        "en": "If you found a message in a writing nobody can read, where would you start?",
+        "es": "Si encontraras un mensaje en una escritura que nadie puede leer, ¿por dónde empezarías?"
+      },
+      "keys": {
+        "en": [
+          "3 kinds of writing, 1 message",
+          "Found in 1799",
+          "Carved in 196 BC"
+        ],
+        "es": [
+          "3 tipos de escritura, 1 mensaje",
+          "Encontrada en 1799",
+          "Tallada en el año 196 a. C."
+        ]
+      }
+    },
+    {
+      "id": "greek",
+      "h": 0.12,
+      "angle": 0,
+      "x": -0.05,
+      "title": {
+        "en": "The part they could read",
+        "es": "La parte que podían leer"
+      },
+      "notice": {
+        "en": "Look through the magnifier at the Greek writing just to the right of this dot. Do any letters look like letters you know?",
+        "es": "Mira con la lupa la escritura griega justo a la derecha de este punto. ¿Alguna letra se parece a las letras que conoces?"
+      },
+      "clue": {
+        "en": "Find the bottom part of the front, with neat rows of small letters.",
+        "es": "Busca la parte de abajo del frente, con filas ordenadas de letras pequeñas."
+      },
+      "text": {
+        "en": "This part is in Greek, and experts in 1799 could still read Greek. Many of our letters, like A, E, K, M and T, come from Greek letters. The Greek told them what the message said: it honors King Ptolemy [TOL-uh-mee] V, whose family came from near Greece. Now they had a name to hunt for in the other writing: Ptolemy.",
+        "es": "Esta parte está en griego, y en 1799 los expertos todavía podían leer griego. Muchas de nuestras letras, como A, E, K, M y T, vienen de letras griegas. El griego les dijo qué decía el mensaje: honra al rey Ptolomeo V, cuya familia venía de cerca de Grecia. Ahora tenían un nombre que buscar en la otra escritura: Ptolomeo."
+      },
+      "think": {
+        "en": "When new rulers arrive, what changes in a culture, and what stays the same?",
+        "es": "Cuando llegan nuevos gobernantes, ¿qué cambia en una cultura y qué sigue igual?"
+      },
+      "core": [
+        "writing"
+      ],
+      "closeup": "closeup-greek.jpg",
+      "keys": {
+        "en": [
+          "Greek: they could still read it",
+          "It names King Ptolemy [TOL-uh-mee] V",
+          "A name to hunt for"
+        ],
+        "es": [
+          "Griego: todavía podían leerlo",
+          "Nombra al rey Ptolomeo V",
+          "Un nombre que buscar"
+        ]
       }
     },
     {
@@ -133,20 +201,20 @@
       "angle": 0,
       "x": 0.12,
       "title": {
-        "en": "Sacred writing",
-        "es": "Escritura sagrada"
+        "en": "Pictures or sounds?",
+        "es": "¿Dibujos o sonidos?"
       },
       "notice": {
-        "en": "Look closely at the writing near the top. What shapes can you find? Do any look like animals, people or objects?",
-        "es": "Mira con atención la escritura cerca de la parte de arriba. ¿Qué formas encuentras? ¿Alguna parece un animal, una persona o un objeto?"
+        "en": "Look through the magnifier at the writing near the top. Do any signs look like animals, people or objects? Do you think each sign is a picture of a thing, or could some stand for sounds?",
+        "es": "Mira con la lupa la escritura de arriba. ¿Algún signo parece un animal, una persona o un objeto? ¿Crees que cada signo es el dibujo de una cosa, o algunos podrían representar sonidos?"
       },
       "clue": {
         "en": "Find the writing at the very top of the front, just below the broken edge.",
         "es": "Busca la escritura que está arriba del todo en el frente, justo debajo del borde roto."
       },
       "text": {
-        "en": "These are hieroglyphs [HY-roh-glifs]. Egyptians called them “the words of the gods.” Priests used them on temple walls and holy objects. Some signs stand for sounds, and some stand for ideas. The top of the stone broke off, so only the last 14 lines of hieroglyphs are left.",
-        "es": "Estos son jeroglíficos. Los egipcios los llamaban “las palabras de los dioses”. Los sacerdotes los usaban en las paredes de los templos y en objetos sagrados. Algunos signos representan sonidos y otros representan ideas. La parte de arriba de la piedra se rompió, así que solo quedan las últimas 14 líneas de jeroglíficos."
+        "en": "These are hieroglyphs [HY-roh-glifs], the sacred writing of Egypt's priests. When this stone was found, no one had read hieroglyphs for about 1,400 years. Many experts thought every sign was only a picture of an idea, which made them impossible to read. The top of this stone broke off, so only the last 14 lines are left.",
+        "es": "Estos son jeroglíficos, la escritura sagrada de los sacerdotes de Egipto. Cuando se encontró esta piedra, nadie había leído jeroglíficos en unos 1,400 años. Muchos expertos pensaban que cada signo era solo el dibujo de una idea, y por eso no podían leerlos. La parte de arriba de esta piedra se rompió, así que solo quedan las últimas 14 líneas."
       },
       "think": {
         "en": "Why do you think priests used a special kind of writing for messages about the gods and the king?",
@@ -154,7 +222,20 @@
       },
       "core": [
         "writing"
-      ]
+      ],
+      "closeup": "closeup-hieroglyphs.jpg",
+      "keys": {
+        "en": [
+          "Hieroglyphs [HY-roh-glifs]: sacred writing",
+          "Unread for about 1,400 years",
+          "Pictures of ideas, or sounds?"
+        ],
+        "es": [
+          "Jeroglíficos: escritura sagrada",
+          "Sin leerse por unos 1,400 años",
+          "¿Dibujos de ideas o sonidos?"
+        ]
+      }
     },
     {
       "id": "cartouche",
@@ -166,30 +247,43 @@
         "es": "Un nombre dentro de un óvalo"
       },
       "notice": {
-        "en": "Look just to the right of this dot. Some signs have a loop drawn around them. Why would someone draw a loop around certain words?",
-        "es": "Mira justo a la derecha de este punto. Algunos signos tienen un óvalo dibujado alrededor. ¿Por qué alguien dibujaría un óvalo alrededor de ciertas palabras?"
+        "en": "Look through the magnifier at the loop. The Greek says “Ptolemy” [TOL-uh-mee] again and again, and in the hieroglyphs [HY-roh-glifs] this loop shows up again and again too. What do you think is inside it?",
+        "es": "Mira con la lupa el óvalo. El griego dice “Ptolomeo” una y otra vez, y en los jeroglíficos este óvalo también aparece una y otra vez. ¿Qué crees que hay dentro?"
       },
       "text": {
-        "en": "That loop is called a cartouche [kar-TOOSH]. Egyptians drew it around the name of a king or queen. Every cartouche on this stone holds the same name: King Ptolemy. The Greek part also says “Ptolemy,” so experts could match them up. Then Champollion compared it with Queen Cleopatra's cartouche from another monument. The two names share the sounds P, T, O and L, and that helped unlock hieroglyphs.",
-        "es": "Ese óvalo se llama cartucho. Los egipcios lo dibujaban alrededor del nombre de un rey o una reina. Todos los cartuchos de esta piedra tienen el mismo nombre: el rey Ptolomeo. La parte en griego también dice “Ptolomeo”, así que los expertos pudieron relacionarlos. Luego, Champollion lo comparó con el cartucho de la reina Cleopatra, de otro monumento. Los dos nombres comparten los sonidos P, T, O y L, y eso ayudó a descifrar los jeroglíficos."
+        "en": "That loop is called a cartouche [kar-TOOSH]. Egyptians drew it around the name of a king or queen. Thomas Young guessed this one said “Ptolemy” [TOL-uh-mee]. In 1822, Champollion [sham-POH-lee-on] compared it with Queen Cleopatra's [klee-oh-PAT-ruh] cartouche from another monument. The names share sounds like P, O and L, and that proved many signs stand for sounds. Try reading the name in the picture!",
+        "es": "Ese óvalo se llama cartucho. Los egipcios lo dibujaban alrededor del nombre de un rey o una reina. Thomas Young pensó que este decía “Ptolomeo”. En 1822, Champollion [shan-po-lión] lo comparó con el cartucho de la reina Cleopatra, de otro monumento. Los nombres comparten sonidos como P, O y L, y eso demostró que muchos signos representan sonidos. ¡Intenta leer el nombre en el dibujo!"
       },
       "more": {
-        "en": "Thomas Young, from England, first matched this cartouche to Ptolemy's name. Champollion went further and showed that many hieroglyphs stand for sounds. Cleopatra's cartouche is on an obelisk from Philae [FY-lee], an island in the Nile River.",
-        "es": "Thomas Young, de Inglaterra, fue el primero en relacionar este cartucho con el nombre de Ptolomeo. Champollion fue más allá y demostró que muchos jeroglíficos representan sonidos. El cartucho de Cleopatra está en un obelisco de Filé, una isla del río Nilo."
+        "en": "Cleopatra's cartouche is on an obelisk [OB-uh-lisk] from Philae [FY-lee], an island in the Nile River. Champollion went on to show that hieroglyphs [HY-roh-glifs] mix signs for sounds with signs for ideas, and in 1824 he published how to read them.",
+        "es": "El cartucho de Cleopatra está en un obelisco de Filé, una isla del río Nilo. Champollion demostró después que los jeroglíficos mezclan signos de sonidos con signos de ideas, y en 1824 publicó cómo leerlos."
       },
       "think": {
         "en": "Why are names a good place to start when you try to read a lost writing system?",
         "es": "¿Por qué los nombres son un buen punto de partida para leer una escritura perdida?"
       },
       "clue": {
-        "en": "In the top section, find a group of signs with an oval loop around it.",
-        "es": "En la parte de arriba, busca un grupo de signos con un óvalo alrededor."
+        "en": "Near the top of the front, find a group of signs with an oval loop around it.",
+        "es": "Cerca de la parte de arriba del frente, busca un grupo de signos con un óvalo alrededor."
       },
       "clueRadius": 0.12,
       "extra": "cartouche",
       "core": [
         "writing"
-      ]
+      ],
+      "closeup": "closeup-cartouche.jpg",
+      "keys": {
+        "en": [
+          "Cartouche [kar-TOOSH]: a loop around a royal name",
+          "Inside: Ptolemy [TOL-uh-mee]",
+          "Signs can stand for sounds"
+        ],
+        "es": [
+          "Cartucho: un óvalo alrededor de un nombre real",
+          "Adentro: Ptolomeo",
+          "Los signos pueden representar sonidos"
+        ]
+      }
     },
     {
       "id": "demotic",
@@ -216,38 +310,18 @@
         "en": "How might everyday writing change the life of a farmer or a shop owner?",
         "es": "¿Cómo podría cambiar la vida de un agricultor o de un comerciante gracias a la escritura de todos los días?"
       },
-      "core": [
-        "writing"
-      ]
-    },
-    {
-      "id": "greek",
-      "h": 0.2,
-      "angle": 0,
-      "x": -0.12,
-      "title": {
-        "en": "The rulers' language",
-        "es": "El idioma de los gobernantes"
-      },
-      "notice": {
-        "en": "Look at the bottom part. Do any of these letters look like letters you know?",
-        "es": "Mira la parte de abajo. ¿Alguna de estas letras se parece a letras que conoces?"
-      },
-      "clue": {
-        "en": "Find the bottom part of the front, with neat rows of small letters.",
-        "es": "Busca la parte de abajo del frente, con filas ordenadas de letras pequeñas."
-      },
-      "text": {
-        "en": "The bottom part is in Greek. The king, Ptolemy [TOL-uh-mee] V, came from a family from Macedonia, near Greece. His family had ruled Egypt for more than 100 years, and the government used Greek. The new rulers kept many Egyptian traditions, but they also brought their own language and ways.",
-        "es": "La parte de abajo está en griego. El rey, Ptolomeo V, venía de una familia de Macedonia, cerca de Grecia. Su familia había gobernado Egipto por más de 100 años, y el gobierno usaba el griego. Los nuevos gobernantes mantuvieron muchas tradiciones egipcias, pero también trajeron su propio idioma y sus costumbres."
-      },
-      "think": {
-        "en": "When new rulers arrive, what changes in a culture, and what stays the same?",
-        "es": "Cuando llegan nuevos gobernantes, ¿qué cambia en una cultura y qué sigue igual?"
-      },
-      "core": [
-        "writing"
-      ]
+      "keys": {
+        "en": [
+          "Demotic [dih-MOT-ik]: everyday writing",
+          "Fast to write",
+          "Letters, records, agreements"
+        ],
+        "es": [
+          "Demótico: escritura de todos los días",
+          "Rápida de escribir",
+          "Cartas, registros, acuerdos"
+        ]
+      }
     },
     {
       "id": "god-king",
@@ -267,16 +341,28 @@
         "es": "Busca el lado derecho de la escritura griega, cerca de la parte de abajo del frente."
       },
       "text": {
-        "en": "The priests called young King Ptolemy “the living image of Amun,” the king of the gods. Egyptians believed their pharaoh was a god living on Earth. The message ordered a statue of him in every temple. Priests would care for it three times a day, and his birthday became a holiday.",
+        "en": "The priests called young King Ptolemy [TOL-uh-mee] “the living image of Amun” [AH-mun], the king of the gods. Egyptians believed their pharaoh [FAIR-oh] was a god living on Earth. The message ordered a statue of him in every temple. Priests would care for it three times a day, and his birthday became a holiday.",
         "es": "Los sacerdotes llamaron al joven rey Ptolomeo “la imagen viviente de Amón”, el rey de los dioses. Los egipcios creían que su faraón era un dios que vivía en la Tierra. El mensaje ordenaba poner una estatua de él en cada templo. Los sacerdotes la cuidarían tres veces al día, y su cumpleaños se volvió un día de fiesta."
       },
       "more": {
-        "en": "The Greek part calls him “the living image of Zeus,” the king of the Greek gods. The same idea was written in a way each group would understand.",
+        "en": "The Greek part calls him “the living image of Zeus” [ZOOS], the king of the Greek gods. The same idea was written in a way each group would understand.",
         "es": "La parte en griego lo llama “la imagen viviente de Zeus”, el rey de los dioses griegos. La misma idea se escribió de una manera que cada grupo pudiera entender."
       },
       "think": {
         "en": "If people believed the king was a god, how might that change the way they followed his rules?",
         "es": "Si la gente creía que el rey era un dios, ¿cómo cambiaría eso la manera en que seguían sus reglas?"
+      },
+      "keys": {
+        "en": [
+          "Pharaoh [FAIR-oh]: a god on Earth",
+          "A statue in every temple",
+          "His birthday: a holiday"
+        ],
+        "es": [
+          "Faraón: un dios en la Tierra",
+          "Una estatua en cada templo",
+          "Su cumpleaños: un día festivo"
+        ]
       }
     },
     {
@@ -317,6 +403,18 @@
       "think": {
         "en": "Why might a ruler lower taxes after a time of fighting? Who pays for temples, roads and schools where you live?",
         "es": "¿Por qué un gobernante bajaría los impuestos después de un tiempo de peleas? ¿Quién paga los templos, las calles y las escuelas donde vives?"
+      },
+      "keys": {
+        "en": [
+          "Some taxes cut or removed",
+          "Gifts to the temples",
+          "Prisoners freed"
+        ],
+        "es": [
+          "Algunos impuestos bajaron o se quitaron",
+          "Regalos para los templos",
+          "Presos liberados"
+        ]
       }
     },
     {
@@ -347,6 +445,18 @@
       "think": {
         "en": "Today, how do leaders share new rules with everyone? How is that like a stone in every temple?",
         "es": "Hoy en día, ¿cómo dan a conocer los líderes las nuevas reglas a todos? ¿En qué se parece eso a una piedra en cada templo?"
+      },
+      "keys": {
+        "en": [
+          "Rough back: stood against a wall",
+          "Copies in temples all over Egypt",
+          "Once about 1.5 m tall"
+        ],
+        "es": [
+          "Parte de atrás áspera: estaba contra una pared",
+          "Copias en templos de todo Egipto",
+          "Antes medía unos 1.5 m"
+        ]
       }
     },
     {
@@ -372,7 +482,23 @@
       "think": {
         "en": "These labels were added about 2,000 years after the stone was carved. What do they tell you about the stone's journey?",
         "es": "Estas etiquetas se agregaron unos 2,000 años después de que se talló la piedra. ¿Qué te dicen sobre el viaje de la piedra?"
+      },
+      "keys": {
+        "en": [
+          "Found in 1799 near Rashid [rah-SHEED] (Rosetta)",
+          "In London since 1802",
+          "Egypt has asked for it back"
+        ],
+        "es": [
+          "Encontrada en 1799 cerca de Rashid (Rosetta)",
+          "En Londres desde 1802",
+          "Egipto ha pedido que regrese"
+        ]
       }
     }
-  ]
+  ],
+  "narration": {
+    "facts": false,
+    "think": false
+  }
 }

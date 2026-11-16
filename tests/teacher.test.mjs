@@ -145,8 +145,8 @@ export default (test) => {
     const r = await signedIn();
     await r.click('#kitSeg button:nth-child(2)'); await sleep(800);
     await r.click('#tabTeach'); await sleep(300);
-    eq(await r.$$eval('#dots button.core', (b) => b.map((x) => +x.dataset.dot)), [2, 3, 4, 5], 'Rosetta stars the writing dots: hieroglyphs, cartouche, Demotic, Greek');
-    eq(await r.textContent('#stopsHl'), '★ Highlights (1 → 2 → 3 → 4 → 5)', 'Rosetta highlights');
+    eq(await r.$$eval('#dots button.core', (b) => b.map((x) => +x.dataset.dot)), [2, 3, 4], 'Rosetta stars the code-breaker dots: Greek, hieroglyphs, cartouche');
+    eq(await r.textContent('#stopsHl'), '★ Highlights (1 → 2 → 3 → 4)', 'Rosetta highlights');
     await r.close();
   });
 

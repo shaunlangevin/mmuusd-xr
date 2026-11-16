@@ -1,4 +1,4 @@
-// Extra pictures some dots show: a simple map, a few cuneiform signs, and a king's name in hieroglyphs.
+// Extra pictures some dots show: a simple map, a few cuneiform signs, a king's name in hieroglyphs, and a magnifier.
 import { UI, SIGN_CHARS, CARTOUCHE_CHARS } from './i18n.js';
 
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
@@ -113,6 +113,39 @@ export function drawCartouche(canvas, lang, hasFont) {
   ctx.fillStyle = '#5b4630'; ctx.font = `700 ${H * 0.065}px ${FONT}`; ctx.textBaseline = 'top';
   ctx.fillText(t.cartNote, W / 2, H * 0.84);
 }
+// Magnifier: a real close-up of the carved spot, seen through a round lens (shown with the "Look closely" question)
+export function drawMagnifier(canvas, img, lang) {
+  const t = UI[lang] || UI.en;
+  const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#e9dcc0'; ctx.fillRect(0, 0, W, H);
+  const r = H * 0.43, cx = r + H * 0.05, cy = H * 0.5;
+  // handle first, so the lens sits on top of it
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.PI / 4);
+  ctx.fillStyle = '#5b3f22'; ctx.fillRect(r * 0.96, -r * 0.13, r * 0.78, r * 0.26);
+  ctx.fillStyle = '#7a5630'; ctx.fillRect(r * 0.96, -r * 0.13, r * 0.78, r * 0.07);
+  ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = '#2b2a2c'; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  if (img && img.naturalWidth) { const k = Math.max((2 * r) / img.naturalWidth, (2 * r) / img.naturalHeight);
+    const w = img.naturalWidth * k, h = img.naturalHeight * k; ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h); }
+  const shine = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+  shine.addColorStop(0, 'rgba(255,255,255,0.16)'); shine.addColorStop(0.45, 'rgba(255,255,255,0)'); ctx.fillStyle = shine; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  ctx.restore();
+  ctx.lineWidth = r * 0.09; ctx.strokeStyle = '#8a6a3a'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = r * 0.025; ctx.strokeStyle = '#d4af6a'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.955, 0, Math.PI * 2); ctx.stroke();
+  // caption in a column beside the lens
+  const tx = cx + r + H * 0.07, tw = W - tx - H * 0.03;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#5b4630'; ctx.font = `800 ${H * 0.065}px ${FONT}`; ctx.fillText(t.magnifier, tx, H * 0.06, tw);
+  ctx.fillStyle = '#6b5a45'; ctx.font = `500 ${H * 0.045}px ${FONT}`;
+  let line = '', y = H * 0.16;
+  for (const word of t.magnifierNote.split(' ')) {
+    const test = line ? line + ' ' + word : word;
+    if (ctx.measureText(test).width > tw && line) { ctx.fillText(line, tx, y); line = word; y += H * 0.06; } else line = test;
+  }
+  if (line) ctx.fillText(line, tx, y);
+}
+
 export async function loadHieroFont() {
   try {
     const face = new FontFace('SteleHiero', 'url(fonts/NotoSansEgyptianHieroglyphs-ptolemy.woff2)');

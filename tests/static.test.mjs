@@ -67,8 +67,24 @@ export default (test) => {
         (d.facts || []).forEach((f, j) => need(both(f.k) && both(f.v), `${n}: fact ${j + 1} needs en and es`));
         if (d.law) { need(both(d.law.plain), `${n}: law.plain needs en and es`); if (d.law.original) need(both(d.law.original) && both(d.law.source) && both(ex.lawCredit), `${n}: a quote needs en and es wording, law.source and the exhibit's lawCredit`); }
         if (d.more) need(both(d.more), `${n}: more needs en and es`);
+        if (d.keys !== undefined) for (const lang of ['en', 'es']) { const k = d.keys?.[lang];
+          need(Array.isArray(k) && k.length >= 1 && k.length <= 3 && k.every((x) => typeof x === 'string' && x.trim() && words(x) <= 8), `${n}: keys.${lang} must be 1–3 short key terms (8 words or fewer each)`); }
+        if (d.closeup !== undefined) { const f = path.join(dir, String(d.closeup)); need(/^[a-z0-9-]+\.(jpg|png)$/.test(d.closeup) && fs.existsSync(f), `${n}: closeup "${d.closeup}" must be a .jpg or .png in the exhibit folder`);
+          if (fs.existsSync(f)) need(fs.statSync(f).size < 600 * 1024, `${n}: ${d.closeup} is over 600 KB (keep magnifier images small)`); need(!!d.notice, `${n}: a closeup is shown with the Look closely prompt, so the dot needs a notice`); }
         if (d.extra) need(['height', 'map', 'signs', 'cartouche'].includes(d.extra), `${n}: extra "${d.extra}" isn't built (height, map, signs or cartouche)`);
       });
+      // hard words: the first use on each panel (the prompt, the reading, the key words) carries its pronunciation, like "Ptolemy [TOL-uh-mee]"
+      for (const [word, say] of Object.entries(ex.pronounce || {})) {
+        const re = new RegExp(`\\b${word}\\w*(?:['’]s)?”?(\\s*\\[([^\\]]+)\\])?`, 'i');
+        dots.forEach((d, i) => {
+          for (const [field, v] of [['notice', d.notice?.en], ['text', d.text?.en], ['keys', (d.keys?.en || []).join(' | ')], ['more', d.more?.en]]) {
+            const m = v && re.exec(v);
+            if (!m) continue;
+            if (field === 'more' && re.test(d.text?.en || '')) continue;   // Tell me more opens under the reading, which already said it
+            need(!!m[1], `dot ${i + 1} (${d.id}) ${field}: first "${m[0].trim()}" needs its pronunciation [${say}]`);
+          }
+        });
+      }
       for (const lang of ['en', 'es']) {
         const a = path.join(dir, 'audio', lang);
         if (!fs.existsSync(a)) continue;
