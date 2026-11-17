@@ -401,7 +401,7 @@ async function start() {
     if (frozen) pill(`Frozen: ${FREEZE_NAMES[frozen]}`, 'stop');
     pill(exTitle(curExhibit()));
     if (on) {
-      pill(`● Tour: step ${step} of ${n}`, 'live');
+      { const l = steps(), at = l.indexOf(step); pill(at >= 0 ? `● Tour: step ${at + 1} of ${l.length}` : `● Tour: extra stop (dot ${step})`, 'live'); }
       if (noticeOn) revealedNow() ? pill('Reading shown') : pill('Reading hidden: students are noticing', 'warn');
     } else if (selfOn()) pill(`● Self-guided tour: ${steps().join(' → ')}`, 'live');
     else pill('Tour off: exploring freely');

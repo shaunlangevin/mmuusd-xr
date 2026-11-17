@@ -127,28 +127,28 @@ export default (test) => {
     const openSoon = (i) => p.waitForFunction((i) => window.__dbg.state().openIndex === i && !window.__dbg.tourState().tourPending, i, { timeout: 8000 }).catch(() => {});
     const ts = () => p.evaluate(() => { const D = window.__dbg, t = D.tourState(), s = D.state();
       return { touring: t.touring, self: t.selfGuided, stops: t.selfStops, pos: t.selfPos, done: t.selfDone, open: s.openIndex, notice: D.noticeState().phase,
-        playing: s.playing, kind: s.playingKind, btns: D.panel.buttons.map((b) => b.id), next: D.panel.state && D.panel.state.nextStop,
+        playing: s.playing, kind: s.playingKind, btns: D.panel.buttons.map((b) => b.id), next: D.panel.state && D.panel.state.go,
         shown: D.markers.filter((m) => m.visible).map((m) => m.userData.index) }; });
     await send({ selfTourAt: Date.now(), stops: [1, 2, 5].join(',') }, 1800);
     await openSoon(0); await sleep(300);
     let s = await ts();
     eq([s.touring, s.self, s.stops, s.open, s.notice], [true, true, [0, 1, 4], 0, true], 'starts at stop 1 with the look-closely prompt');
     eq(s.shown, [0, 1, 4], 'only the stops show');
-    ok(s.btns.includes('reveal'), 'the student can press Show me (no waiting for the teacher)');
+    eq(s.btns[0], 'go', 'one big Next button comes first (no waiting for the teacher)'); ok(!s.btns.includes('reveal') && !s.btns.includes('more') && !s.btns.includes('close'), 'and the other buttons step back');
     await playingSoon('notice');
     s = await ts(); eq([s.playing, s.kind], [true, 'notice'], 'auto-play is on during a self-guided tour');
-    await press(p, 'panel', 'reveal'); await sleep(400);
-    s = await ts(); eq(s.notice, false, 'Show me reveals the reading'); ok(s.btns.includes('nextStop') && s.next === 'next', 'Next stop button');
+    await press(p, 'panel', 'go'); await sleep(400);
+    s = await ts(); eq(s.notice, false, 'Next reveals the reading'); ok(s.btns[0] === 'go' && s.next === 'next', 'the same big Next moves on after the reading');
     await playingSoon('main');
     s = await ts(); eq([s.playing, s.kind], [true, 'main'], 'the reading plays by itself');
-    await press(p, 'panel', 'nextStop'); await openSoon(1); await sleep(300);
-    s = await ts(); eq([s.pos, s.open, s.notice], [1, 1, true], 'Next stop: dot 2, prompt first');
-    await press(p, 'panel', 'reveal'); await sleep(300);
-    await press(p, 'panel', 'nextStop'); await openSoon(4); await sleep(300);
+    await press(p, 'panel', 'go'); await openSoon(1); await sleep(300);
+    s = await ts(); eq([s.pos, s.open, s.notice], [1, 1, true], 'Next: dot 2, prompt first');
+    await press(p, 'panel', 'go'); await sleep(300);
+    await press(p, 'panel', 'go'); await openSoon(4); await sleep(300);
     s = await ts(); eq([s.pos, s.open], [2, 4], 'skips to dot 5 (the last stop)');
-    await press(p, 'panel', 'reveal'); await sleep(400);
-    s = await ts(); eq(s.next, 'finish', 'the last stop offers Finish tour');
-    await press(p, 'panel', 'nextStop'); await sleep(600);
+    await press(p, 'panel', 'go'); await sleep(400);
+    s = await ts(); eq(s.next, 'done', 'the last stop says Done');
+    await press(p, 'panel', 'go'); await sleep(600);
     s = await ts(); eq([s.touring, s.self, s.done], [false, false, true], 'tour finished'); eq(s.shown.length, 9, 'every dot appears for free exploring');
     await send({}, 900); s = await ts(); eq(s.touring, false, 'an unchanged record does not restart it');
     await send({ selfTourAt: Date.now() + 5 }, 1800); await openSoon(0);
@@ -172,8 +172,8 @@ export default (test) => {
     const ts = () => p.evaluate(() => { const D = window.__dbg, t = D.tourState(), s = D.state(); return { step: t.tourStep, pending: t.tourPending, guide: t.guide, guideText: t.guideText, open: s.openIndex }; });
     await p.waitForFunction(() => window.__dbg.state().openIndex === 0, null, { timeout: 8000 }).catch(() => {});
     let s = await ts(); eq([s.step, s.open], [0, 0], 'stop 1 (the front) opens: the student is already facing it');
-    await press(p, 'panel', 'reveal'); await sleep(300);
-    await press(p, 'panel', 'nextStop'); await sleep(900);
+    await press(p, 'panel', 'go'); await sleep(300);
+    await press(p, 'panel', 'go'); await sleep(900);
     s = await ts(); eq([s.step, s.pending, s.open], [5, true, -1], 'stop 2 is dot 6 on the back: it waits');
     ok(s.guide && s.guideText === 'Walk around', 'an arrow says to walk around');
     // walk round to the back and look at dot 6

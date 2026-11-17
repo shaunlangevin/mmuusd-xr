@@ -68,8 +68,19 @@ class CanvasPanel {
     ctx.fillStyle = 'rgba(22,19,16,0.94)'; ctx.fill();
     ctx.lineWidth = 5; ctx.strokeStyle = GOLD; ctx.stroke();
   }
-  drawButton(b, label, { primary = false, selected = false } = {}) {
+  drawButton(b, label, { primary = false, selected = false, hero = false } = {}) {
     const ctx = this.ctx, hov = this.hover === b.id;
+    if (hero) {   // the one big "Next" of a self-guided tour: bright, glowing, with a play triangle
+      ctx.save(); ctx.shadowColor = 'rgba(255,214,120,0.95)'; ctx.shadowBlur = hov ? 34 : 24;
+      roundRect(ctx, b.x, b.y, b.w, b.h, b.h / 2); ctx.fillStyle = hov ? '#ffe3a3' : '#f0c862'; ctx.fill(); ctx.restore();
+      ctx.lineWidth = 4; ctx.strokeStyle = '#fff1c9'; roundRect(ctx, b.x, b.y, b.w, b.h, b.h / 2); ctx.stroke();
+      const size = Math.round(b.h * 0.46); ctx.font = `800 ${size}px ${FONT}`; ctx.fillStyle = '#1a1612';
+      const tri = /✓$/.test(label || '') ? 0 : size * 0.8, tw = ctx.measureText(label || '').width, gap = label ? size * 0.45 : 0;
+      const x0 = b.x + (b.w - tw - gap - tri) / 2, cy = b.y + b.h / 2;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(label || '', x0, cy + 1);
+      if (tri) { const tx = x0 + tw + gap; ctx.beginPath(); ctx.moveTo(tx, cy - tri * 0.55); ctx.lineTo(tx + tri * 0.9, cy); ctx.lineTo(tx, cy + tri * 0.55); ctx.closePath(); ctx.fill(); }
+      return;
+    }
     roundRect(ctx, b.x, b.y, b.w, b.h, b.h / 2);
     ctx.fillStyle = hov ? '#f0cf86' : selected ? GOLD : primary ? 'rgba(212,175,106,0.30)' : 'rgba(255,255,255,0.10)';
     ctx.fill();
@@ -182,7 +193,12 @@ export class InfoPanel extends CanvasPanel {
     }
     const items = [];
     const read = st.canRead ? { id: 'read', label: st.speaking ? t.stop : t.readBtn, w: 1.3 } : null;
-    if (st.notice) {
+    if (st.go) {   // self-guided tour: one big Next; the rest steps back (build rule R3)
+      items.push({ id: 'go', label: st.go === 'done' ? t.done : t.goNext, w: 3.4, hero: true });
+      if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : t.listen, w: 1.1 });
+      else if (read) items.push(read);
+      if (st.canShort && !st.notice) items.push({ id: 'words', label: st.short ? t.allWords : t.keyWords, w: 1.4 });
+    } else if (st.notice) {
       if (st.canReveal) items.push({ id: 'reveal', label: t.showMe, w: 1.6 });
       if (st.hasAudio) items.push({ id: 'listen', label: st.playing ? t.stop : t.listen, w: 1.1 });
       else if (read) items.push(read);
@@ -193,11 +209,11 @@ export class InfoPanel extends CanvasPanel {
       if (st.hasMore) items.push({ id: 'more', label: st.expanded ? t.less : t.more, w: 1.5 });
       if (st.canShort) items.push({ id: 'words', label: st.short ? t.allWords : t.keyWords, w: 1.6 });
     }
-    if (!st.noClose) items.push({ id: 'close', label: t.close, w: 1 });
-    if (!st.single && !st.notice) items.push({ id: 'next', label: t.next, w: 1 });
-    if (st.nextStop && !st.notice) items.push({ id: 'nextStop', label: st.nextStop === 'finish' ? t.finishTour : t.nextStop, w: 1.7 });   // self-guided tour
-    this.buttons = items.length ? this.layoutRow(items, used - footer + 22, 88, 14, 40) : [];
-    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' || b.id === 'reveal' || b.id === 'read' || b.id === 'nextStop' }));
+    if (!st.noClose && !st.go) items.push({ id: 'close', label: t.close, w: 1 });
+    if (!st.single && !st.notice && !st.go) items.push({ id: 'next', label: t.next, w: 1 });
+    const big = items.some((i) => i.hero);
+    this.buttons = items.length ? this.layoutRow(items, used - footer + (big ? 12 : 22), big ? 108 : 88, 14, 40) : [];
+    this.buttons.forEach((b, i) => this.drawButton(b, items[i].label, { primary: b.id === 'close' || b.id === 'listen' || b.id === 'reveal' || b.id === 'read', hero: !!items[i].hero }));
     this.tex.needsUpdate = true;
   }
 }

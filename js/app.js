@@ -490,7 +490,8 @@ function baseInfoState() {
   if (noticePhase(openIndex)) {
     return { dot: DOTS[openIndex], index: openIndex, lang: S.lang, notice: true, single: true,
       hasAudio: hasAudio(openIndex, 'notice'), playing: playing && playingKind === 'notice' && playingIndex === openIndex,
-      canReveal: !touring || selfGuided, wait: touring && !selfGuided, noClose: touring && mode !== 'desktop', found: tracking() && found.has(openIndex) };
+      canReveal: !touring || selfGuided, wait: touring && !selfGuided, noClose: touring && mode !== 'desktop', found: tracking() && found.has(openIndex),
+      go: selfGuided && openIndex === tourStep ? 'reveal' : null };
   }
   if (openIndex === 'finish') {
     const f = EX.finish;
@@ -505,6 +506,7 @@ function baseInfoState() {
     hasAudio: hasAudio(openIndex, panelKind()), hasMore: !!(d.more || (d.law && d.law.original)),
     lawCredit: EX.lawCredit, credit: (d.id === 'height' || d.extra === 'height') ? L(EX.model.credit, S.lang) : '',
     nextStop: selfGuided && openIndex === tourStep ? (selfPos < selfStops.length - 1 ? 'next' : 'finish') : null,
+    go: selfGuided && openIndex === tourStep ? (selfPos < selfStops.length - 1 ? 'next' : 'done') : null,
   };
 }
 
@@ -765,9 +767,10 @@ function showCard() {
     $('card-think-label').textContent = '';
     $('card-think').textContent = tt.stems.join('  ') + (st.wait ? '  ' + tt.waitReveal : '');
     $('card-showme').hidden = !st.canReveal;
+    $('card-showme').classList.toggle('hero', !!st.go); if (st.go) $('card-showme').textContent = tt.goNext + ' ▶';
     $('card-listen').hidden = !st.hasAudio; $('card-listen').textContent = st.playing ? tt.stop : tt.listen;
     $('card-read').hidden = !st.canRead; $('card-read').textContent = speaking ? tt.stop : tt.readBtn;
-    $('card-close').hidden = !!st.noClose; $('card-close').textContent = tt.close;
+    $('card-close').hidden = !!st.noClose || !!st.go; $('card-close').textContent = tt.close;
     afterCard();
     return;
   }
@@ -805,9 +808,10 @@ function showCard() {
   $('card-read').hidden = !st.canRead || st.hasAudio; $('card-read').textContent = speaking ? tt.stop : tt.readBtn;
   $('card-moreBtn').hidden = !st.hasMore; $('card-moreBtn').textContent = st.expanded ? tt.less : tt.more;
   $('card-prev').hidden = $('card-next').hidden = !!st.single;
-  $('card-close').hidden = !!st.noClose;
+  $('card-close').hidden = !!st.noClose || !!st.go;   // self-guided: the big Next is the way on
   $('card-prev').textContent = tt.back; $('card-next').textContent = tt.next; $('card-close').textContent = tt.close;
-  $('card-nextstop').hidden = !st.nextStop; $('card-nextstop').textContent = st.nextStop === 'finish' ? tt.finishTour : tt.nextStop;
+  $('card-nextstop').hidden = !st.go; $('card-nextstop').textContent = st.go === 'done' ? tt.done : tt.goNext + ' ▶'; $('card-nextstop').classList.toggle('hero', !!st.go);
+  if (st.go) { $('card-moreBtn').hidden = true; }
   afterCard();
 }
 // keyboard / screen-reader users: move focus into the card when they opened it, and keep the dot list current
@@ -1246,6 +1250,7 @@ function onPanelButton(id) {
   if (id === 'close' && openIndex === 'practice') return finishPractice();
   if (id === 'reveal') return showReading(openIndex);
   if (id === 'nextStop') return nextSelfStop();
+  if (id === 'go') return noticePhase(openIndex) ? showReading(openIndex) : nextSelfStop();   // self-guided: the one big Next
   if (id === 'close') closeInfo();
   else if (id === 'next') openInfo(openIndex + 1);
   else if (id === 'prev') openInfo(openIndex - 1);
